@@ -52,9 +52,9 @@
       "young_man": { "candidates": ["Chris", "Josh", "Charlie"], "stability": 0.4, "style": 0.5 },
       "older_man": { "candidates": ["Arnold", "Bill", "Paul"], "stability": 0.45, "style": 0.4 },
       "sergeant":  { "candidates": ["Daniel", "Paul", "Adam"], "stability": 0.5, "style": 0.3 },
-      "dr_han":    { "candidates": ["Charlotte", "Rachel", "Domi"], "stability": 0.5, "style": 0.35 },
-      "president": { "candidates": ["Brian", "Adam", "Antoni"], "stability": 0.65, "style": 0.25 },
-      "muyang":    { "candidates": ["Antoni", "Liam", "Sam"], "stability": 0.55, "style": 0.3 },
+      "dr_han":    { "candidates": ["Alice", "Bella", "Sarah"], "stability": 0.5, "style": 0.35 },
+      "president": { "candidates": ["Brian", "Adam", "Eric"], "stability": 0.65, "style": 0.25 },
+      "muyang":    { "candidates": ["Archer", "Eric", "Liam"], "stability": 0.55, "style": 0.3 },
       "lee":       { "candidates": ["Charlie", "Josh", "Sam"], "stability": 0.4, "style": 0.5 }
     }
   },
