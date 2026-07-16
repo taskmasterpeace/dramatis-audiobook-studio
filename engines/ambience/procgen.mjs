@@ -34,7 +34,7 @@ export async function renderBed(spec, durationSec, seed, cacheRoot) {
   } else if (spec.type === 'city-night') {
     // distant traffic wash far below a high terrace
     layers.push(['traffic', `anoisesrc=color=brown:seed=${seed}:duration=${dur}:sample_rate=48000,lowpass=f=400,tremolo=f=0.18:d=0.35,volume=${(0.18 + 0.22 * i).toFixed(2)}`]);
-    layers.push(['wind', `anoisesrc=color=pink:seed=${seed + 1}:duration=${dur}:sample_rate=48000,bandpass=f=1200:w=900,tremolo=f=0.09:d=0.6,volume=${(0.04 + 0.08 * i).toFixed(2)}`]);
+    layers.push(['wind', `anoisesrc=color=pink:seed=${seed + 1}:duration=${dur}:sample_rate=48000,bandpass=f=1200:w=900,tremolo=f=0.12:d=0.6,volume=${(0.04 + 0.08 * i).toFixed(2)}`]);
   } else if (spec.type === 'lab-cold') {
     // white facility: cold drone + hiss + slow pulse
     layers.push(['drone', `sine=frequency=58:duration=${dur}:sample_rate=48000,tremolo=f=0.15:d=0.3,volume=${(0.10 + 0.12 * i).toFixed(2)}`]);
