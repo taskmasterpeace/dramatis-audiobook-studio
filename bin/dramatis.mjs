@@ -30,10 +30,13 @@ const manuscript = path.resolve(bookDir, book.manuscript);
 const outRoot = ensureDir(path.join(root, 'out', book.id));
 const cacheRoot = path.join(root, 'out');
 
-const ttsName = opt('tts', process.env.DRAMATIS_TTS || 'sapi');
+const ttsName = opt('tts', process.env.DRAMATIS_TTS || 'kokoro');
 const { renderLines } = await import(`../engines/tts/${ttsName}.mjs`);
-const voices = book.voices[ttsName];
+let voices = book.voices[ttsName];
 if (!voices) throw new Error(`book.json has no voice map for engine: ${ttsName}`);
+// "@name" entries reference another voice map (e.g. hybrid -> kokoro + elevenlabs)
+voices = Object.fromEntries(Object.entries(voices).map(([k, v]) =>
+  [k, typeof v === 'string' && v.startsWith('@') ? book.voices[v.slice(1)] : v]));
 
 const only = opt('chapter', null);
 const chapters = only
