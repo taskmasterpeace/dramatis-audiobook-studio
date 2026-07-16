@@ -1,0 +1,12 @@
+{
+  "name": "dramatis",
+  "version": "0.1.0",
+  "description": "Local-first full-cast cinematic audiobook studio. Manuscript in, produced audiobook out.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "bin": { "dramatis": "bin/dramatis.mjs" },
+  "scripts": {
+    "produce": "node bin/dramatis.mjs produce"
+  },
+  "engines": { "node": ">=20" }
+}

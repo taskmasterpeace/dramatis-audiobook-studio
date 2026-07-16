@@ -1,0 +1,49 @@
+{
+  "id": "liu-xiao-ch1",
+  "manuscript": "../../samples/liu-xiao-protector-of-china.md",
+  "chapterHeading": "Chapter One",
+  "protagonist": "liu",
+  "entities": [
+    { "id": "narrator", "kind": "narrator", "names": [] },
+    { "id": "liu", "kind": "character", "names": ["Liu", "Liu Xiao"] },
+    { "id": "wen", "kind": "character", "names": ["Wen"] },
+    { "id": "stranger", "kind": "character", "names": [] },
+    { "id": "young_man", "kind": "character", "names": [] }
+  ],
+  "voices": {
+    "narrator":  { "voice": "Microsoft David Desktop", "rate": 0,  "pitch": "medium" },
+    "liu":       { "voice": "Microsoft David Desktop", "rate": -2, "pitch": "low" },
+    "wen":       { "voice": "Microsoft Zira Desktop",  "rate": 0,  "pitch": "medium" },
+    "stranger":  { "voice": "Microsoft David Desktop", "rate": -1, "pitch": "x-low" },
+    "young_man": { "voice": "Microsoft David Desktop", "rate": 1,  "pitch": "high" }
+  },
+  "hints": [
+    { "match": "Liu Xiao!", "entity": "stranger" },
+    { "match": "Lao xiansheng", "entity": "young_man" }
+  ],
+  "scenes": [
+    { "id": "scn-parlor", "anchor": "The rain came early that evening",
+      "env": { "location": "massage parlor arcade, Wangfujing", "time": "evening", "weather": "rain beginning", "mood": "routine, warm" },
+      "ambience": { "type": "rain", "intensity": 0.35 } },
+    { "id": "scn-vigil", "anchor": "He found his cane where it leaned",
+      "env": { "location": "emptying parlor under awning", "time": "night", "weather": "heavy rain", "mood": "waiting, uneasy" },
+      "ambience": { "type": "rain", "intensity": 0.7 } },
+    { "id": "scn-walk", "anchor": "He stood. He shook out the cheap plastic poncho",
+      "env": { "location": "streets of Beijing", "time": "night", "weather": "downpour", "mood": "determined, alone" },
+      "ambience": { "type": "rain", "intensity": 1.0 } },
+    { "id": "scn-encounter", "anchor": "It came from up ahead, across the street",
+      "env": { "location": "street corner near the canal", "time": "night", "weather": "downpour", "mood": "dread" },
+      "ambience": { "type": "rain", "intensity": 1.0, "drone": true } },
+    { "id": "scn-courtyard", "anchor": "He woke on his back, on concrete",
+      "env": { "location": "apartment courtyard", "time": "morning", "weather": "clear after rain", "mood": "wonder turning to fear" },
+      "ambience": { "type": "roomtone-morning", "intensity": 0.6 } }
+  ],
+  "cues": [
+    { "id": "cue-thunder-1", "sfx": "thunder-distant", "anchor": "The rain came early that evening", "offset": 1.0, "gain_db": -8 },
+    { "id": "cue-thunder-2", "sfx": "thunder-distant", "anchor": "The rain thickened", "offset": 2.0, "gain_db": -5 },
+    { "id": "cue-weight", "sfx": "impact-boom", "anchor": "Instead, the weight came", "offset": 0.3, "gain_db": -2 },
+    { "id": "cue-tear", "sfx": "riser-tear", "anchor": "and then nothing at all", "offset": 0.0, "gain_db": -6 },
+    { "id": "cue-hum", "sfx": "sphere-hum", "anchor": "There were five of them", "offset": 0.5, "dur": 90, "gain_db": -14 },
+    { "id": "cue-snap", "sfx": "tentacle-snap", "anchor": "A tentacle uncoiled from the nearest sphere", "offset": 1.2, "gain_db": -3 }
+  ]
+}
