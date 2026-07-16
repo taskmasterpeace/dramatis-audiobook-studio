@@ -1,0 +1,39 @@
+// Kokoro-82M TTS engine (Apache-2.0 weights, ONNX runtime, offline).
+// Same interface as the SAPI fallback: renderLines(lines, voices, cacheRoot).
+import { writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { contentKey, cached, pexecFile, log } from '../../src/util.mjs';
+
+const ENGINE = 'kokoro-onnx@1';
+const here = path.dirname(fileURLToPath(import.meta.url));
+
+function speakable(text) {
+  return text
+    .replace(/\s*—\s*/g, ', ')
+    .replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
+    .replace(/…/g, '...')
+    .replace(/\s+,/g, ',').replace(/,{2,}/g, ',');
+}
+
+export async function renderLines(lines, voices, cacheRoot) {
+  const jobs = [];
+  const results = {};
+  for (const line of lines) {
+    const v = voices[line.entity] || voices.narrator;
+    const text = speakable(line.text);
+    const key = contentKey([ENGINE, v.voice, String(v.speed ?? 1), text]);
+    const { path: out, hit } = cached(cacheRoot, key);
+    results[line.id] = out;
+    if (!hit) jobs.push({ text, voice: v.voice, speed: v.speed ?? 1, out });
+  }
+  log('render:tts', `kokoro: ${lines.length} lines, ${lines.length - jobs.length} cache hits, ${jobs.length} to synthesize`);
+  if (jobs.length) {
+    const manifest = path.join(cacheRoot, 'kokoro-manifest.json');
+    writeFileSync(manifest, JSON.stringify(jobs));
+    const { stdout } = await pexecFile('python', [path.join(here, 'kokoro-batch.py'), manifest],
+      { maxBuffer: 16 * 1024 * 1024 });
+    log('render:tts', stdout.trim().split('\n').pop());
+  }
+  return results;
+}

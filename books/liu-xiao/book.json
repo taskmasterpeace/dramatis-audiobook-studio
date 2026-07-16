@@ -1,49 +1,182 @@
 {
-  "id": "liu-xiao-ch1",
+  "id": "liu-xiao",
+  "title": "Liu Xiao: Protector of China",
   "manuscript": "../../samples/liu-xiao-protector-of-china.md",
-  "chapterHeading": "Chapter One",
   "protagonist": "liu",
   "entities": [
     { "id": "narrator", "kind": "narrator", "names": [] },
     { "id": "liu", "kind": "character", "names": ["Liu", "Liu Xiao"] },
     { "id": "wen", "kind": "character", "names": ["Wen"] },
     { "id": "stranger", "kind": "character", "names": [] },
-    { "id": "young_man", "kind": "character", "names": [] }
+    { "id": "young_man", "kind": "character", "names": ["young man", "flying man"] },
+    { "id": "older_man", "kind": "character", "names": ["older man", "second man", "older one"] },
+    { "id": "sergeant", "kind": "character", "names": ["sergeant"] },
+    { "id": "dr_han", "kind": "character", "names": ["Han"] },
+    { "id": "president", "kind": "character", "names": ["President"] },
+    { "id": "muyang", "kind": "character", "names": ["Muyang", "Yang", "watcher"] },
+    { "id": "lee", "kind": "character", "names": ["Lee"] }
   ],
   "voices": {
-    "narrator":  { "voice": "Microsoft David Desktop", "rate": 0,  "pitch": "medium" },
-    "liu":       { "voice": "Microsoft David Desktop", "rate": -2, "pitch": "low" },
-    "wen":       { "voice": "Microsoft Zira Desktop",  "rate": 0,  "pitch": "medium" },
-    "stranger":  { "voice": "Microsoft David Desktop", "rate": -1, "pitch": "x-low" },
-    "young_man": { "voice": "Microsoft David Desktop", "rate": 1,  "pitch": "high" }
+    "sapi": {
+      "narrator":  { "voice": "Microsoft David Desktop", "rate": 0,  "pitch": "medium" },
+      "liu":       { "voice": "Microsoft David Desktop", "rate": -2, "pitch": "low" },
+      "wen":       { "voice": "Microsoft Zira Desktop",  "rate": 0,  "pitch": "medium" },
+      "stranger":  { "voice": "Microsoft David Desktop", "rate": -1, "pitch": "x-low" },
+      "young_man": { "voice": "Microsoft David Desktop", "rate": 1,  "pitch": "high" },
+      "older_man": { "voice": "Microsoft David Desktop", "rate": -1, "pitch": "low" },
+      "sergeant":  { "voice": "Microsoft David Desktop", "rate": 0,  "pitch": "low" },
+      "dr_han":    { "voice": "Microsoft Zira Desktop",  "rate": 0,  "pitch": "low" },
+      "president": { "voice": "Microsoft David Desktop", "rate": -1, "pitch": "medium" },
+      "muyang":    { "voice": "Microsoft David Desktop", "rate": 0,  "pitch": "high" },
+      "lee":       { "voice": "Microsoft David Desktop", "rate": 1,  "pitch": "medium" }
+    },
+    "kokoro": {
+      "narrator":  { "voice": "bm_george",  "speed": 1.0 },
+      "liu":       { "voice": "am_onyx",    "speed": 0.92 },
+      "wen":       { "voice": "af_sarah",   "speed": 1.0 },
+      "stranger":  { "voice": "am_fenrir",  "speed": 0.9 },
+      "young_man": { "voice": "am_puck",    "speed": 1.05 },
+      "older_man": { "voice": "am_eric",    "speed": 0.95 },
+      "sergeant":  { "voice": "am_michael", "speed": 1.0 },
+      "dr_han":    { "voice": "af_nicole",  "speed": 1.0 },
+      "president": { "voice": "am_adam",    "speed": 0.95 },
+      "muyang":    { "voice": "am_echo",    "speed": 1.0 },
+      "lee":       { "voice": "am_liam",    "speed": 1.05 }
+    }
   },
   "hints": [
     { "match": "Liu Xiao!", "entity": "stranger" },
-    { "match": "Lao xiansheng", "entity": "young_man" }
+    { "match": "Lao xiansheng", "entity": "young_man" },
+    { "match": "Old sir,", "entity": "young_man" },
+    { "match": "Stop! Let him go", "entity": "liu" },
+    { "match": "Wei. Off the weapon.", "entity": "sergeant" },
+    { "match": "Nanites,", "entity": "dr_han" },
+    { "match": "You're dying,", "entity": "muyang" },
+    { "match": "So,", "entity": "president" },
+    { "match": "I know,", "entity": "liu" },
+    { "match": "What do you want", "entity": "president" },
+    { "match": "Don't kill him,", "entity": "liu" },
+    { "match": "He is a boy,", "entity": "liu" },
+    { "match": "Where,", "entity": "liu" },
+    { "match": "is the President?", "entity": "liu" },
+    { "match": "Out,", "entity": "liu" },
+    { "match": "Up. Get clear of this room.", "entity": "liu" },
+    { "match": "I'm here,", "entity": "liu" },
+    { "match": "Go home,", "entity": "liu" },
+    { "match": "Baba, you could have died", "entity": "lee" }
   ],
-  "scenes": [
-    { "id": "scn-parlor", "anchor": "The rain came early that evening",
-      "env": { "location": "massage parlor arcade, Wangfujing", "time": "evening", "weather": "rain beginning", "mood": "routine, warm" },
-      "ambience": { "type": "rain", "intensity": 0.35 } },
-    { "id": "scn-vigil", "anchor": "He found his cane where it leaned",
-      "env": { "location": "emptying parlor under awning", "time": "night", "weather": "heavy rain", "mood": "waiting, uneasy" },
-      "ambience": { "type": "rain", "intensity": 0.7 } },
-    { "id": "scn-walk", "anchor": "He stood. He shook out the cheap plastic poncho",
-      "env": { "location": "streets of Beijing", "time": "night", "weather": "downpour", "mood": "determined, alone" },
-      "ambience": { "type": "rain", "intensity": 1.0 } },
-    { "id": "scn-encounter", "anchor": "It came from up ahead, across the street",
-      "env": { "location": "street corner near the canal", "time": "night", "weather": "downpour", "mood": "dread" },
-      "ambience": { "type": "rain", "intensity": 1.0, "drone": true } },
-    { "id": "scn-courtyard", "anchor": "He woke on his back, on concrete",
-      "env": { "location": "apartment courtyard", "time": "morning", "weather": "clear after rain", "mood": "wonder turning to fear" },
-      "ambience": { "type": "roomtone-morning", "intensity": 0.6 } }
-  ],
-  "cues": [
-    { "id": "cue-thunder-1", "sfx": "thunder-distant", "anchor": "The rain came early that evening", "offset": 1.0, "gain_db": -8 },
-    { "id": "cue-thunder-2", "sfx": "thunder-distant", "anchor": "The rain thickened", "offset": 2.0, "gain_db": -5 },
-    { "id": "cue-weight", "sfx": "impact-boom", "anchor": "Instead, the weight came", "offset": 0.3, "gain_db": -2 },
-    { "id": "cue-tear", "sfx": "riser-tear", "anchor": "and then nothing at all", "offset": 0.0, "gain_db": -6 },
-    { "id": "cue-hum", "sfx": "sphere-hum", "anchor": "There were five of them", "offset": 0.5, "dur": 90, "gain_db": -14 },
-    { "id": "cue-snap", "sfx": "tentacle-snap", "anchor": "A tentacle uncoiled from the nearest sphere", "offset": 1.2, "gain_db": -3 }
+  "chapters": [
+    {
+      "heading": "Chapter One",
+      "scenes": [
+        { "id": "c1-parlor", "anchor": "The rain came early that evening", "ambience": { "type": "rain", "intensity": 0.35 } },
+        { "id": "c1-vigil", "anchor": "He found his cane where it leaned", "ambience": { "type": "rain", "intensity": 0.7 } },
+        { "id": "c1-walk", "anchor": "He stood. He shook out the cheap plastic poncho", "ambience": { "type": "rain", "intensity": 1.0 } },
+        { "id": "c1-encounter", "anchor": "It came from up ahead, across the street", "ambience": { "type": "rain", "intensity": 1.0, "drone": true } },
+        { "id": "c1-courtyard", "anchor": "He woke on his back, on concrete", "ambience": { "type": "roomtone-morning", "intensity": 0.6 } }
+      ],
+      "cues": [
+        { "id": "c1-thunder-1", "sfx": "thunder-distant", "anchor": "The rain came early that evening", "offset": 1.0, "gain_db": -8 },
+        { "id": "c1-thunder-2", "sfx": "thunder-distant", "anchor": "The rain thickened", "offset": 2.0, "gain_db": -5 },
+        { "id": "c1-weight", "sfx": "impact-boom", "anchor": "Instead, the weight came", "offset": 0.3, "gain_db": -2 },
+        { "id": "c1-tear", "sfx": "riser-tear", "anchor": "and then nothing at all", "offset": 0.0, "gain_db": -6 },
+        { "id": "c1-hum", "sfx": "sphere-hum", "anchor": "There were five of them", "offset": 0.5, "dur": 90, "gain_db": -14 },
+        { "id": "c1-snap", "sfx": "tentacle-snap", "anchor": "A tentacle uncoiled from the nearest sphere", "offset": 1.2, "gain_db": -3 }
+      ]
+    },
+    {
+      "heading": "Chapter Two",
+      "scenes": [
+        { "id": "c2-convulse", "anchor": "For three or four seconds, the young man convulsed", "ambience": { "type": "crowd", "intensity": 0.4 } },
+        { "id": "c2-crowd", "anchor": "The crowd had grown", "ambience": { "type": "crowd", "intensity": 0.75 } },
+        { "id": "c2-yard", "anchor": "They did not go far", "ambience": { "type": "roomtone-morning", "intensity": 0.3 } },
+        { "id": "c2-stairwell", "anchor": "Liu started toward the stairwell", "ambience": { "type": "room-hum", "intensity": 0.4 } }
+      ],
+      "cues": [
+        { "id": "c2-snap-2", "sfx": "tentacle-snap", "anchor": "Then it struck the second man too", "offset": 0.3, "gain_db": -4 },
+        { "id": "c2-hum", "sfx": "sphere-hum", "anchor": "They are trying to help me", "offset": 0.0, "dur": 45, "gain_db": -16 },
+        { "id": "c2-lift", "sfx": "riser-tear", "anchor": "The flying man caught him under the arms", "offset": 0.5, "dur": 3, "gain_db": -10 }
+      ]
+    },
+    {
+      "heading": "Chapter Three",
+      "scenes": [
+        { "id": "c3-corridor", "anchor": "There were four officers in the corridor", "ambience": { "type": "room-hum", "intensity": 0.5 } },
+        { "id": "c3-courtyard", "anchor": "They went down together", "ambience": { "type": "crowd", "intensity": 0.5 } },
+        { "id": "c3-station", "anchor": "They questioned him for a long time", "ambience": { "type": "room-hum", "intensity": 0.4 } },
+        { "id": "c3-facility", "anchor": "They moved him before dawn", "ambience": { "type": "lab-cold", "intensity": 0.4 } }
+      ],
+      "cues": [
+        { "id": "c3-radio", "sfx": "radio-crackle", "anchor": "There were four officers in the corridor", "offset": 2.0, "gain_db": -14 },
+        { "id": "c3-hum", "sfx": "sphere-hum", "anchor": "They go where I go", "offset": 0.0, "dur": 30, "gain_db": -18 }
+      ]
+    },
+    {
+      "heading": "Chapter Four",
+      "scenes": [
+        { "id": "c4-dressing", "anchor": "They dressed him for the dinner", "ambience": { "type": "room-hum", "intensity": 0.3 } },
+        { "id": "c4-palace", "anchor": "The Presidential Palace, when they brought him to it", "ambience": { "type": "room-hum", "intensity": 0.2 } }
+      ],
+      "cues": [
+        { "id": "c4-hum", "sfx": "sphere-hum", "anchor": "the spheres arranged themselves at his back", "offset": 0.0, "dur": 40, "gain_db": -19 }
+      ]
+    },
+    {
+      "heading": "Chapter Five",
+      "scenes": [
+        { "id": "c5-signed", "anchor": "Liu Xiao was exhausted", "ambience": { "type": "room-hum", "intensity": 0.3 } },
+        { "id": "c5-plaza", "anchor": "They released him at dusk", "ambience": { "type": "crowd", "intensity": 1.0 } },
+        { "id": "c5-training", "anchor": "The Test came three months later", "ambience": { "type": "roomtone-morning", "intensity": 0.4 } },
+        { "id": "c5-battle", "anchor": "The attack, when it came, did not announce itself", "ambience": { "type": "battle", "intensity": 0.7 } },
+        { "id": "c5-standoff", "anchor": "The mutants saw him", "ambience": { "type": "battle", "intensity": 1.0 } },
+        { "id": "c5-home", "anchor": "Liu Xiao went home to Pinggu that night", "ambience": { "type": "room-hum", "intensity": 0.3 } }
+      ],
+      "cues": [
+        { "id": "c5-heli", "sfx": "helicopter", "anchor": "They put Liu in a helicopter", "offset": 0.5, "dur": 14, "gain_db": -10 },
+        { "id": "c5-giant", "sfx": "impact-boom", "anchor": "the giant went down full-length on the highway", "offset": 0.0, "gain_db": -4 },
+        { "id": "c5-radio-2", "sfx": "radio-crackle", "anchor": "The order came back through the radio", "offset": 0.0, "gain_db": -10 },
+        { "id": "c5-grief", "sfx": "keening", "anchor": "humming a low grieving note", "offset": 0.0, "dur": 20, "gain_db": -14 }
+      ]
+    },
+    {
+      "heading": "Chapter Six",
+      "scenes": [
+        { "id": "c6-terrace", "anchor": "They sent a man named Muyang Yang to watch him", "ambience": { "type": "city-night", "intensity": 0.5 } },
+        { "id": "c6-shanghai", "anchor": "The attack on Shanghai came while Muyang Yang was still watching", "ambience": { "type": "battle", "intensity": 1.0 } },
+        { "id": "c6-winter", "anchor": "The cough began that winter", "ambience": { "type": "room-hum", "intensity": 0.3 } },
+        { "id": "c6-count", "anchor": "But he could not hide it from the watcher", "ambience": { "type": "city-night", "intensity": 0.6 } }
+      ],
+      "cues": [
+        { "id": "c6-hum", "sfx": "sphere-hum", "anchor": "You are not what you seem", "offset": 0.0, "dur": 30, "gain_db": -18 },
+        { "id": "c6-sea", "sfx": "impact-boom", "anchor": "a thing that had walked out of the sea onto the Bund", "offset": 0.0, "gain_db": -8 },
+        { "id": "c6-scream", "sfx": "keening", "anchor": "felt all five of his children scream at once", "offset": 0.0, "dur": 10, "gain_db": -8 }
+      ]
+    },
+    {
+      "heading": "Chapter Seven",
+      "scenes": [
+        { "id": "c7-lab", "anchor": "He went down to the laboratory first", "ambience": { "type": "lab-cold", "intensity": 0.7 } },
+        { "id": "c7-truth", "anchor": "It gave him the truth", "ambience": { "type": "lab-cold", "intensity": 0.5, "drone": true } },
+        { "id": "c7-stairs", "anchor": "The four remaining spheres waited for him at the top of the stairs", "ambience": { "type": "room-hum", "intensity": 0.3 } }
+      ],
+      "cues": [
+        { "id": "c7-grief", "sfx": "keening", "anchor": "was grief given a voice", "offset": 0.0, "dur": 30, "gain_db": -10 },
+        { "id": "c7-truth", "sfx": "riser-tear", "anchor": "It gave him the truth", "offset": 0.0, "gain_db": -10 },
+        { "id": "c7-out", "sfx": "keening", "anchor": "and then it went out", "offset": 0.0, "dur": 12, "gain_db": -14 }
+      ]
+    },
+    {
+      "heading": "Chapter Eight",
+      "scenes": [
+        { "id": "c8-office", "anchor": "He found the President in the small private office", "ambience": { "type": "room-hum", "intensity": 0.25 } },
+        { "id": "c8-project", "anchor": "It began as a secret", "ambience": { "type": "city-night", "intensity": 0.4 } },
+        { "id": "c8-episode", "anchor": "Liu watched the first episode alone", "ambience": { "type": "room-hum", "intensity": 0.3 } },
+        { "id": "c8-terrace", "anchor": "And sometimes, on the high terrace above the burning city", "ambience": { "type": "city-night", "intensity": 0.5 } }
+      ],
+      "cues": [
+        { "id": "c8-grief", "sfx": "sphere-hum", "anchor": "The four spheres hummed their low grief in the doorway", "offset": 0.0, "dur": 30, "gain_db": -16 },
+        { "id": "c8-humback", "sfx": "sphere-hum", "anchor": "his four gentle spheres hummed back", "offset": 0.0, "dur": 30, "gain_db": -13 }
+      ]
+    }
   ]
 }

@@ -11,13 +11,13 @@ function stripMd(s) {
   return s.replace(/\*+/g, '').replace(/\s+/g, ' ').trim();
 }
 
-export function compile(bookCfg, manuscriptPath) {
+export function compile(bookCfg, chapterCfg, manuscriptPath) {
   const raw = readFileSync(manuscriptPath, 'utf8');
 
   // isolate requested chapter
   const chapters = raw.split(/^## /m).filter((c) => c.trim());
-  const chapterSrc = chapters.find((c) => c.startsWith(bookCfg.chapterHeading));
-  if (!chapterSrc) throw new Error(`chapter heading not found: ${bookCfg.chapterHeading}`);
+  const chapterSrc = chapters.find((c) => c.startsWith(chapterCfg.heading));
+  if (!chapterSrc) throw new Error(`chapter heading not found: ${chapterCfg.heading}`);
   const chapterTitle = chapterSrc.split('\n')[0].trim();
   const body = chapterSrc.slice(chapterSrc.indexOf('\n') + 1);
 
@@ -32,7 +32,7 @@ export function compile(bookCfg, manuscriptPath) {
   }
 
   // scene boundaries: match book.json anchors by paragraph prefix
-  const sceneDefs = bookCfg.scenes.map((s) => ({ ...s, startPara: -1 }));
+  const sceneDefs = chapterCfg.scenes.map((s) => ({ ...s, startPara: -1 }));
   paragraphs.forEach((p, idx) => {
     for (const s of sceneDefs) if (s.startPara === -1 && p.text.startsWith(s.anchor)) s.startPara = idx;
   });
@@ -85,7 +85,7 @@ export function compile(bookCfg, manuscriptPath) {
   });
 
   // cues: anchor by text prefix search across lines
-  const cues = (bookCfg.cues || []).map((c) => {
+  const cues = (chapterCfg.cues || []).map((c) => {
     const line = allLines.find((l) => l.text.includes(c.anchor));
     if (!line) throw new Error(`cue anchor not found: ${c.anchor}`);
     return { ...c, at_line: line.id };

@@ -1,6 +1,6 @@
 // Mix stage: dialog concat -> scene timing -> ambience beds -> SFX cues ->
 // sidechain-ducked 4-stem mix -> Immersive + Clean masters.
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { ffmpeg, ffprobeDuration, measureLoudness, ensureDir, log } from './util.mjs';
 import { renderBed } from '../engines/ambience/procgen.mjs';
@@ -28,12 +28,13 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
     scene._start = t;
     for (const line of scene.lines) {
       const wav = lineWavs[line.id];
-      const norm = path.join(outDir, `${line.id}.wav`);
-      await ffmpeg(['-i', wav, '-ar', '48000', '-ac', '1', norm]);
+      // normalized 48k copy lives beside the content-addressed render — cached
+      const norm = wav.replace(/\.wav$/, '-48k.wav');
+      if (!existsSync(norm)) await ffmpeg(['-i', wav, '-ar', '48000', '-ac', '1', norm]);
       const dur = await ffprobeDuration(norm);
-      timeline.push({ id: line.id, start: t, dur });
-      concatEntries.push(`file '${line.id}.wav'`);
-      concatEntries.push(`file 'silence_line.wav'`);
+      timeline.push({ id: line.id, entity: line.entity, start: +t.toFixed(2), dur: +dur.toFixed(2), text: line.text });
+      concatEntries.push(`file '${norm.replace(/\\/g, '/')}'`);
+      concatEntries.push(`file '${path.join(outDir, 'silence_line.wav').replace(/\\/g, '/')}'`);
       t += dur + GAP_LINE;
     }
     scene._end = t;
@@ -76,8 +77,8 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
   const sfxStem = path.join(outDir, 'stem-sfx.wav');
   await overlay(shots, total, sfxStem);
 
-  // 4) masters
-  const immersive = path.join(outDir, 'chapter-immersive.m4b');
+  // 4) masters (per-chapter .m4a; the book binder assembles chaptered .m4b)
+  const immersive = path.join(outDir, 'immersive.m4a');
   await ffmpeg([
     '-i', dialogStem, '-i', ambienceStem, '-i', sfxStem,
     '-filter_complex',
@@ -85,24 +86,33 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
     `[0:a][ducked][2:a]amix=inputs=3:duration=first:normalize=0,` +
     `loudnorm=I=-18:TP=-2:LRA=11[out]`,
     '-map', '[out]', '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
-    '-metadata', `title=${script.chapter}`, '-metadata', 'album=DRAMATIS render', immersive,
+    '-metadata', `title=${script.chapter}`, immersive,
   ]);
-  const clean = path.join(outDir, 'chapter-clean.m4b');
+  const clean = path.join(outDir, 'clean.m4a');
   await ffmpeg([
     '-i', dialogStem, '-af', 'loudnorm=I=-19:TP=-3:LRA=9',
     '-c:a', 'aac', '-b:a', '96k', '-ar', '44100',
     '-metadata', `title=${script.chapter} (clean)`, clean,
   ]);
 
-  // 5) mix QA
+  // 5) read-along timing + per-line QA (dead air / runaway duration)
+  const flags = timeline.filter((l) => {
+    const wordsPerSec = l.text.split(/\s+/).length / Math.max(l.dur, 0.01);
+    return l.dur > 1.5 && (wordsPerSec < 0.6 || wordsPerSec > 6);
+  }).map((l) => ({ id: l.id, reason: 'duration-vs-text-mismatch', dur: l.dur }));
+  writeFileSync(path.join(outDir, 'timing.json'),
+    JSON.stringify({ chapter: script.chapter, lines: timeline }, null, 2));
+
   const qa = {
+    chapter: script.chapter,
     durationSec: Math.round(total),
     lines: timeline.length,
+    flaggedLines: flags,
     immersive: { file: immersive, ...(await measureLoudness(immersive)) },
     clean: { file: clean, ...(await measureLoudness(clean)) },
   };
   writeFileSync(path.join(outDir, 'qa-report.json'), JSON.stringify(qa, null, 2));
-  return qa;
+  return { qa, files: { immersive, clean }, durationSec: total };
 }
 
 async function makeSilence(out, dur) {

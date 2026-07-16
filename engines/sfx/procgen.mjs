@@ -26,6 +26,22 @@ const RECIPES = {
     `sine=frequency=221:duration=${dur}:sample_rate=48000,volume=0.12[c];` +
     `[a][b][c]amix=inputs=3:duration=first,tremolo=f=0.45:d=0.35,` +
     `afade=t=in:d=2.5,afade=t=out:st=${dur - 4}:d=4,volume=0.8[out]`,
+  // grieving spheres — the hum bent minor and unsteady
+  'keening': (seed, dur = 20) =>
+    `sine=frequency=196:duration=${dur}:sample_rate=48000,volume=0.25[a];` +
+    `sine=frequency=233:duration=${dur}:sample_rate=48000,volume=0.20[b];` +
+    `sine=frequency=311:duration=${dur}:sample_rate=48000,volume=0.10[c];` +
+    `[a][b][c]amix=inputs=3:duration=first,tremolo=f=1.3:d=0.55,vibrato=f=0.7:d=0.4,` +
+    `afade=t=in:d=1.5,afade=t=out:st=${dur - 3}:d=3,volume=0.8[out]`,
+  // rotor thump + turbine wash
+  'helicopter': (seed, dur = 14) =>
+    `anoisesrc=color=brown:seed=${seed}:duration=${dur}:sample_rate=48000,lowpass=f=220,tremolo=f=12.5:d=0.9,volume=0.9[th];` +
+    `anoisesrc=color=pink:seed=${seed + 1}:duration=${dur}:sample_rate=48000,bandpass=f=2400:w=1800,volume=0.10[tu];` +
+    `[th][tu]amix=inputs=2:duration=first,afade=t=in:d=2,afade=t=out:st=${dur - 3}:d=3,volume=0.9[out]`,
+  // squelchy radio transmission burst
+  'radio-crackle': (seed, dur = 2.5) =>
+    `anoisesrc=color=white:seed=${seed}:duration=${dur}:sample_rate=48000,bandpass=f=1700:w=900,tremolo=f=9:d=0.9,` +
+    `afade=t=in:d=0.05,afade=t=out:st=${dur - 0.4}:d=0.4,volume=0.55[out]`,
   // tentacle strike — sharp wet snap
   'tentacle-snap': (seed, dur = 0.5) =>
     `anoisesrc=color=white:seed=${seed}:duration=0.09:sample_rate=48000,highpass=f=800,afade=t=out:st=0.01:d=0.08,volume=1.0[n];` +
