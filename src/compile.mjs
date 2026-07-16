@@ -42,10 +42,18 @@ export function compile(bookCfg, chapterCfg, manuscriptPath) {
   // segment paragraphs into narration / dialogue lines
   const castByName = {};
   for (const e of bookCfg.entities) for (const n of e.names) castByName[n.toLowerCase()] = e.id;
+  const nameAlt = Object.keys(castByName)
+    .sort((a, b) => b.length - a.length)
+    .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|');
+  const tagRe = nameAlt
+    ? new RegExp(`\\b(${nameAlt})\\b[^.!?"]{0,30}?\\b(?:${SAID_VERBS})\\b|\\b(?:${SAID_VERBS})\\b[^.!?"]{0,20}?\\b(${nameAlt})\\b`, 'i')
+    : null;
+  const pronounRe = new RegExp(`\\b(?:he|she)\\b[^.!?"]{0,20}?\\b(?:${SAID_VERBS})\\b|\\b(?:${SAID_VERBS})\\b\\s+(?:he|she)\\b`, 'i');
   const hints = bookCfg.hints || [];
 
-  let lineNo = 0;
-  const allLines = [];
+  // pass 1: split every paragraph into segments
+  const paraRecs = [];
   paragraphs.forEach((p, pIdx) => {
     if (p.text === '---') return;
     const segs = [];
@@ -57,23 +65,94 @@ export function compile(bookCfg, chapterCfg, manuscriptPath) {
       last = re.lastIndex;
     }
     if (last < p.text.length) segs.push({ kind: 'narration', text: p.text.slice(last) });
+    const narrText = segs.filter((s) => s.kind === 'narration').map((s) => s.text).join(' ');
+    paraRecs.push({ pIdx, cite: p.cite, segs, narrText, hasDialogue: segs.some((s) => s.kind === 'dialogue') });
+  });
 
-    segs.forEach((seg, i) => {
-      const clean = stripMd(seg.text).replace(/^[—\-,.\s]+|[—\-\s]+$/g, (c) => (/[.!?…]/.test(c) ? c : ''));
-      if (!clean || !/[a-zA-Z0-9一-鿿]/.test(clean)) return;
-      let entity = 'narrator';
-      if (seg.kind === 'dialogue') {
-        entity = attribute(clean, segs, i, p.text, castByName, hints, bookCfg.protagonist);
-      } else {
-        const hint = hints.find((h) => clean.startsWith(h.match));
-        if (hint) entity = hint.entity;
+  // pass 2: resolve one speaker per dialogue paragraph, tracking conversation turns.
+  // Narration speech-mentions ("And Liu told him —") advance whose turn it is,
+  // but only real dialogue turns define the A/B pair — otherwise a flashback
+  // mention ("Dr. Han said...") poisons the exchange.
+  let turns = [];    // all turns {entity, at}
+  let dlgTurns = []; // dialogue-paragraph turns only
+  let lastNarrActor = null; // "action beat" actor: narration para opening on a name
+  const speakerOf = {};
+
+  const findInitialActor = (text) => {
+    for (const [name, id] of Object.entries(castByName)) {
+      const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (new RegExp(`^\\s*(?:the\\s+|a\\s+)?${esc}\\b`, 'i').test(text)) return id;
+    }
+    return null;
+  };
+  const sceneStarts = new Set(sceneDefs.map((s) => s.startPara));
+  for (const rec of paraRecs) {
+    // a new scene is a new conversation — stale turns must not leak across
+    if (sceneStarts.has(rec.pIdx)) { turns = []; dlgTurns = []; }
+
+    const tagMatch = tagRe && rec.narrText.match(tagRe);
+    const tagged = tagMatch ? castByName[(tagMatch[1] || tagMatch[2]).toLowerCase()] : null;
+
+    if (!rec.hasDialogue) {
+      if (tagged) turns.push({ entity: tagged, at: rec.pIdx }); // e.g. "And Liu told him —"
+      const actor = findInitialActor(rec.narrText);
+      if (actor) lastNarrActor = { entity: actor, at: rec.pIdx };
+      continue;
+    }
+    const present = new Set();
+    let initialActor = null;
+    for (const [name, id] of Object.entries(castByName)) {
+      const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (new RegExp(`\\b${esc}\\b`, 'i').test(rec.narrText)) present.add(id);
+      if (new RegExp(`^\\s*(?:the\\s+|a\\s+)?${esc}\\b`, 'i').test(rec.narrText)) initialActor = id;
+    }
+    const lastTurn = turns.at(-1);
+    const adjacent = lastTurn && rec.pIdx - lastTurn.at <= 3;
+
+    let entity = null;
+    const hint = hints.find((h) => rec.segs.some((s) => s.kind === 'dialogue' && stripMd(s.text).startsWith(h.match)));
+    if (hint) entity = hint.entity;
+    else if (tagged) entity = tagged;
+    // unambiguous single cast name in the narration around the quotes
+    else if (present.size === 1) entity = [...present][0];
+    // the paragraph opens on a named actor -> the quotes are theirs
+    else if (initialActor) entity = initialActor;
+    // two names in narration, one of them just spoke -> it's the other one
+    else if (present.size === 2 && adjacent && present.has(lastTurn.entity)) {
+      entity = [...present].find((e) => e !== lastTurn.entity);
+    }
+    if (!entity && adjacent) {
+      // exchange alternation: in a live A/B exchange, an untagged or
+      // pronoun-tagged turn belongs to whoever didn't speak last
+      const pair = [...new Set(dlgTurns.slice(-6).map((t) => t.entity).reverse())].slice(0, 2);
+      if (pair.length === 2 && pair.includes(lastTurn.entity)) {
+        entity = pair.find((e) => e !== lastTurn.entity);
       }
+    }
+    // action beat: narration para opening on a named actor, quote right after
+    if (!entity && lastNarrActor && rec.pIdx - lastNarrActor.at === 1) entity = lastNarrActor.entity;
+    if (!entity) entity = bookCfg.protagonist;
+    speakerOf[rec.pIdx] = entity;
+    turns.push({ entity, at: rec.pIdx });
+    dlgTurns.push({ entity, at: rec.pIdx });
+    if (turns.length > 12) turns = turns.slice(-12);
+    if (dlgTurns.length > 12) dlgTurns = dlgTurns.slice(-12);
+  }
+
+  // pass 3: emit lines
+  let lineNo = 0;
+  const allLines = [];
+  for (const rec of paraRecs) {
+    for (const seg of rec.segs) {
+      const clean = stripMd(seg.text).replace(/^[—\-,.\s]+|[—\-\s]+$/g, (c) => (/[.!?…]/.test(c) ? c : ''));
+      if (!clean || !/[a-zA-Z0-9一-鿿]/.test(clean)) continue;
+      const entity = seg.kind === 'dialogue' ? speakerOf[rec.pIdx] : 'narrator';
       allLines.push({
         id: `lin_${String(lineNo++).padStart(4, '0')}`,
-        para: pIdx, kind: seg.kind, entity, text: clean, cite: p.cite,
+        para: rec.pIdx, kind: seg.kind, entity, text: clean, cite: rec.cite,
       });
-    });
-  });
+    }
+  }
 
   // bucket lines into scenes
   const scenes = sceneDefs.map((s, i) => {
@@ -97,22 +176,4 @@ export function compile(bookCfg, chapterCfg, manuscriptPath) {
   };
   log('compile', `${paragraphs.length} paragraphs -> ${allLines.length} lines, ${scenes.length} scenes, ${cues.length} cues`);
   return script;
-}
-
-function attribute(text, segs, i, para, castByName, hints, protagonist) {
-  const hint = hints.find((h) => text.startsWith(h.match));
-  if (hint) return hint.entity;
-  const around = [segs[i + 1]?.text || '', segs[i - 1]?.text || ''].join(' ');
-  const re = new RegExp(`(?:(\\w+)\\s+(?:${SAID_VERBS}))|(?:(?:${SAID_VERBS})\\s+(\\w+))`, 'i');
-  const m = around.match(re);
-  if (m) {
-    const name = (m[1] || m[2] || '').toLowerCase();
-    if (castByName[name]) return castByName[name];
-    if (name === 'he' || name === 'she') return protagonist;
-  }
-  // fall back: search whole paragraph for a cast name
-  for (const [name, id] of Object.entries(castByName)) {
-    if (id !== 'narrator' && para.toLowerCase().includes(name)) return id;
-  }
-  return protagonist;
 }
