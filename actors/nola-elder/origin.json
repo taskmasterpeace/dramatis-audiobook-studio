@@ -1,0 +1,13 @@
+{
+  "name": "NOLA Elder",
+  "created": "2026-07-19",
+  "seed_engine": "gemini-3.1-flash-tts",
+  "seed_voice": "Gacrux",
+  "seed_prompt": "AUDIO PROFILE: An elderly Black woman in her late seventies from New Orleans, Louisiana. THE SCENE: sitting on a porch by the Mississippi at dusk, telling a story to a young visitor. DIRECTOR'S NOTES: Style: warm, weathered, grandmotherly, a slow knowing drawl with a chuckle underneath. Accent: deep New Orleans Southern Black. Pace: unhurried, musical, lots of breath and age in the voice.",
+  "ear_verdicts": {
+    "gemini_seed": "jaw on the floor — #1",
+    "qwen_clone": "sounds like a Black lady, older — really really good (both 24s and 12s refs)",
+    "trailer_ref": "pending listen"
+  },
+  "fal_hosted_ref": "https://v3b.fal.media/files/b/0aa2e52f/x6RQZ1ci9EP2NLYyof5v__nola-ref.mp3"
+}

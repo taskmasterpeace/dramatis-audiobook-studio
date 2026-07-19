@@ -115,9 +115,12 @@ makes it scale, ALL steps ear-confirmed on the NOLA elder:
 3. **Set-pieces/trailers**: the same seed clip goes to Seed Audio as
    `audio_urls` reference (@Audio1) — the character narrates trailers with full
    cinematic sound in one pass (verified: TRAILER-water-remembers-nola.mp3).
-A saved seed clip = a PERMANENT company member. Keep seeds in
-`out/voices/actors/<name>/` with the seed clip + transcript + origin prompt so
-any engine (Qwen3 clone, Seed Audio ref, future 11L clone) can re-hire them.
+A saved seed clip = a PERMANENT company member. Seeds live in the tracked
+`actors/<name>/` (seed.wav + transcript.txt + origin.json = engine/voice/prompt)
+so any engine (Qwen3 clone via clone-from-audio.py, Seed Audio `audio_urls` ref,
+future 11L clone) can re-hire them. Company so far: **nola-elder** (Gemini Gacrux,
+New Orleans elder — Robert's #1) and **liu-xiao** (Gemini Enceladus, elderly
+Mandarin-accented — the redo of the wrong Kokoro-American original).
 
 ## Qwen3-TTS — DEEP research (2026-07-19, corroborated across repo + HF + report)
 
