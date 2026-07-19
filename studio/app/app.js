@@ -95,7 +95,7 @@ async function refresh() {
 async function go(view, bookId, tab) {
   S.view = view;
   if (view === 'shelf') await loadShelf();
-  if (view === 'casting' && !S.roster) { try { S.roster = await api('/api/casting/roster'); } catch (e) { toast(e.message, true); } }
+  if ((view === 'casting' || view === 'say') && !S.roster) { try { S.roster = await api('/api/casting/roster'); } catch (e) { toast(e.message, true); } }
   if (view === 'book') {
     await loadBook(bookId || S.bookId);
     S.tab = tab || 'board';
@@ -112,6 +112,7 @@ function render() {
   if (S.view === 'shelf') m.innerHTML = viewShelf();
   else if (S.view === 'new') m.innerHTML = viewNew();
   else if (S.view === 'casting') m.innerHTML = viewCasting();
+  else if (S.view === 'say') m.innerHTML = viewSay();
   else if (S.view === 'book') m.innerHTML = viewBook();
   bind(m);
   paintJob();
@@ -123,6 +124,7 @@ function paintNav() {
     navBtn('shelf', '▤ Bookshelf', S.view === 'shelf'),
     navBtn('new', '＋ New Book', S.view === 'new'),
     navBtn('casting', '🎭 Casting Room', S.view === 'casting'),
+    navBtn('say', '⚡ Quick Narrate', S.view === 'say'),
   ];
   if (S.book) {
     items.push(`<div class="nav-label">${esc(S.book.book.title)}</div>`);
@@ -366,6 +368,21 @@ function viewCasting() {
     ${sections}`;
 }
 
+function viewSay() {
+  const kok = (S.roster?.kokoro || []).map((v) => v.voice);
+  const opts = (kok.length ? kok : ['bm_george', 'af_sarah', 'am_onyx', 'af_nicole', 'am_michael']).map((v) => `<option ${v === 'bm_george' ? 'selected' : ''}>${esc(v)}</option>`).join('');
+  return `
+    <p class="crumb">Free tool</p><h1>⚡ Quick Narrate</h1>
+    <p class="sub">Drop any text, pick a free local voice, get an mp3. No API, no cost, with a timer.</p>
+    <div class="field"><label>Text</label><textarea id="say-text" placeholder="Paste anything you want read aloud…" style="min-height:180px"></textarea></div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+      <label class="mini">Voice <select id="say-voice">${opts}</select></label>
+      <button class="btn" id="say-go">🎙 Narrate — free</button>
+      <span id="say-status" style="font-size:12.5px;color:var(--muted)"></span>
+    </div>
+    <div id="say-result"></div>`;
+}
+
 function viewNew() {
   return `
     <p class="crumb">Library</p><h1>New Book</h1>
@@ -517,6 +534,23 @@ function bind(m) {
     cpop.querySelector('[data-cue-reset]')?.addEventListener('click', () => setApproval(null));
     cpop.querySelectorAll('[data-cue-swap]').forEach((b) => b.addEventListener('click', () => setApproval({ swap: b.dataset.cueSwap })));
   }
+
+  // quick narrate (free tool)
+  $('#say-go', m)?.addEventListener('click', async () => {
+    const text = $('#say-text').value.trim();
+    if (!text) { toast('type or paste some text first', true); return; }
+    const btn = $('#say-go'); const st = $('#say-status');
+    btn.disabled = true; st.textContent = '⏱ rendering…';
+    const t0 = Date.now();
+    try {
+      const r = await api('/api/say', { method: 'POST', body: { text, engine: 'kokoro', voice: $('#say-voice').value } });
+      $('#say-result').innerHTML = `<audio controls autoplay src="${r.media}" style="width:100%;max-width:520px"></audio>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px">⏱ ${(r.ms / 1000).toFixed(1)}s · ${r.chars} chars · 💵 $0.00 free ·
+        <a href="${r.media}" download style="color:var(--cy)">download mp3</a></div>`;
+      st.textContent = `done in ${((Date.now() - t0) / 1000).toFixed(1)}s`;
+    } catch (e) { toast(e.message, true); st.textContent = 'failed'; }
+    btn.disabled = false;
+  });
 
   // casting room auditions
   m.querySelectorAll('[data-cast-play]').forEach((btn) => btn.addEventListener('click', async () => {

@@ -359,6 +359,22 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // ---- quick narrate: free text -> mp3, no book needed ----
+    if (req.method === 'POST' && p === '/api/say') {
+      const { text, engine = 'kokoro', voice = 'bm_george', design } = await readBody(req);
+      if (!text || !text.trim()) return json(res, 422, { error: 'text required' });
+      const engines = { kokoro: '../engines/tts/kokoro.mjs', qwen3: '../engines/tts/qwen3.mjs' };
+      if (!engines[engine]) return json(res, 422, { error: 'engine must be kokoro or qwen3 (the free ones)' });
+      const { renderLines } = await import(engines[engine]);
+      const voices = engine === 'qwen3'
+        ? { narrator: { design: design || 'Clear natural narrator voice.' } }
+        : { narrator: { voice, speed: 1 } };
+      const t0 = Date.now();
+      const wavs = await renderLines([{ id: 'say', kind: 'narration', entity: 'narrator', text: text.trim() }], voices, OUT);
+      const rel = path.relative(OUT, wavs.say).split(path.sep).join('/');
+      return json(res, 200, { media: `/media/${rel}`, ms: Date.now() - t0, chars: text.trim().length });
+    }
+
     // ---- audition ----
     if (req.method === 'POST' && p === '/api/audition') {
       const body = await readBody(req);

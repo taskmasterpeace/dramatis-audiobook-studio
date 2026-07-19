@@ -77,7 +77,25 @@ below that → reviewQueue, never silently guessed).
   emotions come back null without few-shot examples, and it writes cues for
   spoken dialogue (the scaffold's vocal filter strips them — sound-design Law 1).
 
-## Scaffold (paste → book)
+## Casting intelligence (src/casting.mjs) — determine, cast, verify
+
+Each character gets a **casting sheet** (gender / age band / ethnicity-accent),
+determined from explicit fields first, then keyword inference from the
+description. `castingRecipe(char)` maps the sheet → a voice recipe:
+- **Needs the character tier** (accent, OR child/teen/elderly) → **Gemini**,
+  directed prompt stacking specifics (age in years, aging cues, accent as
+  origin→"speaking English"); then clone into Qwen3 for free volume.
+- **Generic adult** → free **Qwen3 design**.
+Age bands: child(~8, high-pitch expected) / teen(~15) / young-adult / adult /
+elderly (stacked-quaver cues — labels alone fail, per Qwen research).
+
+**Verification is honest about what's measurable:**
+- **gender** → pitch-gated (register gate, refuses wrong-gender before ship).
+- **child/young** → gated (kids read clearly high; adult-low on a child role flags).
+- **elderly age & ethnicity/accent** → NOT machine-measurable → directed prompt
+  + **human ear** in the Studio. Never claim a computer verified "sounds 70" or
+  "sounds Creole" — that's an audition approval. See tts-casting (register gate,
+  character actors).
 
 `createBook` (src/scaffold.mjs; Studio New Book; `dramatis scaffold` CLI):
 normalizes quotes, ensures `##`, one scene per chapter anchored at paragraph 1
