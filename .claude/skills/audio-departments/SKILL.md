@@ -23,11 +23,26 @@ does it serve, and does it beat the incumbent THERE?"
 | **SCORE** | music underscore | ElevenLabs Music (commercial-safe default) → Suno/muapi (opt-in, license unverified) | Instrumental only, no vocals — Eleven Music sings lyrics if you let it |
 | **SET-PIECE** | ≤2-min single-pass mixed sequences | **Seed Audio 1.0** (ByteDance via Segmind — NOT yet keyed/built) | Output is ONE BAKED FILE — treat as sourced material, never as the mix |
 
-## SET-PIECE dept — Seed Audio 1.0 facts (researched 2026-07-19, untested pending key)
+## APPROVED PROVIDERS (Robert's law, 2026-07-19)
 
-- API: Segmind `POST https://api.segmind.com/v1/seed-audio-1.0` (x-api-key).
-  **$0.0031/second** (~$0.19/min, ~$0.37 for the 2-min max). MP3/WAV/PCM/OGG,
-  8-48 kHz. Voice cloning via `reference_audio_urls` (30 s sample suffices).
+**Replicate, fal.ai, or ElevenLabs — nothing else for now.** No Higgsfield, no
+Segmind, no per-model one-off accounts. Any new model must be reachable through
+one of these three (fal key lives in directors-palette-v2/.env.local as FAL_KEY;
+Replicate token in aiobr/.env; ElevenLabs in yourehired/.env).
+
+## SET-PIECE dept — Seed Audio 1.0 facts (PROBED LIVE on fal, 2026-07-19)
+
+- **API (verified working):** `POST https://fal.run/bytedance/seed-audio-1.0`,
+  header `Authorization: Key ${FAL_KEY}`. Input: `{ prompt, output_format
+  (mp3|wav|pcm|ogg_opus), sample_rate (8k-48k), voice?, audio_urls? (≤3 refs,
+  ≤30s each, tag as @Audio1..3 in prompt), image_url?, speed?, pitch? }`.
+  Output: `{ audio: { url, duration, file_size, ... } }`. ~**$0.003/second**.
+- **Probe A (interlocking SFX, no voices):** car-crash sequence — tires,
+  impact, glass, hubcap spiral, engine death, siren — 19.8 s in one pass,
+  ≈ $0.06. `out/excerpts/SEEDAUDIO-A-car-crash-sequence.mp3`.
+- **Probe B (calibration, Robert's lighthouse prompt verbatim):** 55.7 s
+  full scene (narrator + 2 characters + storm + fire + waves), ≈ $0.17.
+  `out/excerpts/SEEDAUDIO-B-lighthouse-calibration.mp3`.
 - **Prompt format is a screenplay** (this is the part that blew Robert away):
   `Name (voice adjectives, pace): "line"` per speaker, `[Background: wind picks
   up, low creaking]` for cues, stage directions in brackets. Stack descriptors
