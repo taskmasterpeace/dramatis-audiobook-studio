@@ -96,7 +96,12 @@ async function go(view, bookId, tab) {
   S.view = view;
   if (view === 'shelf') await loadShelf();
   if (view === 'casting' && !S.roster) { try { S.roster = await api('/api/casting/roster'); } catch (e) { toast(e.message, true); } }
-  if (view === 'book') { await loadBook(bookId || S.bookId); S.tab = tab || 'board'; if (S.tab === 'script') await loadScript(S.chapterN); }
+  if (view === 'book') {
+    await loadBook(bookId || S.bookId);
+    S.tab = tab || 'board';
+    if (S.tab === 'script') await loadScript(S.chapterN);
+    if (S.tab === 'cast' && !S.roster) { try { S.roster = await api('/api/casting/roster'); } catch { /* offline */ } }
+  }
   render();
 }
 
@@ -223,20 +228,37 @@ function viewBoard() {
 
 function viewCast() {
   const { book } = S.book;
-  const engines = Object.keys(book.voices).filter((k) => k !== 'hybrid');
+  // only the four real voice engines — legacy maps (sapi) stay in book.json but
+  // never render (Robert: no Windows voices, and "undefined" rows are noise)
+  const ENGINES = ['kokoro', 'qwen3', 'elevenlabs', 'gemini'];
+  const ELEVEN_MODELS = ['eleven_v3', 'eleven_multilingual_v2', 'eleven_turbo_v2', 'eleven_turbo_v2_5', 'eleven_flash_v2_5'];
+  const roster11 = (S.roster?.elevenlabs || []).map((r) => r.voice);
+  const rosterGem = (S.roster?.gemini || []).map((r) => r.voice);
+  const rosterKok = (S.roster?.kokoro || []).map((r) => r.voice);
+  const sel = (opts, current, dataF, extra = '') => `<select data-f="${dataF}" ${extra}>${opts.map((o) => `<option ${o === current ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+  const HINTS = {
+    kokoro: 'Free local narrator voices. Pick a preset; speed 0.9–1.1.',
+    qwen3: 'Type a description — the words BUILD the voice (age, accent, timbre, attitude). Edit it, audition, repeat.',
+    elevenlabs: 'Your account roster by name. Model: v3 = emotion tags, v2 family = the classic sound.',
+    gemini: 'Pick a voice, then direct it — the prompt is the director’s note (persona, scene, accent, pace).',
+  };
   const cards = book.entities.map((ent, i) => {
     const casting = book.casting?.[ent.id];
-    const rows = engines.concat(book.voices.gemini ? [] : ['gemini']).map((eng) => {
+    const rows = ENGINES.map((eng) => {
       const v = book.voices[eng]?.[ent.id];
       let val;
-      if (eng === 'kokoro') val = `<input class="tiny" data-f="voice" value="${esc(v?.voice || '')}" placeholder="bm_george"><input class="tiny" data-f="speed" value="${v?.speed ?? 1}" title="speed">`;
-      else if (eng === 'qwen3') val = `<input class="wide" data-f="design" value="${esc(v?.design || '')}" placeholder="persona sentence — accent, age, timbre">`;
-      else if (eng === 'elevenlabs') val = `<input class="wide" data-f="candidates" value="${esc((v?.candidates || []).join(', '))}" placeholder="Voice names, comma-separated"><input class="tiny" data-f="stability" value="${v?.stability ?? 0.5}" title="stability"><input class="tiny" data-f="style" value="${v?.style ?? 0.35}" title="style">`;
-      else if (eng === 'gemini') val = `<input class="tiny" data-f="voice" value="${esc(v?.voice || 'Charon')}" title="Gemini voice"><input class="wide" data-f="prompt" value="${esc(v?.prompt || '')}" placeholder="style prompt: persona / scene / director's notes">`;
+      if (eng === 'kokoro') val = `${rosterKok.length ? sel(rosterKok, v?.voice || 'bm_george', 'voice') : `<input class="tiny" data-f="voice" value="${esc(v?.voice || '')}">`}<label class="mini">speed <input class="tiny" data-f="speed" value="${v?.speed ?? 1}"></label>`;
+      else if (eng === 'qwen3') val = `<input class="wide" data-f="design" value="${esc(v?.design || '')}" placeholder="e.g. Elderly Chinese man; thin weathered voice; light Mandarin accent">`;
+      else if (eng === 'elevenlabs') val = `${roster11.length ? sel(roster11, (v?.candidates || [])[0] || 'George', 'primary') : `<input class="tiny" data-f="primary" value="${esc((v?.candidates || [])[0] || '')}">`}
+        ${sel(ELEVEN_MODELS, v?.model || 'eleven_v3', 'model')}
+        <label class="mini">fallbacks <input data-f="fallbacks" value="${esc((v?.candidates || []).slice(1).join(', '))}" style="width:110px"></label>
+        <label class="mini">stability <input class="tiny" data-f="stability" value="${v?.stability ?? 0.5}"></label>`;
+      else if (eng === 'gemini') val = `${rosterGem.length ? sel(rosterGem, v?.voice || 'Charon', 'voice') : `<input class="tiny" data-f="voice" value="${esc(v?.voice || 'Charon')}">`}<input class="wide" data-f="prompt" value="${esc(v?.prompt || '')}" placeholder="Director's note: who they are, the scene, accent, pace">`;
       return `<div class="dna-row" data-eng="${eng}">
         <span class="eng">${eng}</span>
         <span class="val">${val}</span>
         <button class="aud" data-audition="${eng}" title="hear this candidate">▶ audition</button>
+        <div class="f-hint">${HINTS[eng]}</div>
         <span class="aud-player" data-player hidden></span>
       </div>`;
     }).join('');
@@ -380,6 +402,7 @@ function bind(m) {
   m.querySelectorAll('[data-tab]').forEach((el) => el.addEventListener('click', async () => {
     S.tab = el.dataset.tab;
     if (S.tab === 'script') await loadScript(S.chapterN);
+    if (S.tab === 'cast' && !S.roster) { try { S.roster = await api('/api/casting/roster'); } catch { /* offline */ } }
     render();
   }));
 
@@ -412,16 +435,17 @@ function bind(m) {
     card.querySelectorAll('.dna-row').forEach((row) => {
       const eng = row.dataset.eng;
       const collect = () => {
+        const raw = {};
+        row.querySelectorAll('input, select').forEach((inp) => { if (inp.dataset.f) raw[inp.dataset.f] = inp.value; });
+        if (eng === 'elevenlabs') {
+          const fallbacks = (raw.fallbacks || '').split(',').map((s) => s.trim()).filter(Boolean);
+          return { candidates: [...new Set([raw.primary, ...fallbacks].filter(Boolean))], model: raw.model, stability: +raw.stability || 0.5, style: 0.3 };
+        }
         const v = {};
-        row.querySelectorAll('input').forEach((inp) => {
-          let val = inp.value;
-          if (inp.dataset.f === 'candidates') val = val.split(',').map((s) => s.trim()).filter(Boolean);
-          else if (['speed', 'stability', 'style'].includes(inp.dataset.f)) val = +val;
-          v[inp.dataset.f] = val;
-        });
+        for (const [k, val] of Object.entries(raw)) v[k] = ['speed', 'stability', 'style'].includes(k) ? +val : val;
         return v;
       };
-      row.querySelectorAll('input').forEach((inp) => inp.addEventListener('change', async () => {
+      row.querySelectorAll('input, select').forEach((inp) => inp.addEventListener('change', async () => {
         try { await api(`/api/books/${S.bookId}/entity/${eid}`, { method: 'PUT', body: { voices: { [eng]: collect() } } }); saved(); } catch (err) { toast(err.message, true); }
       }));
       row.querySelector('[data-audition]')?.addEventListener('click', async (btn) => {

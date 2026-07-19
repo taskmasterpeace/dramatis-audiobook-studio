@@ -128,6 +128,9 @@ h1{font-size:22px;font-weight:600;letter-spacing:-.015em;margin:0 0 4px}
 .dna-row input{font-size:11.5px;padding:3px 7px}
 .dna-row input.wide{flex:1;min-width:120px}
 .dna-row input.tiny{width:52px}
+.f-hint{grid-column:1/-1;font-size:10.5px;color:var(--dim);line-height:1.4;margin-top:2px}
+label.mini{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.dna-row select{max-width:190px;font-size:12px;padding:4px 7px}
 .aud{font-size:11px;color:var(--cy);white-space:nowrap}
 .aud:hover{text-decoration:underline}
 .aud:disabled{color:var(--dim)}

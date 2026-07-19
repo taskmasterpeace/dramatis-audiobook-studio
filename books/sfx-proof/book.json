@@ -18,7 +18,19 @@
       }
     },
     "hybrid": {
-      "kokoro": "@kokoro"
+      "kokoro": "@kokoro",
+      "elevenlabs": "@elevenlabs"
+    },
+    "elevenlabs": {
+      "narrator": {
+        "candidates": [
+          "Battlerap Algorithm",
+          "George"
+        ],
+        "model": "eleven_turbo_v2",
+        "stability": 0.5,
+        "style": 0.3
+      }
     }
   },
   "hints": [],
