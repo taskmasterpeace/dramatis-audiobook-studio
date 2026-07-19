@@ -102,6 +102,48 @@ job. The fix is never "gate harder" — it's route right.
   Premium is the ceiling, spent where it matters. DRAMATIS's value is the
   ROUTING + approval, not "everything free."
 
+## Qwen3-TTS — DEEP research (2026-07-19, corroborated across repo + HF + report)
+
+It's **Alibaba** (not ByteDance), Apache-2.0, three separate checkpoints:
+VoiceDesign / CustomVoice / Base. Output is **24 kHz mono** ("12Hz" = tokenizer
+frame rate, not audio). English is first-class. Use the 1.7B, never 0.6B.
+
+**Why "elderly NOLA woman" came out young — now understood:** a ONE-SENTENCE
+design is the wrong mental model. The model weights concrete acoustic descriptors
+far above the bare "old"/"elderly" token, and short utterances destabilize
+timbre. Age drifts unless you (a) use **specific years** ("in her 80s" not "old"),
+(b) **stack aging physiology** (reedy, quavering, breathless, scratchy, slow, low
+energy), (c) write **2–4 sentences / 40–80 words** (instruct caps 2048 chars), and
+(d) reuse the EXACT string (generation is non-deterministic). Accent is fragile
+even so — always phrase origin→target ("New Orleans accent speaking English").
+
+**Design recipe (elderly/accented):** key-value + stacked cues, e.g.
+"Gender: female. Age: in her late 70s. Pitch: low, warm. Texture: reedy,
+weathered, a slight quaver, breathy with age. Pace: slow, unhurried, musical.
+Accent: deep New Orleans Southern Black, speaking English." Keep the SPOKEN line
+short-to-medium; keep the instruct rich.
+
+**CLONING BEATS DESIGN for age+accent (the key finding).** Age/accent carried in
+a reference survive better than described ones. Engine: `clone-from-audio.py`
+(`create_voice_clone_prompt(ref_audio, ref_text)` once → reuse; then
+`generate_voice_clone`). Requirements that MATTER:
+- **Reference 8–15 s, mono, ≥24 kHz, clean, one speaker.** Quality DEGRADES past
+  ~15 s (measured: our 24 s ref gave a wobblier clone than a 12 s trim).
+- **Provide ref_text** (accurate transcript) — raises speaker similarity ~0.75→0.89.
+- **Cloning from another engine's output WORKS** — this is the "premium seed,
+  local volume" pattern: voice a hero line on Gemini/11L (great, paid), clone it
+  into Qwen3, generate unlimited lines free. THIS is what "character actors"
+  means in practice — a small stable of cloned premium voices reused across books.
+- **`instruct` does NOT work on clone** (only Design/CustomVoice). Per-line emotion
+  on a cloned voice = bake it into the reference clip, or route that line elsewhere.
+
+**CustomVoice presets** (exact `speaker=`): Ryan, Aiden (English males); Vivian,
+Serena, Uncle_Fu, Dylan, Eric (Chinese); Ono_Anna (JP), Sohee (KR). CustomVoice
+DOES honor instruct — the one mode with preset timbre + per-line emotion.
+
+**Gotchas:** infinite-generation loops (cap max_new_tokens); duration instructions
+ignored; keep lines 500–1500 chars.
+
 ## Qwen3-TTS — write the voice as a sentence
 
 Voice map shape: `{ "design": "<persona sentence>" }` or `{ "speaker": "Ryan" }` (preset).
