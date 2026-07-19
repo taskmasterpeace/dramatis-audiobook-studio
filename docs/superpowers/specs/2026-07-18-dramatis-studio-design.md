@@ -186,12 +186,21 @@ picked by auditioning the same test frame in 3–5 candidate styles (the standar
 preview-approve motion). Every shot generation then passes the anchor as a reference
 image alongside scene-first prompting.
 
-**Why the anchor image is load-bearing (measured tonight):** with style delivered as
-a text suffix on nano-banana-2-lite, 3 of 4 audition frames kept the style but
-**replaced the scene content** (the engraving invented a jungle temple; the oil
-painted a framed portrait). Style-as-reference-image + scene-first prompt is the
-countermeasure; character sheets ride along as additional references for cast
-continuity (the model accepts 14).
+**Prompt grammar (Robert's fix, measured 1/4 → 4/4 scene accuracy):** never deliver
+style as a detached block (`<scene>. STYLE: <phrase>.` let the style clause replace
+the scene on 3 of 4 frames — the engraving invented a jungle temple). Weave it into
+one sentence: `<full scene description>, painted/drawn/shot/engraved in the style of
+<style phrase>`. Re-run with identical model/seed conditions produced the correct
+scene in all four styles. This grammar is the shot-builder's law.
+
+**Reference-image discipline (per shot, not per book):** references are selected
+shot-by-shot — the style anchor image travels with every shot, but a character sheet
+is attached **only when that character is in frame** (attaching unused refs degrades
+output; models latch onto them). Empty/establishing shots carry the style anchor
+alone. DP `@character_name` prompt tags bind each attached sheet to its name in the
+scene text. The model accepts 14 references — budget: 1 style anchor + up to N
+cast-in-frame sheets. The shot grid already tracks cast-in-frame per window, so this
+is mechanical.
 
 **Studio surface (phase P6 — Storyboard screen):** the shot grid as cards: timecode,
 basis text, generated frame → approve / regenerate / re-prompt; chapter assembly =
