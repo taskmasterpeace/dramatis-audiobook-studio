@@ -1,6 +1,33 @@
-# DRAMATIS — Handoff (2026-07-18)
+# DRAMATIS — Handoff (2026-07-18, evening update)
 
 Read `README.md` + `docs/SPEC.html` first. This file is the live state.
+
+## EVENING SESSION (Robert's directive: AUDIO ONLY — motion/visuals DEFERRED)
+
+Goal was: prove the audio process on a couple of stories + report cost. DONE:
+
+- **Three complete audiobooks now exist** (see `docs/COST-REPORT.md` for full numbers):
+  - `out/liu-xiao/book-immersive.m4b` — 104.1 min, 8 ch (hybrid v1, from afternoon)
+  - `out/monkeys-paw/book-immersive.m4b` — 24.7 min, 3 ch, **hybrid v2** (new tonight)
+  - `out/open-window/ch-01/immersive.m4a` — 7.7 min, 1 ch, **hybrid v2** (new tonight)
+- **Two NEW public-domain books built from raw manuscript in one evening**: Gutenberg
+  fetch -> normalize (curly quotes -> straight; compiler only sees `"` quotes) ->
+  book.json (cast/scenes/cues/hints) -> kokoro validation pass -> line-by-line
+  attribution audit -> hybrid v2 render. Books at `books/monkeys-paw/`,
+  `books/open-window/`; manuscripts at `samples/the-monkeys-paw.md`,
+  `samples/the-open-window.md`.
+- **Attribution engine improved**: 11 said-verbs added to SAID_VERBS in src/compile.mjs
+  (inquired/demanded/began/exclaimed/bawled/remarked/screamed/faltered/announced/
+  pursued/admitted) — fixed 9 real misattributions. Hint semantics documented by use:
+  `match` is startsWith on the dialogue segment; entity applies per-paragraph,
+  emotion per-line (src/compile.mjs:130,173).
+- **Hero-line dial**: emotion hints in book.json are the ElevenLabs budget knob.
+  Monkey's Paw: 27 hero lines = 534 chars ≈ $0.12. Open Window: 4 hero lines
+  (Vera's long monologues) = 1,183 chars ≈ $0.26. Everything else local ($0).
+- **Housekeeping**: stale 5.4 GB motion segment deleted (zombie ffmpeg from the
+  crashed encode killed); `corpus/`, `.venv/`, `__pycache__/` gitignored (corpus is
+  6.9 GB — NEVER commit it).
+- Motion comic (P5) untouched per directive — its state is unchanged below.
 
 ## What this is
 Local-first full-cast cinematic audiobook studio (Apache-2.0, clean-room vs. Castwright

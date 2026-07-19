@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { log } from './util.mjs';
 
-const SAID_VERBS = 'said|asked|told|reported|cried|murmured|called|shouted|whispered|repeated|added|answered|replied';
+const SAID_VERBS = 'said|asked|told|reported|cried|murmured|called|shouted|whispered|repeated|added|answered|replied|inquired|exclaimed|bawled|remarked|screamed|faltered|announced|pursued|admitted|demanded|began';
 
 function stripMd(s) {
   return s.replace(/\*+/g, '').replace(/\s+/g, ' ').trim();

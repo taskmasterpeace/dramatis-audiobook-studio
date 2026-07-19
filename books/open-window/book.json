@@ -1,0 +1,76 @@
+{
+  "id": "open-window",
+  "title": "The Open Window",
+  "author": "Saki (H. H. Munro)",
+  "manuscript": "../../samples/the-open-window.md",
+  "protagonist": "framton",
+  "entities": [
+    { "id": "narrator", "kind": "narrator", "names": [] },
+    { "id": "vera", "kind": "character", "names": ["Vera", "the niece", "the child", "young lady"], "visual": "Self-possessed English girl of fifteen, Edwardian afternoon dress, calm knowing eyes." },
+    { "id": "framton", "kind": "character", "names": ["Framton", "Framton Nuttel", "Mr. Nuttel", "the caller"], "visual": "Nervous English gentleman in his thirties, pale, formal visiting clothes, stick and hat clutched close." },
+    { "id": "mrs_sappleton", "kind": "character", "names": ["Mrs. Sappleton", "the aunt", "his hostess"], "visual": "Brisk cheerful middle-aged Englishwoman, country tweeds, eyes always straying to the window." },
+    { "id": "mr_sappleton", "kind": "character", "names": ["her husband", "the bearer"], "visual": "Hearty English country squire in a white waterproof mackintosh, gun under arm, muddy boots." },
+    { "id": "sister", "kind": "character", "names": ["his sister"], "visual": "Practical Englishwoman, Framton's sister, letter-writing desk and firm expression." },
+    { "id": "ronnie", "kind": "character", "names": ["Ronnie"], "visual": "Hearty young Englishman, youngest brother, gun over shoulder, teasing grin." }
+  ],
+  "voices": {
+    "kokoro": {
+      "narrator":      { "voice": "bm_george",  "speed": 1.0 },
+      "vera":          { "voice": "af_nicole",  "speed": 1.06 },
+      "framton":       { "voice": "am_echo",    "speed": 1.0 },
+      "mrs_sappleton": { "voice": "af_sarah",   "speed": 1.0 },
+      "mr_sappleton":  { "voice": "am_michael", "speed": 0.97 },
+      "sister":        { "voice": "af_sarah",   "speed": 1.02 },
+      "ronnie":        { "voice": "am_puck",    "speed": 1.02 }
+    },
+    "qwen3": {
+      "narrator":      { "design": "Calm, measured middle-aged male storyteller; low, warm register; dry wit; unhurried delivery." },
+      "vera":          { "design": "English girl of fifteen; clear, poised, articulate voice; deceptively calm and self-possessed." },
+      "framton":       { "design": "Nervous English gentleman in his thirties; thin, hesitant, anxious voice; slightly breathless." },
+      "mrs_sappleton": { "design": "Cheerful middle-aged Englishwoman; bright, brisk, sociable voice; easily distracted." },
+      "mr_sappleton":  { "design": "Hearty English country squire; jovial, booming, weathered voice." },
+      "sister":        { "design": "Practical middle-aged Englishwoman; firm, brisk, no-nonsense voice." },
+      "ronnie":        { "design": "Hearty young Englishman; bright sing-song teasing voice." }
+    },
+    "elevenlabs": {
+      "narrator":      { "candidates": ["George", "Brian", "Daniel"], "stability": 0.6, "style": 0.15 },
+      "vera":          { "candidates": ["Alice", "Matilda", "Sarah"], "stability": 0.45, "style": 0.5 },
+      "framton":       { "candidates": ["Archer", "Eric", "Daniel"], "stability": 0.5, "style": 0.4 },
+      "mrs_sappleton": { "candidates": ["Matilda", "Alice", "Rachel"], "stability": 0.5, "style": 0.4 },
+      "mr_sappleton":  { "candidates": ["George", "Bill", "Brian"], "stability": 0.5, "style": 0.35 },
+      "sister":        { "candidates": ["Rachel", "Matilda", "Alice"], "stability": 0.5, "style": 0.35 },
+      "ronnie":        { "candidates": ["Chris", "Josh", "Charlie"], "stability": 0.45, "style": 0.5 }
+    },
+    "hybrid": { "kokoro": "@kokoro", "qwen3": "@qwen3", "elevenlabs": "@elevenlabs" }
+  },
+  "hints": [
+    { "match": "I know how it will be", "entity": "sister" },
+    { "match": "you will bury yourself down there", "entity": "sister" },
+    { "match": "Out through that window, three years ago", "entity": "vera", "emotion": { "sadness": 0.6 } },
+    { "match": "Poor aunt always thinks", "entity": "vera", "emotion": { "fear": 0.5 } },
+    { "match": "The doctors agree in ordering me", "entity": "framton" },
+    { "match": "On the matter of diet", "entity": "framton" },
+    { "match": "Here they are at last", "entity": "mrs_sappleton", "emotion": { "surprise": 0.6 } },
+    { "match": "Just in time for tea", "entity": "mrs_sappleton" },
+    { "match": "I said, Bertie, why do you bound", "entity": "ronnie" },
+    { "match": "I hope Vera has been amusing you", "entity": "mrs_sappleton" },
+    { "match": "Here we are, my dear", "entity": "mr_sappleton" },
+    { "match": "fairly muddy, but most of it's dry", "entity": "mr_sappleton" },
+    { "match": "I expect it was the spaniel", "entity": "vera", "emotion": { "surprise": 0.4 } }
+  ],
+  "chapters": [
+    {
+      "heading": "The Open Window",
+      "scenes": [
+        { "id": "w1-parlor", "anchor": "\"My aunt will be down presently, Mr. Nuttel,\"", "ambience": { "type": "roomtone-morning", "intensity": 0.4 }, "characters": ["vera", "framton"], "visual": "Comfortable Edwardian country sitting room on an October afternoon, large French window open onto a lawn, a poised girl of fifteen entertaining a nervous visitor." },
+        { "id": "w1-tragedy", "anchor": "\"Out through that window, three years ago to a day", "ambience": { "type": "room-hum", "intensity": 0.25 }, "characters": ["vera", "framton"], "visual": "The same room, hushed; the girl gazes at the open window telling a ghost story, the visitor leaning in, chilled." },
+        { "id": "w1-aunt", "anchor": "\"I hope Vera has been amusing you?\"", "ambience": { "type": "roomtone-morning", "intensity": 0.5 }, "characters": ["vera", "framton", "mrs_sappleton"], "visual": "The aunt bustles in with cheerful apologies, tea things, the visitor pale and uneasy between them." },
+        { "id": "w1-return", "anchor": "\"Here we are, my dear,\"", "ambience": { "type": "roomtone-morning", "intensity": 0.4 }, "characters": ["vera", "mrs_sappleton", "mr_sappleton"], "visual": "Three figures with guns coming through the French window out of the twilight, a tired brown spaniel at heel, the visitor's chair empty." }
+      ],
+      "cues": [
+        { "id": "w1-walkers", "sfx": "footsteps walking on grass", "anchor": "In the deepening twilight three figures", "offset": 0.5, "gain_db": -14 },
+        { "id": "w1-flight", "sfx": "running footsteps on gravel", "anchor": "the gravel-drive, and the front gate", "offset": 0.0, "gain_db": -10 }
+      ]
+    }
+  ]
+}
