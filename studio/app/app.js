@@ -359,6 +359,10 @@ function viewCast() {
         </select></span></div>
       ${ent.names?.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px">${ent.names.map((n) => `<span class="chip">${esc(n)}</span>`).join('')}</div>` : ''}
       ${sugStrip}
+      <div class="screentest">
+        <button class="btn ghost sm" data-screentest="${ent.id}">🎧 Screen Test — hear every engine on the same line</button>
+        <div data-st-results></div>
+      </div>
       <div><div class="f-label">Visual brief — feeds character art (manual generation only)</div>
         <textarea data-visual>${esc(ent.visual || '')}</textarea></div>
       <div><div class="f-label">Voice DNA</div><div class="dna">${rows}</div></div>
@@ -590,6 +594,37 @@ function bind(m) {
       try { await api(`/api/books/${S.bookId}/entity/${eid}`, { method: 'PUT', body: { notes: e.target.value } }); saved(); }
       catch (err) { toast(err.message, true); }
     });
+    // SCREEN TEST — the narrator matrix, in-app: same line through every
+    // available engine, side by side, with a one-click "Cast this one"
+    card.querySelector('[data-screentest]')?.addEventListener('click', async (ev) => {
+      const btn = ev.currentTarget;
+      const slot = card.querySelector('[data-st-results]');
+      const keys = S.book.keys || {};
+      const engines = ['kokoro', 'qwen3', 'elevenlabs', 'gemini']
+        .filter((e) => S.book.book.voices[e]?.[eid] && keys[e] !== false);
+      if (!engines.length) { toast('no engines configured for this role — Apply a suggestion first', true); return; }
+      btn.disabled = true;
+      slot.innerHTML = engines.map((e) => `<div class="st-row" data-st="${e}"><span class="st-eng">${e}</span><span class="st-slot">queued…</span></div>`).join('');
+      for (const eng of engines) {
+        const row = slot.querySelector(`[data-st="${eng}"] .st-slot`);
+        row.textContent = 'rendering…';
+        try {
+          const r = await api('/api/audition', { method: 'POST', body: { book: S.bookId, entity: eid, engine: eng } });
+          row.innerHTML = `<audio controls src="${r.media}" style="width:190px;vertical-align:middle"></audio>
+            <button class="btn sm" data-cast-eng="${eng}">Cast this</button>
+            <span style="font-size:10px;color:var(--dim)">${(r.ms / 1000).toFixed(1)}s</span>`;
+          row.querySelector('[data-cast-eng]').addEventListener('click', async () => {
+            try {
+              await api(`/api/books/${S.bookId}/entity/${eid}`, { method: 'PUT', body: { engine: eng, locked: true } });
+              toast(`${eid} cast on ${eng} — locked`);
+              await loadBook(S.bookId); render();
+            } catch (e2) { toast(e2.message, true); }
+          });
+        } catch (e2) { row.innerHTML = `<span style="color:var(--crit);font-size:11px">${esc(e2.message)}</span>`; }
+      }
+      btn.disabled = false;
+    });
+
     // apply the computed casting recipe into the voice fields
     card.querySelector('[data-apply-suggest]')?.addEventListener('click', async () => {
       const sug = S.book.suggestions?.[eid];
@@ -769,7 +804,8 @@ function bind(m) {
         method: 'POST',
         body: { title: $('#nb-title').value, author: $('#nb-author').value, text: $('#nb-text').value, analyze: $('#nb-analyze').checked },
       });
-      toast(`Created ${r.id} (${r.chapters} chapter(s)${r.analyzed ? ', analyzed' : ''})`);
+      if (r.analyzeError) toast(`Created ${r.id} — but the analyzer failed (${r.analyzeError}). The book is saved; cast it by hand.`, true);
+      else toast(`Created ${r.id} (${r.chapters} chapter(s)${r.analyzed ? ', analyzed' : ''})`);
       await go('book', r.id, 'cast');
     } catch (e) { toast(e.message, true); btn.disabled = false; btn.textContent = 'Create book'; }
   });

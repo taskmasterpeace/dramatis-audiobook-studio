@@ -50,26 +50,39 @@ export async function createBook({ title, author = '', text }, { root, analyze =
     }),
   };
 
+  // Write a VALID book before analysis: if the analyzer dies (API down, bad
+  // key, timeout) the paste is still a real book on disk you can open and cast
+  // by hand, instead of an error toast and a lost manuscript.
+  mkdirSync(bookDir, { recursive: true });
+  const writeBook = () => {
+    const tmp = path.join(bookDir, 'book.json.tmp');
+    writeFileSync(tmp, JSON.stringify(book, null, 2));
+    renameSync(tmp, path.join(bookDir, 'book.json'));
+  };
+  writeBook();
+
   let analyzed = false;
+  let analyzeError = null;
   if (analyze && (process.env.OPENROUTER_API_KEY || process.env.OLLAMA_URL)) {
     const { analyzeChapter } = await import('./analyze.mjs');
     const provider = process.env.OPENROUTER_API_KEY ? 'openrouter' : 'ollama';
     const cacheRoot = path.join(root, 'out');
-    for (let i = 0; i < headings.length; i++) {
-      await analyzeChapter({ manuscriptPath: samplePath, bookId: id, chapter: String(i + 1), provider, cacheRoot });
-      const aFile = path.join(cacheRoot, id, `analysis-${headings[i].replace(/\W+/g, '-').toLowerCase()}.json`);
-      if (existsSync(aFile)) mergeAnalysis(book, JSON.parse(readFileSync(aFile, 'utf8')), i, samplePath);
+    try {
+      for (let i = 0; i < headings.length; i++) {
+        await analyzeChapter({ manuscriptPath: samplePath, bookId: id, chapter: String(i + 1), provider, cacheRoot });
+        const aFile = path.join(cacheRoot, id, `analysis-${headings[i].replace(/\W+/g, '-').toLowerCase()}.json`);
+        if (existsSync(aFile)) mergeAnalysis(book, JSON.parse(readFileSync(aFile, 'utf8')), i, samplePath);
+      }
+      book.voices = houseTemplate(book.entities.filter((e) => e.kind !== 'narrator'));
+      analyzed = true;
+      writeBook();                       // enriched version replaces the draft
+    } catch (e) {
+      analyzeError = String(e.message).slice(0, 200);   // draft on disk survives
     }
-    book.voices = houseTemplate(book.entities.filter((e) => e.kind !== 'narrator'));
-    analyzed = true;
   }
 
-  mkdirSync(bookDir, { recursive: true });
-  const tmp = path.join(bookDir, 'book.json.tmp');
-  writeFileSync(tmp, JSON.stringify(book, null, 2));
-  renameSync(tmp, path.join(bookDir, 'book.json'));
   return {
-    id, path: `books/${id}/book.json`, sample: `samples/${id}.md`, analyzed,
+    id, path: `books/${id}/book.json`, sample: `samples/${id}.md`, analyzed, analyzeError,
     chapters: book.chapters.length, entities: book.entities.length,
   };
 }

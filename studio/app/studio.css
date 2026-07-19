@@ -128,6 +128,10 @@ h1{font-size:22px;font-weight:600;letter-spacing:-.015em;margin:0 0 4px}
 .dna-row input{font-size:11.5px;padding:3px 7px}
 .dna-row input.wide{flex:1;min-width:120px}
 .dna-row input.tiny{width:52px}
+.screentest{display:grid;gap:6px}
+.st-row{display:grid;grid-template-columns:80px 1fr;gap:8px;align-items:center;background:var(--sunk);border:1px solid var(--line-soft);border-radius:6px;padding:5px 9px}
+.st-eng{font-size:10px;letter-spacing:.13em;color:var(--dim);text-transform:uppercase}
+.st-slot{display:flex;gap:7px;align-items:center;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
 .suggest{background:var(--sunk);border:1px solid var(--cy-dim);border-radius:7px;padding:8px 10px}
 .actor-note-ro{background:var(--sunk);border-left:2px solid var(--cy);border-radius:5px;padding:7px 10px;font-size:11.5px;color:var(--muted);line-height:1.5}
 .actor-note-ro b{color:var(--cy);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
