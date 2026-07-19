@@ -235,6 +235,25 @@ so it stays a character/hero engine, not the default narrator). Key:
 `REPLICATE_API_TOKEN` (in `D:/git/aiobr/.env`).
 **Robert's take**: best emotional model, dirt cheap, "very good for our actual actors."
 
+## Casting is computed, not typed (src/casting.mjs — wired into the Studio)
+
+`castingRecipe(entity)` reads the character description → `{gender, ageBand,
+accent}` → a voice recipe (character tier = Gemini directed when there's an
+accent or the age is child/teen/elderly; free Qwen3 design otherwise) plus what
+the gate must verify. The Cast screen shows it as a Suggested strip with Apply;
+**Screen Test** renders the same line through every configured engine side by
+side with one-click "Cast this".
+
+**Text-matching traps this cost us (all now covered by tests):**
+- `\bwoman\b` never matches **"Englishwoman"** — compounds need `[a-z]*woman`,
+  and `(?<!wo)man` so "woman" doesn't read as "man".
+- Alias lists carry OTHER characters' possessives — **"his wife"** made every
+  wife read male and cancel to unknown. Strip pronouns from `names` before
+  gender inference.
+- **"middle-aged"** contains `aged` — a middle-aged clerk was cast elderly.
+Verifiable by machine: gender + child-high-pitch. NOT verifiable: elderly-age
+and accent/ethnicity — those are directed + confirmed by ear, always.
+
 ## Robert's ear rulings (2026-07-19 listening session — these are canon)
 
 - **Narrator = "Battlerap Algorithm" on `eleven_v3` (#1), `eleven_turbo_v2` (#2).**

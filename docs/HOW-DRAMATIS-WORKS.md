@@ -69,6 +69,30 @@ ethnicity/accent — determined two ways (`src/casting.mjs`):
   Studio. We don't pretend a computer can hear "sounds 70" or "sounds Creole" —
   that's a human approval, and every voice is auditioned before it ships.
 
+## Cast management — two kinds of notes (deliberately separate)
+
+- **Actor notes** live with the company (`actors/<name>/notes.md`) and **travel
+  to every book that actor appears in** — craft knowledge like "rolls her R's if
+  you over-direct the accent" or "keep reference clips under 15s". Edit them in
+  Casting Room → The Company; they show read-only on any Cast card using that
+  actor. This is the whole point of having a company: what you learn once
+  applies forever.
+- **Role notes** live in the book (`entity.notes`) and are direction for **this
+  production only** — "she's grieving from Part III on, play her rawer." They
+  never leak into another book.
+
+## Safety nets (things that now refuse rather than fail silently)
+
+- **Register gate** — a designed voice whose gender doesn't match its
+  description is refused before you hear it.
+- **Cast validation** — a character with no voice used to render silently in the
+  narrator's voice; the render now stops and names the problem.
+- **Scene coverage** — every compiled line must land in a scene; lines above the
+  first anchor used to vanish and crash the mixer half an hour later.
+- **Golden tests** (`node --test test/attribution.test.mjs`) — snapshots of
+  who-says-what across all books, so a said-verb tweak shows its blast radius in
+  seconds instead of an audiobook listen.
+
 ## How you actually use it
 
 - **Studio** (`start-studio.cmd` → localhost:4600): paste a story → it drafts the
