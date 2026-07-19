@@ -44,6 +44,10 @@ ambience TYPE, reused everywhere — a book's rain is always ITS rain. Only the
 known types exist: `rain, roomtone-morning, room-hum, crowd, city-night,
 lab-cold, battle`. Anything else (analyzer once emitted `silence`) must be mapped
 to a known type — scaffold sanitizes, but hand-edits must respect the list.
+**Escape hatch (the "helicopter bed"):** a retrieved recording can carry the
+wrong content — a "city-night" clip that reads as a helicopter (Robert's ear,
+2026-07-19). Set `ambience.source: "procgen"` on that scene to force the seeded
+synth bed instead of retrieval. Same knob, per-scene, in book.json.
 
 **5. Placement is code, not vibes.** Transients land at anchor-word onset +100 ms,
 ≥500 ms apart, clamped to the line span. If a sound feels late/early, fix the
@@ -54,6 +58,23 @@ the sfx-proof gunshot at −3 dB was "a little too loud" over narration; refixed
 to −7.) Defaults: gunshot/explosion/crash −7, door slam/punch −4 to −6,
 ambience-adjacent one-shots (distant dog, clock) −10 to −16. The listener's
 ear outranks the table — adjust per cue in book.json and remix (seconds, cached).
+
+**7. Mix targets are fixed (src/mix.mjs).** 5 stems (dialog / ambience −16 /
+SFX / music −20), ambience+music **sidechain-ducked against dialog** (dialog is
+sacred, never ducked). Dual masters: **Immersive loudnorm I=−18 TP=−2 LRA=11**,
+**Clean ACX-style −19/−3 dialog-only**. QA report per chapter flags
+duration-vs-text mismatches (benign for very short lines). Don't drift these
+numbers without an ear reason.
+
+## OPS — the one that bites (never learned twice, but it cost a venv reinstall)
+
+**NEVER `uv pip install` into `.venv` while a render's Python is alive** —
+Windows DLL locks corrupt the env (numpy lost its dist-info once). Kill renders
+first. All engine Python resolves via `pythonExe()` (src/util.mjs: env
+`DRAMATIS_PYTHON` > repo `.venv` > PATH) — never hardcode `python`. GPU is 24 GB
+and shared (Qwen3 + Ollama + CLAP + aligner co-resident but slow each other) —
+this is why the analyzer routes to OpenRouter during renders (see
+`manuscript-intake`). Full env recipe lives in HANDOFF.md.
 
 ## Cue triage procedure (run on every new book)
 

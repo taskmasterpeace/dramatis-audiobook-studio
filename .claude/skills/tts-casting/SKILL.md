@@ -191,7 +191,13 @@ candidates use base names. Voice map shape:
 v3 snaps stability to 0/0.5/1. Emotion → tag prepended (`[angry] `). Model id is in
 the cache key (v2/v3 renders coexist).
 
-## Gemini 3.1 Flash TTS — the direction-heavy engine (NOT YET BUILT — engine slot open)
+## Gemini 3.1 Flash TTS — the direction-heavy engine (BUILT & ROBERT'S #1 for characters)
+
+**Status: live** in `engines/tts/gemini.mjs` via Replicate (`REPLICATE_API_TOKEN`),
+~7 s/line, and Robert's #1 for characterful voices — it's the only engine that
+takes a director's note as first-class input ("deep New Orleans Southern Black"
+landed an elderly NOLA woman that made his jaw drop). Voice map shape (REAL, not
+planned): `{ voice: "Gacrux", prompt: "<style prompt>" }`.
 
 Endpoints: Google AI (`ai.google.dev/gemini-api/docs/speech-generation`) or Replicate
 (`replicate.com/google/gemini-3.1-flash-tts`). Replicate inputs: `text` (≤4,000 bytes,
@@ -220,9 +226,10 @@ DIRECTOR'S NOTES:
 [uhm] [short pause] [medium pause] [long pause]` + freeform (`[excitedly]`, `[bored]`…)
 — test freeform tags before production (some get spoken aloud). Maps directly from
 `line.emotion`.
-**Pricing**: $2/M input tokens, $0.04/1k output tokens. Effective $/finished-minute
-unknown until first render — MEASURE IT and record here. Keys: `GEMINI_API_KEY`
-(Google) or `REPLICATE_API_TOKEN` (check `D:/git/aiobr/.env`).
+**Pricing**: $2/M input tokens, $0.04/1k output tokens → measured ≈ **$0.001/line**
+at audiobook line lengths (a hero line is cheap; whole-book narration would add up,
+so it stays a character/hero engine, not the default narrator). Key:
+`REPLICATE_API_TOKEN` (in `D:/git/aiobr/.env`).
 **Robert's take**: best emotional model, dirt cheap, "very good for our actual actors."
 
 ## Robert's ear rulings (2026-07-19 listening session — these are canon)
@@ -265,7 +272,7 @@ on the Liu Xiao opening paragraph + one Monkey's Paw paragraph.
   "kokoro":     { "<entity>": { "voice": "bm_george", "speed": 1.0 } },
   "qwen3":      { "<entity>": { "design": "<persona sentence>" } },
   "elevenlabs": { "<entity>": { "candidates": ["Name1","Name2"], "stability": 0.5, "style": 0.4 } },
-  "gemini":     { "<entity>": { "voice": "Charon", "prompt": "<style prompt>" } },   // planned shape
+  "gemini":     { "<entity>": { "voice": "Gacrux", "prompt": "<style prompt>" } },   // BUILT
   "hybrid":     { "kokoro": "@kokoro", "qwen3": "@qwen3", "elevenlabs": "@elevenlabs" }
 }
 ```

@@ -21,7 +21,7 @@ does it serve, and does it beat the incumbent THERE?"
 | **FOLEY** | SFX one-shots, sequences | CLAP retrieval over FSD50K+house (2,409 clips) → 11L sound-generation into house library → procgen → skip | Never vocal; caption read on sim<0.5; approval gate; generated clips are SAVED (house compounds) |
 | **ATMOS** | ambience beds per scene | CLAP retrieval (real recordings, same clip per type) → procgen | 7 known types only; consistency beats variety |
 | **SCORE** | music underscore | ElevenLabs Music (commercial-safe default) → Suno/muapi (opt-in, license unverified) | Instrumental only, no vocals — Eleven Music sings lyrics if you let it |
-| **SET-PIECE** | ≤2-min single-pass mixed sequences | **Seed Audio 1.0** (ByteDance via Segmind — NOT yet keyed/built) | Output is ONE BAKED FILE — treat as sourced material, never as the mix |
+| **SET-PIECE** | ≤2-min single-pass mixed sequences | **Seed Audio 1.0** (ByteDance via **fal**, `bytedance/seed-audio-1.0` — probed live, ear-confirmed) | Output is ONE BAKED FILE — treat as sourced material, never as the mix |
 
 ## APPROVED PROVIDERS (Robert's law, 2026-07-19)
 
@@ -81,10 +81,11 @@ short background tags BETWEEN lines; put the speaker's first line at the top.
   foley direction abstract); news-anchor register sounds robotic; probably
   weaker than dedicated engines at each single thing — its power is the
   INTERLOCK, not the parts.
-- **Next step when Robert supplies a SEGMIND_API_KEY:** probe with (a) one
-  interlocking-SFX sequence (no voices — cast law holds even here) and (b) one
-  lighthouse-style scene for capability calibration; record measured results
-  here; then decide whether `engines/setpiece/seedaudio.mjs` earns a slot.
+- **Status: probed live on fal and ear-confirmed "amazing" (2026-07-19).** Robert
+  greenlit set-pieces + reference-audio trailers. A first-class
+  `engines/setpiece/seedaudio.mjs` (wrapping the fal.run call + fal-storage
+  reference upload + result-into-house-library) is the remaining build to make it
+  a one-liner from the Studio; the raw recipe above already works today.
 
 ## The full options catalog (approved providers only — surveyed 2026-07-19)
 
