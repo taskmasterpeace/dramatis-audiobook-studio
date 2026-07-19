@@ -160,7 +160,39 @@ Single-theme dark (a console has no light mode).
 4. **P4 — Intake:** New Book flow + `src/scaffold.mjs` + `dramatis scaffold`.
 5. **P5 — Faces:** character sheets via Directors Palette (generate/approve on Cast).
 
-## 12. Non-goals (v1)
+## 12. Non-goals (v1 build)
 
 Manuscript editing, waveform editing, render queueing, auth/multi-user, MCP server
-(separate spec §12 track), motion-comic controls, mobile layout, light theme.
+(separate spec §12 track), mobile layout, light theme. Video is design-in-scope
+(§13) but build-later.
+
+## 13. Video track — designed now, built after the audio phases
+
+Audio is phase one; video is the same Production Script rendered a second way. The
+data model already carries it: `entities[].visual` (character briefs), `scenes[].visual`
+(scene briefs), and `timing.json` word timestamps (the sync rails).
+
+**Two tiers, one skeleton:**
+- **Tier 1 — Motion comic (near-done in `src/motion.mjs`):** DP character sheets +
+  one panel per scene + word-timed scene spans + Ken Burns moves → chapter MP4.
+- **Tier 2 — Generated video:** each shot is one **guided ~5–15 s clip**
+  (Seedance/Wan via Directors Palette Shot Animator). Operating principle: you guide,
+  you don't control — actions land, timing wanders, so clips are re-timed in post
+  against our word timestamps. One scene ≈ a shot list; one shot ≈ one guide prompt.
+
+**Studio surface (phase P6 — Storyboard screen):** per scene, shot cards flowing the
+standard motion: brief → generate still (approve/regenerate) → animate to clip
+(approve/retake) → placed on the audio timeline. Same preview-approve loop as voices
+and SFX; per-shot cost shown before generation (DP points).
+
+**Paste-time implication (why this is in the spec now):** the analyzer gains a fifth
+ledgered purpose, `visual-beats` — drafting per-scene shot suggestions alongside
+sfx-cues at intake, so a pasted manuscript arrives storyboard-ready. Schema addition
+only; no build until P6. Candidate external tool from Robert for this slot: to be
+evaluated when named — DP Shot Animator (Seedance/Wan) is the working default.
+
+**SFX depth (folded from tonight's finding):** retrieval is verified but the corpus
+(2,399 CC0 clips) is thin — a "door slam" query top-matched a towel thump at 0.67.
+Roadmap: full FSD50K dev set + Sonniss GDC packs; a text-to-SFX generation fallback
+(Stable Audio Open / 11L SFX) between "weak retrieval" and "procgen"; and the per-cue
+approve/swap gate (§4.4) as the human floor under all of it.
