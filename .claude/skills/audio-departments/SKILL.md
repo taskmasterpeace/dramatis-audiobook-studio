@@ -43,6 +43,21 @@ Replicate token in aiobr/.env; ElevenLabs in yourehired/.env).
 - **Probe B (calibration, Robert's lighthouse prompt verbatim):** 55.7 s
   full scene (narrator + 2 characters + storm + fire + waves), ≈ $0.17.
   `out/excerpts/SEEDAUDIO-B-lighthouse-calibration.mp3`.
+- **Ear-confirmed 2026-07-19 (Robert): both probes "amazing".**
+
+**REFERENCE-AUDIO workflow (verified live — trailers with OUR character actors):**
+1. Host the voice clip on fal storage: `POST
+   https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3`
+   `{content_type, file_name}` → PUT the bytes to `upload_url` → use `file_url`.
+2. Pass `audio_urls: [url]` (≤3 clips, ≤30 s each) and tag the speaker in the
+   prompt as `@Audio1`. Verified: Gemini's NOLA elder voiced a full cinematic
+   trailer with braams/rain/thunder/piano in one 26.6 s pass
+   (`TRAILER-water-remembers-nola.mp3`).
+
+**Prompt-structure law (Robert's Test-2 diagnosis, confirmed by fix):** a long
+LEADING `[Background:]` block yields a long voiceless intro — the model renders
+atmosphere until dialogue appears. Structure prompts VOICE-FIRST and interleave
+short background tags BETWEEN lines; put the speaker's first line at the top.
 - **Prompt format is a screenplay** (this is the part that blew Robert away):
   `Name (voice adjectives, pace): "line"` per speaker, `[Background: wind picks
   up, low creaking]` for cues, stage directions in brackets. Stack descriptors

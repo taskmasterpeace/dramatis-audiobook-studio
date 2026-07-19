@@ -102,6 +102,23 @@ job. The fix is never "gate harder" — it's route right.
   Premium is the ceiling, spent where it matters. DRAMATIS's value is the
   ROUTING + approval, not "everything free."
 
+## CHARACTER ACTORS — the confirmed economic engine (ear-verified 2026-07-19)
+
+Robert's ranking for characterful voices: **Gemini #1** ("really got her talking
+like she's from New Orleans"), 11L #2, Qwen3 design distant. The pattern that
+makes it scale, ALL steps ear-confirmed on the NOLA elder:
+1. **Seed** the character once on Gemini (directed prompt) or 11L — paid, perfect.
+2. **Clone** the seed into Qwen3 (`clone-from-audio.py`, 8–15 s ref + transcript)
+   → unlimited FREE lines in that voice. Robert on the clone speaking a brand-new
+   line: "sounds like a Black lady, she sounds older... really, really good."
+   Both 24 s-ref and 12 s-ref clones passed his ear (12 s is still the spec).
+3. **Set-pieces/trailers**: the same seed clip goes to Seed Audio as
+   `audio_urls` reference (@Audio1) — the character narrates trailers with full
+   cinematic sound in one pass (verified: TRAILER-water-remembers-nola.mp3).
+A saved seed clip = a PERMANENT company member. Keep seeds in
+`out/voices/actors/<name>/` with the seed clip + transcript + origin prompt so
+any engine (Qwen3 clone, Seed Audio ref, future 11L clone) can re-hire them.
+
 ## Qwen3-TTS — DEEP research (2026-07-19, corroborated across repo + HF + report)
 
 It's **Alibaba** (not ByteDance), Apache-2.0, three separate checkpoints:
