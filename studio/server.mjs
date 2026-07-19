@@ -9,7 +9,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   readFileSync, writeFileSync, renameSync, existsSync, readdirSync, statSync,
-  createReadStream, mkdirSync,
+  createReadStream, mkdirSync, unlinkSync,
 } from 'node:fs';
 import { compile, listChapters } from '../src/compile.mjs';
 
@@ -241,6 +241,14 @@ const server = http.createServer(async (req, res) => {
   try {
     // media + static
     if (p.startsWith('/media/')) return serveMedia(req, res, p);
+    if (p.startsWith('/actors/')) { // company seeds + portraits
+      const rel = decodeURIComponent(p.replace(/^\/actors\//, ''));
+      const file = path.resolve(root, 'actors', rel);
+      if (!file.startsWith(path.join(root, 'actors')) || !existsSync(file)) return json(res, 404, { error: 'not found' });
+      const types = { '.wav': 'audio/wav', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.txt': 'text/plain', '.json': 'application/json' };
+      res.writeHead(200, { 'Content-Type': types[path.extname(file)] || 'application/octet-stream', 'Content-Length': statSync(file).size });
+      return createReadStream(file).pipe(res);
+    }
     if (p.startsWith('/corpus/')) { // read-only library clips for swap auditions
       const rel = decodeURIComponent(p.replace(/^\/corpus\//, ''));
       const file = path.resolve(root, 'corpus', rel);
@@ -380,6 +388,40 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       const result = await audition(body);
       return json(res, 200, result);
+    }
+
+    // ---- the company: saved character actors (actors/<name>/) ----
+    if (req.method === 'GET' && p === '/api/actors') {
+      const dir = path.join(root, 'actors');
+      if (!existsSync(dir)) return json(res, 200, { actors: [] });
+      const actors = readdirSync(dir).filter((d) => statSync(path.join(dir, d)).isDirectory()).map((name) => {
+        const f = (n) => path.join(dir, name, n);
+        let origin = {};
+        if (existsSync(f('origin.json'))) { try { origin = JSON.parse(readFileSync(f('origin.json'), 'utf8')); } catch { /* ignore */ } }
+        const portrait = ['portrait.png', 'portrait.jpg', 'portrait.webp'].find((n) => existsSync(f(n)));
+        return {
+          name, origin,
+          transcript: existsSync(f('transcript.txt')) ? readFileSync(f('transcript.txt'), 'utf8').slice(0, 400) : '',
+          seed: existsSync(f('seed.wav')) ? `/actors/${name}/seed.wav` : null,
+          portrait: portrait ? `/actors/${name}/${portrait}` : null,
+        };
+      });
+      return json(res, 200, { actors });
+    }
+    const portraitMatch = p.match(/^\/api\/actors\/([a-z0-9-]+)\/portrait$/);
+    if (req.method === 'POST' && portraitMatch) {
+      const name = portraitMatch[1];
+      const dir = path.join(root, 'actors', name);
+      if (!existsSync(dir)) return json(res, 404, { error: 'unknown actor' });
+      const { dataUrl } = await readBody(req);
+      const m = /^data:image\/(png|jpe?g|webp);base64,(.+)$/s.exec(dataUrl || '');
+      if (!m) return json(res, 422, { error: 'need a pasted PNG/JPG/WEBP image' });
+      const ext = m[1] === 'jpeg' ? 'jpg' : m[1];
+      for (const old of ['portrait.png', 'portrait.jpg', 'portrait.webp']) {
+        if (existsSync(path.join(dir, old))) unlinkSync(path.join(dir, old));
+      }
+      writeFileSync(path.join(dir, `portrait.${ext}`), Buffer.from(m[2], 'base64'));
+      return json(res, 200, { ok: true, portrait: `/actors/${name}/portrait.${ext}` });
     }
 
     // ---- casting room: the full talent roster + audition any voice ----

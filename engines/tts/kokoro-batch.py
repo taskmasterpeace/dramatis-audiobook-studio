@@ -1,15 +1,75 @@
 # DRAMATIS Kokoro TTS engine - batch renderer (kokoro-onnx).
 # Reads a JSON manifest [{text, voice, speed, out}] and synthesizes each entry
 # to a 24 kHz WAV. Deterministic for identical inputs.
+#
+# CHUNKING (2026-07-19): Kokoro hard-caps at 510 phonemes per call — long text
+# warned "Phonemes are too long, truncating" and then died. Long text is now
+# split on sentence boundaries into safe chunks, synthesized separately, and
+# concatenated with a natural breath. One job still = one output wav, so the
+# cache key and the engine interface are unchanged.
 import json
+import re
 import sys
 import pathlib
 
+import numpy as np
 import soundfile as sf
 from kokoro_onnx import Kokoro
 
 HERE = pathlib.Path(__file__).resolve().parent
 MODELS = HERE.parent.parent / "models" / "kokoro"
+
+MAX_CHARS = 280        # conservative: 510 phonemes is roughly 300-400 chars
+GAP_SEC = 0.18         # breath between chunks so the joins sound natural
+
+
+def split_chunks(text, limit=MAX_CHARS):
+    """Sentence-first packing; falls back to clauses, then a hard split."""
+    text = text.strip()
+    if len(text) <= limit:
+        return [text]
+
+    pieces = []
+    for s in re.split(r'(?<=[.!?])\s+', text):
+        s = s.strip()
+        if not s:
+            continue
+        if len(s) <= limit:
+            pieces.append(s)
+            continue
+        # too long even as a single sentence -> break on clause punctuation
+        buf = ''
+        for c in re.split(r'(?<=[,;:])\s+', s):
+            c = c.strip()
+            while len(c) > limit:                    # last resort: hard split on a space
+                cut = c.rfind(' ', 0, limit)
+                if cut <= 0:
+                    cut = limit
+                pieces.append(c[:cut].strip())
+                c = c[cut:].strip()
+            if not c:
+                continue
+            if len(buf) + len(c) + 1 <= limit:
+                buf = f'{buf} {c}'.strip()
+            else:
+                if buf:
+                    pieces.append(buf)
+                buf = c
+        if buf:
+            pieces.append(buf)
+
+    # pack short sentences back together up to the limit
+    packed, buf = [], ''
+    for p in pieces:
+        if len(buf) + len(p) + 1 <= limit:
+            buf = f'{buf} {p}'.strip()
+        else:
+            if buf:
+                packed.append(buf)
+            buf = p
+    if buf:
+        packed.append(buf)
+    return [p for p in packed if p]
 
 
 def main(manifest_path: str) -> None:
@@ -17,10 +77,18 @@ def main(manifest_path: str) -> None:
     kokoro = Kokoro(str(MODELS / "kokoro-v1.0.onnx"), str(MODELS / "voices-v1.0.bin"))
     for n, it in enumerate(items, 1):
         lang = "en-gb" if it["voice"].startswith("b") else "en-us"
-        samples, sample_rate = kokoro.create(
-            it["text"], voice=it["voice"], speed=float(it.get("speed", 1.0)), lang=lang
-        )
-        sf.write(it["out"], samples, sample_rate)
+        chunks = split_chunks(it["text"])
+        if len(chunks) > 1:
+            print(f"[kokoro] long text -> {len(chunks)} chunks", flush=True)
+        audio, sample_rate = [], 24000
+        for i, chunk in enumerate(chunks):
+            samples, sample_rate = kokoro.create(
+                chunk, voice=it["voice"], speed=float(it.get("speed", 1.0)), lang=lang
+            )
+            audio.append(samples)
+            if i < len(chunks) - 1:
+                audio.append(np.zeros(int(GAP_SEC * sample_rate), dtype=samples.dtype))
+        sf.write(it["out"], np.concatenate(audio), sample_rate)
         if n % 25 == 0:
             print(f"synth {n}/{len(items)}", flush=True)
     print(f"synth complete: {len(items)} items", flush=True)

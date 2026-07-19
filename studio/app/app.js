@@ -96,6 +96,7 @@ async function go(view, bookId, tab) {
   S.view = view;
   if (view === 'shelf') await loadShelf();
   if ((view === 'casting' || view === 'say') && !S.roster) { try { S.roster = await api('/api/casting/roster'); } catch (e) { toast(e.message, true); } }
+  if (view === 'casting') { try { S.actors = (await api('/api/actors')).actors; } catch { S.actors = []; } }
   if (view === 'book') {
     await loadBook(bookId || S.bookId);
     S.tab = tab || 'board';
@@ -349,23 +350,46 @@ function cuePopover() {
 
 function viewCasting() {
   if (!S.roster) return `<p class="crumb">Talent</p><h1>Casting Room</h1><div class="empty">loading roster…</div>`;
-  const ENGLABEL = { kokoro: 'Kokoro — local, free', gemini: 'Gemini 3.1 Flash TTS — directed, ~$0.001/line', elevenlabs: 'ElevenLabs — your account roster', qwen3: 'Qwen3 — designed voices' };
-  const total = ['kokoro', 'gemini', 'elevenlabs'].reduce((a, e) => a + (S.roster[e]?.length || 0), 0);
-  const sections = Object.entries(S.roster).map(([eng, voices]) => `
-    <p class="panel-h" style="margin-top:22px">${esc(ENGLABEL[eng] || eng)} · ${voices.length}</p>
-    <div style="display:flex;flex-wrap:wrap;gap:7px">
+  const ENGLABEL = { company: '🎭 The Company', kokoro: 'Kokoro — free', gemini: 'Gemini — directed', elevenlabs: 'ElevenLabs — your roster', qwen3: 'Qwen3 — designed' };
+  const tabs = ['company', 'kokoro', 'gemini', 'elevenlabs', 'qwen3'];
+  S.castTab = S.castTab || 'company';
+  const counts = { company: (S.actors || []).length, ...Object.fromEntries(Object.entries(S.roster).map(([k, v]) => [k, v.length])) };
+  const tabBar = `<div class="tabs">${tabs.map((t) => `<button data-casttab="${t}" class="${S.castTab === t ? 'on' : ''}">${esc(ENGLABEL[t])} <span style="opacity:.6">${counts[t] ?? 0}</span></button>`).join('')}</div>`;
+
+  let body;
+  if (S.castTab === 'company') {
+    const actors = S.actors || [];
+    body = actors.length ? `<div class="cast-grid">${actors.map((a) => `
+      <div class="actor card" data-actor="${esc(a.name)}">
+        <div class="actor-h"><span class="nm">${esc(a.name.replace(/-/g, ' ').toUpperCase())}</span>
+          <span class="roleeng chip cy">${esc(a.origin.seed_engine || 'seeded')}</span></div>
+        <div class="portrait-zone" data-portrait tabindex="0" title="Click here and paste an image (Ctrl+V)">
+          ${a.portrait ? `<img src="${a.portrait}?t=${Date.now()}" alt="${esc(a.name)}">`
+            : `<div class="portrait-empty">🖼<br><span>click + paste an image</span></div>`}
+        </div>
+        <div style="font-size:12px;color:var(--muted)">${esc(a.origin.character || '')}</div>
+        ${a.seed ? `<audio controls preload="none" src="${a.seed}"></audio>` : ''}
+        <div style="font-size:10.5px;color:var(--dim)">
+          voice: ${esc(a.origin.seed_voice || '—')} · gate: ${esc(a.origin.gate || '—')}<br>
+          <em>${esc((a.transcript || '').slice(0, 90))}${(a.transcript || '').length > 90 ? '…' : ''}</em>
+        </div>
+      </div>`).join('')}</div>`
+      : `<div class="empty">No company members yet. Seed a voice you love (Gemini/ElevenLabs), then save it to <code>actors/</code>.</div>`;
+  } else {
+    const voices = S.roster[S.castTab] || [];
+    body = `<div style="display:flex;flex-wrap:wrap;gap:7px">
       ${voices.map((v) => `
-        <div class="card" style="padding:8px 11px;display:flex;align-items:center;gap:8px" data-cast-voice="${esc(v.voice)}" data-cast-eng="${eng}">
+        <div class="card" style="padding:8px 11px;display:flex;align-items:center;gap:8px" data-cast-voice="${esc(v.voice)}" data-cast-eng="${S.castTab}">
           <span style="font-size:12.5px;font-weight:600">${esc(v.voice)}</span>
           <span style="font-size:10.5px;color:var(--dim)">${esc(v.note)}</span>
-          ${eng === 'qwen3' ? '' : `<button class="aud" data-cast-play title="hear this voice">▶</button>`}
+          ${S.castTab === 'qwen3' ? '' : `<button class="aud" data-cast-play title="hear this voice">▶</button>`}
           <span data-cast-slot></span>
-        </div>`).join('')}
-    </div>`).join('');
+        </div>`).join('')}</div>`;
+  }
   return `
     <p class="crumb">Talent</p><h1>Casting Room</h1>
-    <p class="sub">${total} named voices on the roster + unlimited Qwen3 designs. Every ▶ speaks the same line, so voices compare fairly. First play generates (cached forever after).</p>
-    ${sections}`;
+    <p class="sub">Your company plus every hireable voice. In a voice tab, ▶ speaks the same line so they compare fairly. In The Company, click a portrait box and paste an image — it saves itself.</p>
+    ${tabBar}${body}`;
 }
 
 function viewSay() {
@@ -550,6 +574,29 @@ function bind(m) {
       st.textContent = `done in ${((Date.now() - t0) / 1000).toFixed(1)}s`;
     } catch (e) { toast(e.message, true); st.textContent = 'failed'; }
     btn.disabled = false;
+  });
+
+  // casting room tabs
+  m.querySelectorAll('[data-casttab]').forEach((b) => b.addEventListener('click', () => { S.castTab = b.dataset.casttab; render(); }));
+
+  // portrait paste-to-save (click the box, Ctrl+V an image)
+  m.querySelectorAll('[data-portrait]').forEach((zone) => {
+    const card = zone.closest('[data-actor]');
+    const name = card.dataset.actor;
+    zone.addEventListener('click', () => { zone.classList.add('armed'); zone.focus(); toast(`paste an image for ${name} (Ctrl+V)`); });
+    zone.addEventListener('paste', async (ev) => {
+      const item = [...(ev.clipboardData?.items || [])].find((i) => i.type.startsWith('image/'));
+      if (!item) { toast('no image in the clipboard', true); return; }
+      ev.preventDefault();
+      const blob = item.getAsFile();
+      const dataUrl = await new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
+      try {
+        await api(`/api/actors/${name}/portrait`, { method: 'POST', body: { dataUrl } });
+        toast(`portrait saved for ${name}`);
+        S.actors = (await api('/api/actors')).actors;
+        render();
+      } catch (e) { toast(e.message, true); }
+    });
   });
 
   // casting room auditions
