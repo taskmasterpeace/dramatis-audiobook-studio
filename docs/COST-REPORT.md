@@ -6,7 +6,7 @@
 
 | Book | Source | Chapters | Runtime | Engine config | QA flags |
 |---|---|---|---|---|---|
-| Liu Xiao: Protector of China | Robert's manuscript | 8 | 104.1 min | hybrid v1 (Kokoro narration + ElevenLabs all dialogue) | 0 |
+| Liu Xiao: Protector of China | Robert's manuscript | 8 | 104.1 min | kokoro (all-local voices — see correction note) | 0 |
 | The Monkey's Paw (W. W. Jacobs, 1902) | Project Gutenberg | 3 | 26.2 min | **hybrid v2** (Kokoro narration + Qwen3 designed voices + 11L hero lines) | 1 (benign: 4-char "yes." held 1.76 s) |
 | The Open Window (Saki, 1914) | Project Gutenberg | 1 | 7.7 min | **hybrid v2** | 0 |
 
@@ -19,7 +19,7 @@ audiobook in one evening, including a line-by-line attribution audit.
 
 | Book | LLM analysis | ElevenLabs chars → est. $ | Music (Suno relay) | **Total API** | **$/finished hour** |
 |---|---|---|---|---|---|
-| Liu Xiao (v1: all 165 dialogue lines on 11L) | $0.004 | 15,242 → ≈ $3.35 | $0.09 | **≈ $3.44** | **≈ $1.98/hr** |
+| Liu Xiao (bound M4B: all-local Kokoro voices) | $0.004 | 0 in the final book | $0.09 | **≈ $0.09** | **≈ $0.05/hr** |
 | The Monkey's Paw (v2: 27 hero lines) | $0.010 | 782 → ≈ $0.17 | $0.09 | **≈ $0.27** | **≈ $0.62/hr** |
 | The Open Window (v2: 4 hero lines, long monologues) | $0.002 | 1,183 → ≈ $0.26 | $0 | **≈ $0.26** | **≈ $2.03/hr** |
 
@@ -62,6 +62,13 @@ said-verbs added to the compiler cascade (inquired/demanded/began/…), which fi
 misattributed lines across the two new books. Remaining ambiguity is handled by ~10–20
 one-line hints per book — that hint pass (an hour of careful reading per book, or the
 analyzer's review queue) is the only human step between manuscript and master.
+
+**Correction (2026-07-18 late):** an earlier draft of this report labeled the bound Liu
+Xiao M4B "hybrid v1 with ElevenLabs dialogue." Wrong — `book-report.json` says `tts:
+kokoro`: the shipped 104-minute book is 100% local voices, ≈ $0.09 total API. The ≈ $3.35
+of 11L credits were spent on experimental chapter renders (v1 hybrid trials + the v2→v3
+migration) that are cached but not in the bound book. The v1 $/hr row now reflects a
+*projection* from those measured chars, not the shipped artifact.
 
 ## Caveats (honest ones)
 
