@@ -36,6 +36,22 @@ if (cmd === 'analyze') {
   process.exit(0);
 }
 
+if (cmd === 'scaffold') {
+  // dramatis scaffold --title "X" [--author "Y"] --file manuscript.md [--analyze]
+  const title = opt('title', null);
+  const file = opt('file', null);
+  if (!title || !file) {
+    console.log('usage: dramatis scaffold --title "The Story" --file manuscript.md [--author "A. Author"] [--analyze]');
+    process.exit(1);
+  }
+  const { createBook } = await import('../src/scaffold.mjs');
+  const result = await createBook(
+    { title, author: opt('author', ''), text: readFileSync(path.resolve(file), 'utf8'), analyze: args.includes('--analyze') },
+    { root, analyze: args.includes('--analyze') });
+  console.log(JSON.stringify(result, null, 2));
+  process.exit(0);
+}
+
 if (cmd === 'motion') {
   if (!bookPath) {
     console.log('usage: dramatis motion <book.json> --chapter N');
@@ -69,6 +85,8 @@ if (!voices) throw new Error(`book.json has no voice map for engine: ${ttsName}`
 // "@name" entries reference another voice map (e.g. hybrid -> kokoro + elevenlabs)
 voices = Object.fromEntries(Object.entries(voices).map(([k, v]) =>
   [k, typeof v === 'string' && v.startsWith('@') ? book.voices[v.slice(1)] : v]));
+// per-role engine overrides from book.json casting reach the hybrid router
+if (book.casting) voices.__casting = book.casting;
 
 const only = opt('chapter', null);
 const chapters = only

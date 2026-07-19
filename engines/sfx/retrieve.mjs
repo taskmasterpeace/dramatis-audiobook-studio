@@ -15,15 +15,31 @@ const QUERY_PY = path.join(here, 'clap-query.py');
 const INDEX = path.join(root, 'corpus', 'fsd50k', 'index');
 const SIM_THRESHOLD = 0.25; // CLAP cosine; below this we do not trust the match
 
-// cues: [{ id, spec, dur, seed }]
-// -> { id: { file|null, source: 'retrieval'|'procgen'|'cached'|'skipped', score?, caption?, reason? } }
+// cues: [{ id, spec, dur, seed, approval? }]
+// approval (from book.json, set in the Studio): "rejected" drops the cue,
+// { swap: "<corpus wav>" } uses the human-chosen clip, "approved" locks the pick.
+// -> { id: { file|null, source: 'retrieval'|'procgen'|'cached'|'swap'|'rejected'|'skipped', score?, caption?, reason? } }
 export async function resolveSfx(cues, cacheRoot) {
   const resolved = {};
   const misses = [];
   for (const c of cues) {
+    if (c.approval === 'rejected') {
+      resolved[c.id] = { file: null, source: 'rejected', reason: 'rejected by user' };
+      log('sfx', `cue ${c.id} rejected by user — dropped`);
+      continue;
+    }
+    if (c.approval && typeof c.approval === 'object' && c.approval.swap) {
+      const swapSrc = path.resolve(c.approval.swap);
+      const key = contentKey(['sfx-swap@1', swapSrc, String(c.dur || 0)]);
+      const { path: out, hit } = cached(cacheRoot, key);
+      if (!hit) await ffmpeg(['-i', swapSrc, '-ar', '48000', '-ac', '1', '-t', String(c.dur || 15), out]);
+      resolved[c.id] = { file: out, source: 'swap', caption: path.basename(swapSrc) };
+      log('sfx', `cue ${c.id} using user-swapped clip ${path.basename(swapSrc)}`);
+      continue;
+    }
     const key = contentKey(['sfx@2', c.spec.toLowerCase(), String(c.dur || 0)]);
     const { path: out, hit } = cached(cacheRoot, key);
-    if (hit) resolved[c.id] = { file: out, source: 'cached' };
+    if (hit) resolved[c.id] = { file: out, source: 'cached', approved: c.approval === 'approved' || undefined };
     else misses.push({ ...c, out });
   }
 

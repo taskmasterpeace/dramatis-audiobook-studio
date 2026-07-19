@@ -6,18 +6,27 @@
 import { renderLines as kokoro } from './kokoro.mjs';
 import { renderLines as elevenlabs } from './elevenlabs.mjs';
 import { renderLines as qwen3 } from './qwen3.mjs';
+import { renderLines as gemini } from './gemini.mjs';
 import { log } from '../../src/util.mjs';
 
+const ENGINES = { kokoro, qwen3, elevenlabs, gemini };
+
 export async function renderLines(lines, voices, cacheRoot) {
-  const narration = lines.filter((l) => l.kind !== 'dialogue');
-  const hero = lines.filter((l) => l.kind === 'dialogue' && l.emotion);
-  const dialogue = lines.filter((l) => l.kind === 'dialogue' && !l.emotion);
-  log('render:tts', `hybrid: ${narration.length} narration -> kokoro, ` +
-    `${dialogue.length} dialogue -> qwen3, ${hero.length} hero -> elevenlabs`);
-  const [a, b, c] = await Promise.all([
-    kokoro(narration, voices.kokoro, cacheRoot),
-    dialogue.length ? qwen3(dialogue, voices.qwen3, cacheRoot) : {},
-    hero.length ? elevenlabs(hero, voices.elevenlabs, cacheRoot) : {},
-  ]);
-  return { ...a, ...b, ...c };
+  // per-ROLE engine overrides (book.json "casting", injected as voices.__casting)
+  // win over kind-based routing — e.g. narrator locked to elevenlabs, liu to qwen3.
+  const casting = voices.__casting || {};
+  const route = (l) => {
+    const forced = casting[l.entity]?.engine;
+    if (forced && ENGINES[forced] && voices[forced]) return forced;
+    if (l.kind !== 'dialogue') return 'kokoro';
+    return l.emotion ? 'elevenlabs' : 'qwen3';
+  };
+  const buckets = {};
+  for (const l of lines) (buckets[route(l)] ??= []).push(l);
+  log('render:tts', 'hybrid: ' + Object.entries(buckets)
+    .map(([eng, ls]) => `${ls.length} -> ${eng}`).join(', ') +
+    (Object.keys(casting).length ? ` (casting overrides: ${Object.keys(casting).join(',')})` : ''));
+  const parts = await Promise.all(Object.entries(buckets).map(([eng, ls]) =>
+    ENGINES[eng](ls, voices[eng], cacheRoot)));
+  return Object.assign({}, ...parts);
 }

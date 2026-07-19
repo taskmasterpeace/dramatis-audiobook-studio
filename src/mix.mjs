@@ -4,7 +4,7 @@ import { writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { ffmpeg, ffprobeDuration, measureLoudness, ensureDir, log } from './util.mjs';
 import { alignLines } from './align.mjs';
-import { renderBed } from '../engines/ambience/procgen.mjs';
+import { renderBeds } from '../engines/ambience/retrieve.mjs';
 import { resolveSfx } from '../engines/sfx/retrieve.mjs';
 import { renderTrack } from '../engines/music/suno.mjs';
 
@@ -87,16 +87,25 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
     '-af', `apad=whole_dur=${total.toFixed(2)}`, dialogStem]);
   log('mix', `dialog stem: ${timeline.length} lines, ${fmt(total)} total`);
 
-  // 2) ambience stem: one bed per scene, offset into a full-length track
-  const beds = [];
-  for (const scene of script.scenes) {
+  // 2) ambience stem: one bed per scene, offset into a full-length track.
+  // Retrieval-first (real recordings, consistent per type), procgen fallback — batched
+  // so the CLAP model loads once per chapter.
+  const bedSpecs = script.scenes.map((scene) => {
     const start = Math.max(0, scene._start - BED_LEAD);
-    const dur = scene._end - start + BED_LEAD;
-    const seed = hashSeed(script.book + scene.id);
-    const bed = await renderBed(scene.ambience, dur, seed, cacheRoot);
-    beds.push({ file: bed, delayMs: Math.round(start * 1000) });
-    log('mix', `bed ${scene.id}: ${scene.ambience.type} i=${scene.ambience.intensity} @${fmt(start)} for ${fmt(dur)}`);
-  }
+    return {
+      id: scene.id, spec: scene.ambience, start,
+      dur: scene._end - start + BED_LEAD,
+      seed: hashSeed(script.book + scene.id),
+    };
+  });
+  const bedFiles = await renderBeds(bedSpecs, cacheRoot);
+  const beds = [];
+  const bedReport = [];
+  bedSpecs.forEach((b, idx) => {
+    beds.push({ file: bedFiles[idx].file, delayMs: Math.round(b.start * 1000) });
+    bedReport.push({ id: b.id, type: b.spec.type, source: bedFiles[idx].source, sim: bedFiles[idx].sim });
+    log('mix', `bed ${b.id}: ${b.spec.type} i=${b.spec.intensity} @${fmt(b.start)} for ${fmt(b.dur)} [${bedFiles[idx].source || 'procgen'}]`);
+  });
   const ambienceStem = path.join(outDir, 'stem-ambience.wav');
   await overlay(beds, total, ambienceStem);
 
@@ -106,7 +115,7 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
     ? await alignLines(timeline.map((l) => ({ id: l.id, text: l.text })), normById, cacheRoot)
     : {};
   const resolved = await resolveSfx(
-    script.cues.map((c) => ({ id: c.id, spec: c.sfx, dur: c.dur, seed: hashSeed(script.book + c.id) })),
+    script.cues.map((c) => ({ id: c.id, spec: c.sfx, dur: c.dur, seed: hashSeed(script.book + c.id), approval: c.approval })),
     cacheRoot);
   const cueReport = [];
   const shots = [];
@@ -181,6 +190,7 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
     durationSec: Math.round(total),
     lines: timeline.length,
     flaggedLines: flags,
+    beds: bedReport,
     cues: cueReport,
     music: musicReport,
     immersive: { file: immersive, ...(await measureLoudness(immersive)) },
