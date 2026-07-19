@@ -12,7 +12,11 @@ import { renderSfx as procgen } from './procgen.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..', '..');
 const QUERY_PY = path.join(here, 'clap-query.py');
-const INDEX = path.join(root, 'corpus', 'fsd50k', 'index');
+// prefer the merged index (FSD50K + house foley) when it exists
+const INDEX_ALL = path.join(root, 'corpus', 'index-all');
+const INDEX = existsSync(path.join(INDEX_ALL, 'embeddings.npy'))
+  ? INDEX_ALL
+  : path.join(root, 'corpus', 'fsd50k', 'index');
 const SIM_THRESHOLD = 0.25; // CLAP cosine; below this we do not trust the match
 
 // cues: [{ id, spec, dur, seed, approval? }]

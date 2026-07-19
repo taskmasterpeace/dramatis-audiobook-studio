@@ -6,7 +6,7 @@ import { ffmpeg, ffprobeDuration, measureLoudness, ensureDir, log } from './util
 import { alignLines } from './align.mjs';
 import { renderBeds } from '../engines/ambience/retrieve.mjs';
 import { resolveSfx } from '../engines/sfx/retrieve.mjs';
-import { renderTrack } from '../engines/music/suno.mjs';
+import { renderTrack } from '../engines/music/index.mjs';
 
 const GAP_LINE = 0.45;       // s between segments
 const GAP_SCENE = 2.2;       // s at scene boundaries

@@ -75,6 +75,39 @@ fix at the right layer: spec text (book.json) < swap/reject (approval) < filter
 - "The analyzer chose it, so keep it" / "sim is above threshold, so it's fine"
 - Fixing a wrong sound by deleting it WITHOUT asking which layer let it through
 
+## Music layer (measured 2026-07-19)
+
+- **Default engine: ElevenLabs Music** (`engines/music/elevenlabs.mjs`, POST
+  `/v1/music`, `music_length_ms`) — same subscription as voices, commercial use
+  per plan. Verified live: 30 s underscore generated first try.
+- **Suno/muapi is opt-in only** (`DRAMATIS_MUSIC=suno`) — it's a RELAY to Suno;
+  commercial rights unverifiable. Resolver: `engines/music/index.mjs`.
+- **Prompting law:** ALWAYS append "Instrumental only, no vocals, no singing" —
+  Eleven Music writes and sings LYRICS for a bare mood prompt, which violates
+  the cast-are-the-only-voices law. The engine appends it automatically; keep it.
+- Music cues are hand-authored per chapter (`music:[{spec,anchor,dur,gain_db}]`);
+  the analyzer does NOT draft them yet — a book renders silent-scored unless cued.
+
+## House Foley library (the growing asset)
+
+`corpus/house/` — ElevenLabs-GENERATED clips (POST `/v1/sound-generation`,
+`duration_seconds`, `prompt_influence≈0.55`), owned output, commercial-ok.
+Workflow: `generateSfx(text, {dur})` in `engines/sfx/generate.mjs` saves clip +
+caption → `node engines/sfx/house-index.mjs` re-embeds and merges with FSD50K
+into `corpus/index-all/` (2,409 clips) → retrieval searches everything.
+Seeded 2026-07-19 with the fight kit (2 punches, whoosh, body fall, slap) +
+footsteps on wood/gravel/concrete + doors. **Grow it**: whenever retrieval is
+weak for a common effect, generate → listen → keep; the library compounds.
+Fight scenes verified working (fight-proof book: 7 cues, 0 flags).
+
+## Transient confusion (measured — why the re-rank exists)
+
+CLAP confuses acoustically-similar transients at HIGH sim: "heavy door slam"
+top-1 was a GUNSHOT at 0.66; "fire crackling" hit BACON at 0.60. The resolver
+re-ranks within top-3 toward captions sharing a content word with the spec
+(fixed slam→gunshot). Bacon-class doubles (acoustically identical) still pass —
+that's what the ear + approval gate are for.
+
 ## After any listener-reported miss
 
 Fix it, then **record the incident in this file** (law + what it retrieved +

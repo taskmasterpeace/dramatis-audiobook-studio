@@ -121,6 +121,17 @@ unknown until first render — MEASURE IT and record here. Keys: `GEMINI_API_KEY
 (Google) or `REPLICATE_API_TOKEN` (check `D:/git/aiobr/.env`).
 **Robert's take**: best emotional model, dirt cheap, "very good for our actual actors."
 
+## The Casting Room (built 2026-07-19)
+
+Studio → Casting Room: the full talent roster, auditionable BEFORE any book —
+139 named voices (28 Kokoro + 30 Gemini + ~81 ElevenLabs account roster,
+"Dynamic Voice *" junk filtered) + unlimited Qwen3 designs. Every ▶ speaks the
+SAME standard line so voices compare fairly; first play generates, then cached.
+API: `GET /api/casting/roster`, `POST /api/casting/audition {engine, voice}`.
+Casting a role before production = Cast screen per-role engine override
+(book.casting), verified end-to-end (fight-proof: narrator locked to
+"Battlerap Algorithm", log shows `casting overrides: narrator`).
+
 ## The audition matrix (the standing test procedure)
 
 For a role: pick 1–2 signature lines → render each candidate (engine × voice/persona)

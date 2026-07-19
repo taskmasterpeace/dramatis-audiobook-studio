@@ -95,6 +95,7 @@ async function refresh() {
 async function go(view, bookId, tab) {
   S.view = view;
   if (view === 'shelf') await loadShelf();
+  if (view === 'casting' && !S.roster) { try { S.roster = await api('/api/casting/roster'); } catch (e) { toast(e.message, true); } }
   if (view === 'book') { await loadBook(bookId || S.bookId); S.tab = tab || 'board'; if (S.tab === 'script') await loadScript(S.chapterN); }
   render();
 }
@@ -105,6 +106,7 @@ function render() {
   const m = $('#main');
   if (S.view === 'shelf') m.innerHTML = viewShelf();
   else if (S.view === 'new') m.innerHTML = viewNew();
+  else if (S.view === 'casting') m.innerHTML = viewCasting();
   else if (S.view === 'book') m.innerHTML = viewBook();
   bind(m);
   paintJob();
@@ -115,6 +117,7 @@ function paintNav() {
     `<div class="nav-label">Library</div>`,
     navBtn('shelf', '▤ Bookshelf', S.view === 'shelf'),
     navBtn('new', '＋ New Book', S.view === 'new'),
+    navBtn('casting', '🎭 Casting Room', S.view === 'casting'),
   ];
   if (S.book) {
     items.push(`<div class="nav-label">${esc(S.book.book.title)}</div>`);
@@ -320,6 +323,27 @@ function cuePopover() {
   </div>`;
 }
 
+function viewCasting() {
+  if (!S.roster) return `<p class="crumb">Talent</p><h1>Casting Room</h1><div class="empty">loading roster…</div>`;
+  const ENGLABEL = { kokoro: 'Kokoro — local, free', gemini: 'Gemini 3.1 Flash TTS — directed, ~$0.001/line', elevenlabs: 'ElevenLabs — your account roster', qwen3: 'Qwen3 — designed voices' };
+  const total = ['kokoro', 'gemini', 'elevenlabs'].reduce((a, e) => a + (S.roster[e]?.length || 0), 0);
+  const sections = Object.entries(S.roster).map(([eng, voices]) => `
+    <p class="panel-h" style="margin-top:22px">${esc(ENGLABEL[eng] || eng)} · ${voices.length}</p>
+    <div style="display:flex;flex-wrap:wrap;gap:7px">
+      ${voices.map((v) => `
+        <div class="card" style="padding:8px 11px;display:flex;align-items:center;gap:8px" data-cast-voice="${esc(v.voice)}" data-cast-eng="${eng}">
+          <span style="font-size:12.5px;font-weight:600">${esc(v.voice)}</span>
+          <span style="font-size:10.5px;color:var(--dim)">${esc(v.note)}</span>
+          ${eng === 'qwen3' ? '' : `<button class="aud" data-cast-play title="hear this voice">▶</button>`}
+          <span data-cast-slot></span>
+        </div>`).join('')}
+    </div>`).join('');
+  return `
+    <p class="crumb">Talent</p><h1>Casting Room</h1>
+    <p class="sub">${total} named voices on the roster + unlimited Qwen3 designs. Every ▶ speaks the same line, so voices compare fairly. First play generates (cached forever after).</p>
+    ${sections}`;
+}
+
 function viewNew() {
   return `
     <p class="crumb">Library</p><h1>New Book</h1>
@@ -469,6 +493,17 @@ function bind(m) {
     cpop.querySelector('[data-cue-reset]')?.addEventListener('click', () => setApproval(null));
     cpop.querySelectorAll('[data-cue-swap]').forEach((b) => b.addEventListener('click', () => setApproval({ swap: b.dataset.cueSwap })));
   }
+
+  // casting room auditions
+  m.querySelectorAll('[data-cast-play]').forEach((btn) => btn.addEventListener('click', async () => {
+    const card = btn.closest('[data-cast-voice]');
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      const r = await api('/api/casting/audition', { method: 'POST', body: { engine: card.dataset.castEng, voice: card.dataset.castVoice } });
+      card.querySelector('[data-cast-slot]').innerHTML = `<audio controls autoplay src="${r.media}" style="width:150px"></audio>`;
+    } catch (e) { toast(`${card.dataset.castVoice}: ${e.message}`, true); }
+    btn.disabled = false; btn.textContent = '▶';
+  }));
 
   // new book
   $('#nb-create', m)?.addEventListener('click', async () => {

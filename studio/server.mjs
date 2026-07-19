@@ -363,6 +363,44 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, result);
     }
 
+    // ---- casting room: the full talent roster + audition any voice ----
+    if (req.method === 'GET' && p === '/api/casting/roster') {
+      const kokoro = ['af_alloy', 'af_aoede', 'af_bella', 'af_heart', 'af_jessica', 'af_kore', 'af_nicole', 'af_nova', 'af_river', 'af_sarah', 'af_sky', 'am_adam', 'am_echo', 'am_eric', 'am_fenrir', 'am_liam', 'am_michael', 'am_onyx', 'am_puck', 'am_santa', 'bf_alice', 'bf_emma', 'bf_isabella', 'bf_lily', 'bm_daniel', 'bm_fable', 'bm_george', 'bm_lewis'];
+      const gemini = [['Zephyr', 'F Bright'], ['Puck', 'M Upbeat'], ['Charon', 'M Informative'], ['Kore', 'F Firm'], ['Fenrir', 'M Excitable'], ['Leda', 'F Youthful'], ['Orus', 'M Firm'], ['Aoede', 'F Breezy'], ['Callirrhoe', 'F Easy-going'], ['Autonoe', 'F Bright'], ['Enceladus', 'M Breathy'], ['Iapetus', 'M Clear'], ['Umbriel', 'M Easy-going'], ['Algenib', 'M Gravelly'], ['Despina', 'F Smooth'], ['Erinome', 'F Clear'], ['Laomedeia', 'F Upbeat'], ['Achernar', 'F Soft'], ['Algieba', 'M Smooth'], ['Schedar', 'M Even'], ['Gacrux', 'F Mature'], ['Pulcherrima', 'F Forward'], ['Achird', 'M Friendly'], ['Zubenelgenubi', 'M Casual'], ['Vindemiatrix', 'F Gentle'], ['Sadachbia', 'M Lively'], ['Sadaltager', 'M Knowledgeable'], ['Sulafat', 'F Warm'], ['Alnilam', 'M Firm'], ['Rasalgethi', 'M Informative']];
+      let eleven = [];
+      try {
+        const r = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY || '' } });
+        if (r.ok) eleven = (await r.json()).voices
+          .map((v) => v.name.trim())
+          .filter((n) => !/^Dynamic Voice \d+$/.test(n))
+          .map((n) => n.split(/\s+-\s+/)[0].trim());
+        eleven = [...new Set(eleven)];
+      } catch { /* offline */ }
+      return json(res, 200, {
+        kokoro: kokoro.map((id) => ({ voice: id, note: (id[0] === 'a' ? 'US' : 'UK') + (id[1] === 'f' ? ' female' : ' male') })),
+        gemini: gemini.map(([voice, note]) => ({ voice, note })),
+        elevenlabs: eleven.map((voice) => ({ voice, note: 'account roster' })),
+        qwen3: [{ voice: '(design your own)', note: 'describe any voice in a sentence — see Cast screen' }],
+      });
+    }
+    if (req.method === 'POST' && p === '/api/casting/audition') {
+      const { engine, voice } = await readBody(req);
+      const LINE = 'The rain came early that evening, and the city held its breath — this is how the story begins.';
+      const maps = {
+        kokoro: { narrator: { voice, speed: 1.0 } },
+        gemini: { narrator: { voice, prompt: 'A natural, engaging storyteller reading the opening line of an audiobook.' } },
+        elevenlabs: { narrator: { candidates: [voice], stability: 0.5, style: 0.25 } },
+      };
+      if (!maps[engine]) return json(res, 422, { error: 'engine must be kokoro | gemini | elevenlabs' });
+      const engines = { kokoro: '../engines/tts/kokoro.mjs', gemini: '../engines/tts/gemini.mjs', elevenlabs: '../engines/tts/elevenlabs.mjs' };
+      const { renderLines } = await import(engines[engine]);
+      const line = { id: `cast_${engine}_${voice.replace(/\W+/g, '_')}`, kind: 'narration', entity: 'narrator', text: LINE };
+      const t0 = Date.now();
+      const wavs = await renderLines([line], maps[engine], OUT);
+      const rel = path.relative(OUT, wavs[line.id]).split(path.sep).join('/');
+      return json(res, 200, { media: `/media/${rel}`, engine, voice, ms: Date.now() - t0 });
+    }
+
     // ---- cue preview: current clip + top-3 library alternatives for swap ----
     if (req.method === 'POST' && p === '/api/cue-preview') {
       const { book: bookId, cueId } = await readBody(req);
