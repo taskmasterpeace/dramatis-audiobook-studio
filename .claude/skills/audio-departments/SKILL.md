@@ -71,6 +71,39 @@ Replicate token in aiobr/.env; ElevenLabs in yourehired/.env).
   lighthouse-style scene for capability calibration; record measured results
   here; then decide whether `engines/setpiece/seedaudio.mjs` earns a slot.
 
+## The full options catalog (approved providers only — surveyed 2026-07-19)
+
+**✓ = tested in this pipeline. ○ = available, untested — audition before trusting.**
+
+**VOICE** — ✓ Kokoro-82M local · ✓ Qwen3-TTS local · ✓ ElevenLabs (surviving
+models measured 2026-07-19: `eleven_v3`, `eleven_multilingual_v2`,
+`eleven_turbo_v2`, `eleven_turbo_v2_5`, `eleven_flash_v2`, `eleven_flash_v2_5`;
+**`eleven_monolingual_v1` is DEAD — API-deprecated**, Robert's favorite; nearest
+survivors auditioned on Battlerap Algorithm: NEWS-algorithm-{multilingual-v2,
+turbo-v2,v3}.mp3) · ✓ Gemini 3.1 Flash TTS (Replicate) · ○ fal: seed-speech
+(ByteDance TTS), MiniMax speech-02, PlayAI, Chatterbox hosted · ○ Replicate:
+XTTS-v2, Bark, Tortoise (legacy tier).
+Per-voice `model:` override now supported in the 11L voice map (v1-style knobs:
+stability+similarity only; [tags] are v3-only).
+
+**FOLEY** — ✓ CLAP retrieval (FSD50K 2,399 + house) · ✓ ElevenLabs
+sound-generation (house library seeder) · ✓ procgen · ○ fal: stable-audio-open,
+MMAudio (video-to-audio!) · ○ Replicate: AudioGen. Corpus expansion path:
+FSD50K dev set (~19 GB, free) + Sonniss GDC packs.
+
+**ATMOS** — ✓ CLAP retrieval beds · ✓ procgen recipes · ○ any FOLEY generator
+for long beds (11L sound-gen caps ~22 s/call — loop or use retrieval).
+
+**SCORE** — ✓ ElevenLabs Music (default) · △ Suno via muapi (works, license
+unverified — opt-in) · ○ fal: stable-audio-2.5, MiniMax music, CassetteAI,
+ACE-Step (Apache-2.0, also runs LOCAL on the 4090) · ○ Replicate: MusicGen.
+
+**SET-PIECE** — ✓ Seed Audio 1.0 on fal (probed: car-crash interlock $0.06,
+lighthouse scene $0.17) · ○ same model on Replicate if listed later.
+
+Standing rule: a ○ becomes ✓ only through an audition documented in a skill
+with date + price; nothing untested ships in a book.
+
 ## Routing procedure for any new sound need
 
 1. Is it a human utterance? → VOICE (cast it; never Foley, never Set-Piece in a book).

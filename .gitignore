@@ -5,3 +5,4 @@ models/
 corpus/
 .venv/
 __pycache__/
+.env

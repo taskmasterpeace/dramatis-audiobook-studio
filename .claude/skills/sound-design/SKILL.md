@@ -49,6 +49,12 @@ to a known type — scaffold sanitizes, but hand-edits must respect the list.
 ≥500 ms apart, clamped to the line span. If a sound feels late/early, fix the
 anchor text, never the offset first.
 
+**6. Hot transients start at −6 to −8 dB, never −3.** (Robert's ear, 2026-07-19:
+the sfx-proof gunshot at −3 dB was "a little too loud" over narration; refixed
+to −7.) Defaults: gunshot/explosion/crash −7, door slam/punch −4 to −6,
+ambience-adjacent one-shots (distant dog, clock) −10 to −16. The listener's
+ear outranks the table — adjust per cue in book.json and remix (seconds, cached).
+
 ## Cue triage procedure (run on every new book)
 
 For each cue in book.json (or qa-report after a draft render):

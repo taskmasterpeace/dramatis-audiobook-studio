@@ -68,8 +68,11 @@ async function synthOne(job, key) {
       headers: { 'xi-api-key': key, 'content-type': 'application/json' },
       body: JSON.stringify({
         text: job.text,
-        model_id: MODEL,
-        voice_settings: { stability: job.stability, similarity_boost: 0.75, style: job.style },
+        model_id: job.model || MODEL,
+        // style is a v2+ knob; v1 accepts only stability + similarity_boost
+        voice_settings: job.isV3 === false && !/v2/.test(job.model || '')
+          ? { stability: job.stability, similarity_boost: 0.75 }
+          : { stability: job.stability, similarity_boost: 0.75, style: job.style },
       }),
     });
     if (res.status === 429 || res.status >= 500) {
@@ -93,18 +96,23 @@ export async function renderLines(lines, voices, cacheRoot) {
   for (const line of lines) {
     const v = voices[line.entity] || voices.narrator;
     const { id: voiceId, name } = await resolveVoice(v.candidates);
-    const tag = audioTag(line.emotion);
+    // per-voice model override (e.g. Robert's narrator preference is
+    // eleven_monolingual_v1 — "v1 English"); v3 stays the default for tags
+    const model = v.model || MODEL;
+    const isV3 = /_v3|^eleven_v3/.test(model);
+    const tag = isV3 ? audioTag(line.emotion) : ''; // [tags] are a v3 feature
     if (tag) tagged++;
     const text = tag + speakable(line.text);
-    const stability = snapStability(v.stability ?? 0.5);
+    const stability = isV3 ? snapStability(v.stability ?? 0.5) : (v.stability ?? 0.5);
     const style = v.style ?? 0.3;
-    const key = contentKey([ENGINE, name, MODEL, String(stability), String(style), text]);
+    const key = contentKey([ENGINE, name, model, String(stability), String(style), text]);
     const { path: out, hit } = cached(cacheRoot, key);
     results[line.id] = out;
-    if (!hit) jobs.push({ text, voiceId, stability, style, out });
+    if (!hit) jobs.push({ text, voiceId, stability, style, out, model, isV3 });
   }
   const chars = jobs.reduce((a, j) => a + j.text.length, 0);
-  log('render:tts', `elevenlabs(${MODEL}): ${lines.length} lines, ${lines.length - jobs.length} cache hits, ` +
+  const modelsUsed = [...new Set(jobs.map((j) => j.model))].join('+') || MODEL;
+  log('render:tts', `elevenlabs(${modelsUsed}): ${lines.length} lines, ${lines.length - jobs.length} cache hits, ` +
     `${jobs.length} to synthesize (~${chars} chars of credit), ${tagged} emotion-tagged`);
   const key = apiKey();
   let i = 0, done = 0;

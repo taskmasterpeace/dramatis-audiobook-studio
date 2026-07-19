@@ -22,8 +22,11 @@ const PORT = (() => { const i = process.argv.indexOf('--port'); return i > 0 ? +
 // ── keys: load from the known env files at boot (never printed) ─────────────
 function loadKeys() {
   const sources = [
+    // repo-local .env wins (gitignored) — drop DRAMATIS keys here, e.g. FAL_KEY
+    [path.join(root, '.env'), ['ELEVENLABS_API_KEY', 'OPENROUTER_API_KEY', 'FAL_KEY', 'REPLICATE_API_TOKEN', 'GEMINI_API_KEY', 'MUAPI_API_KEY', 'DP_API_KEY']],
     ['D:/git/yourehired/.env', ['ELEVENLABS_API_KEY', 'OPENROUTER_API_KEY']],
     ['D:/git/aiobr/.env', ['MUAPI_API_KEY', 'DP_API_KEY', 'REPLICATE_API_TOKEN', 'GEMINI_API_KEY']],
+    ['D:/git/directors-palette-v2/.env.local', ['FAL_KEY']],
   ];
   for (const [file, names] of sources) {
     if (!existsSync(file)) continue;
