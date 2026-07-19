@@ -83,6 +83,25 @@ models, or venv. **First full run 2026-07-19: 8/8 PASS in 244 s** (females
 before delivering to a human, always — the human ear is the last gate, never
 the first.
 
+## ROUTING LAW — match the tier to the job (the obstacle Robert named 2026-07-19)
+
+Every quality failure this project has hit was the CHEAP tier asked to do a HARD
+job. The fix is never "gate harder" — it's route right.
+
+- **Qwen3 VoiceDesign is weak on fine attributes.** It nails "a distinct voice,
+  free, at scale" and (post-gate) gender. It does NOT reliably deliver AGE
+  ("elderly NOLA woman" came back sounding young-as-hell at 203 Hz), specific
+  regional accent texture, or a signature character timbre. Use it for
+  background/minor cast, not hero voices with specific age/accent.
+- **Hero voices with age/accent/character → premium tier.** ElevenLabs first
+  (real aged timbre lives on the roster: "[ElevenVoices] African Female Old",
+  "Madison - wise old lady", "Sarah/Bill - Mature"), then Gemini (mature voices
+  like Gacrux + heavy director's note), then Seed Audio (age+accent+emotion in
+  one shot). Measured: 11L elder = 180 Hz aged female; Gemini mature = 152 Hz.
+- **The local tier is the FLOOR, not the goal.** Free + unlimited + decent.
+  Premium is the ceiling, spent where it matters. DRAMATIS's value is the
+  ROUTING + approval, not "everything free."
+
 ## Qwen3-TTS — write the voice as a sentence
 
 Voice map shape: `{ "design": "<persona sentence>" }` or `{ "speaker": "Ryan" }` (preset).
