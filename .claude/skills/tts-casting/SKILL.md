@@ -5,6 +5,9 @@ description: Use when casting voices, choosing TTS engines, writing voice person
 
 # TTS Casting — every engine, every voice, when to use which
 
+**REQUIRED SIBLING:** the `sound-design` skill governs SFX cues and ambience —
+including the law that the cast are the ONLY voices in the mix (no vocal SFX cues).
+
 The product rule this skill enforces: **nothing is cast by default — candidates are
 auditioned in isolation and a human picks.** Robert's words: "I'm more concerned about
 having a selection that's been tested" than locking into one engine.

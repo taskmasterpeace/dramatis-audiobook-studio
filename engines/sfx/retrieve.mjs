@@ -59,7 +59,7 @@ export async function resolveSfx(cues, cacheRoot) {
   // Never place a clip that is actually human speech/vocals under a non-vocal
   // cue — the cast are the only voices in the mix. (A spec that explicitly asks
   // for vocals bypasses the guard.)
-  const VOCAL_CAP = /\b(scream|yell|shout|speech|talk(?:ing)?|voice|whisper|says|sing|choir|vocal|lecture|class(?:room)?|crowd of people speaking)\b/i;
+  const VOCAL_CAP = /\b(scream|yell|shout|speech|talk(?:ing)?|voice|whisper|says|sing|choir|vocal|lecture|class(?:room)?|gasp|laugh|cries|crying|moan|groan|sob|chant|wail|crowd of people speaking)\b/i;
   const VOCAL_SPEC = /\b(voice|yell|shout|scream|speech|talking|whisper|murmur|sing|chant|laugh)\b/i;
   for (const m of misses) {
     const cands = hits[m.id] || [];
