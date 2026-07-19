@@ -61,10 +61,17 @@ export async function resolveSfx(cues, cacheRoot) {
   // for vocals bypasses the guard.)
   const VOCAL_CAP = /\b(scream|yell|shout|speech|talk(?:ing)?|voice|whisper|says|sing|choir|vocal|lecture|class(?:room)?|gasp|laugh|cries|crying|moan|groan|sob|chant|wail|crowd of people speaking)\b/i;
   const VOCAL_SPEC = /\b(voice|yell|shout|scream|speech|talking|whisper|murmur|sing|chant|laugh)\b/i;
+  // noun-overlap re-rank: CLAP confuses acoustically-similar transients (measured:
+  // "heavy door slam" top-1 was a GUNSHOT at 0.66). Among guard-passing candidates,
+  // prefer one whose caption shares a content word with the spec.
+  const STOP = new Set(['the', 'and', 'into', 'with', 'from', 'slowly', 'shut', 'open', 'heavy', 'distant', 'old', 'loud', 'soft']);
+  const words = (s) => (s || '').toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 3 && !STOP.has(w));
   for (const m of misses) {
-    const cands = hits[m.id] || [];
-    const top = cands.find((c) => VOCAL_SPEC.test(m.spec) || !VOCAL_CAP.test(c.caption || '')) || null;
-    if (top && cands[0] && top !== cands[0]) log('sfx', `"${m.spec}": skipped vocal clip "${(cands[0].caption || '').slice(0, 50)}" -> next-best`);
+    const all = hits[m.id] || [];
+    const cands = all.filter((c) => VOCAL_SPEC.test(m.spec) || !VOCAL_CAP.test(c.caption || ''));
+    const sw = words(m.spec);
+    const top = cands.find((c) => c.score >= SIM_THRESHOLD && words(c.caption).some((w) => sw.includes(w))) || cands[0] || null;
+    if (top && all[0] && top !== all[0]) log('sfx', `"${m.spec}": re-ranked past "${(all[0].caption || '').slice(0, 44)}" -> "${(top.caption || '').slice(0, 44)}"`);
     if (top && top.score >= SIM_THRESHOLD) {
       await ffmpeg(['-i', top.file, '-ar', '48000', '-ac', '1', '-t', String(m.dur || 15), m.out]);
       resolved[m.id] = { file: m.out, source: 'retrieval', score: +top.score.toFixed(3), caption: top.caption.slice(0, 80) };
