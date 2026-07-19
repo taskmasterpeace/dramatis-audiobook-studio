@@ -183,8 +183,19 @@ a book ≈ 300–500 pts. `nano-banana-2` (10 pts) reserved for hero frames.
 the first motion panels shipped "illustration" style with no one choosing it.) Each
 book carries a **style bible**: a named style phrase + an **approved anchor image**,
 picked by auditioning the same test frame in 3–5 candidate styles (the standard
-preview-approve motion). Every shot generation then passes the anchor as a reference
-image alongside scene-first prompting.
+preview-approve motion).
+
+**The anchor formula (measured 2026-07-18, two-scene consistency test):** every shot
+passes BOTH the anchor (`reference_image` + `reference_category: "styles"`) AND the
+restated style phrase in the prompt — the anchor alone is not enough. Test result:
+two different scenes against the ink-wash anchor came out mutually consistent (same
+paper, same linework — a real series look) but drifted from monochrome into tinted
+watercolor. Countermeasures: restate the phrase's hard constraints in every prompt
+("stark monochrome ink, no color"), tune `reference_strength`, and re-anchor on the
+first APPROVED production frame. DP also supports `style_reference` on character-sheet
+generation (sheets are made inside the book's look) and `reference_tag` to register
+the anchor as e.g. `@paw-style`; style LoRAs on flux-2-klein-9b are the heavy-duty
+fallback for a locked series look.
 
 **Prompt grammar (Robert's fix, measured 1/4 → 4/4 scene accuracy):** never deliver
 style as a detached block (`<scene>. STYLE: <phrase>.` let the style clause replace
