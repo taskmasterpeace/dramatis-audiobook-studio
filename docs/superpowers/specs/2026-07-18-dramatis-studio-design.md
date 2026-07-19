@@ -166,30 +166,42 @@ Manuscript editing, waveform editing, render queueing, auth/multi-user, MCP serv
 (separate spec §12 track), mobile layout, light theme. Video is design-in-scope
 (§13) but build-later.
 
-## 13. Video track — designed now, built after the audio phases
+## 13. Image track — stills on a 15–20 s grid (video generation explicitly deferred)
 
-Audio is phase one; video is the same Production Script rendered a second way. The
-data model already carries it: `entities[].visual` (character briefs), `scenes[].visual`
-(scene briefs), and `timing.json` word timestamps (the sync rails).
+Robert's direction (2026-07-18 late): **no video generation yet.** The visual tier is
+an image every 15–20 seconds of audio — an illustrated slideshow locked to the
+audiobook. Verified tonight: the grid derives from `timing.json`, snapping shot
+boundaries to line starts and scene boundaries (never mid-word) — Monkey's Paw
+Part III (8 min) → 22 shots, each carrying timecode, scene, cast present, and the
+manuscript text it must depict.
 
-**Two tiers, one skeleton:**
-- **Tier 1 — Motion comic (near-done in `src/motion.mjs`):** DP character sheets +
-  one panel per scene + word-timed scene spans + Ken Burns moves → chapter MP4.
-- **Tier 2 — Generated video:** each shot is one **guided ~5–15 s clip**
-  (Seedance/Wan via Directors Palette Shot Animator). Operating principle: you guide,
-  you don't control — actions land, timing wanders, so clips are re-timed in post
-  against our word timestamps. One scene ≈ a shot list; one shot ≈ one guide prompt.
+**Models (verified live on DP, 2026-07-18):** `nano-banana-2-lite` (5 pts, ~6 s,
+14 reference images) and `gpt-image-2` (2 pts, ~25 s) — a full chapter ≈ 110 pts,
+a book ≈ 300–500 pts. `nano-banana-2` (10 pts) reserved for hero frames.
 
-**Studio surface (phase P6 — Storyboard screen):** per scene, shot cards flowing the
-standard motion: brief → generate still (approve/regenerate) → animate to clip
-(approve/retake) → placed on the audio timeline. Same preview-approve loop as voices
-and SFX; per-shot cost shown before generation (DP points).
+**Style is a mandatory, user-chosen decision — never a silent default.** (Lesson:
+the first motion panels shipped "illustration" style with no one choosing it.) Each
+book carries a **style bible**: a named style phrase + an **approved anchor image**,
+picked by auditioning the same test frame in 3–5 candidate styles (the standard
+preview-approve motion). Every shot generation then passes the anchor as a reference
+image alongside scene-first prompting.
 
-**Paste-time implication (why this is in the spec now):** the analyzer gains a fifth
-ledgered purpose, `visual-beats` — drafting per-scene shot suggestions alongside
-sfx-cues at intake, so a pasted manuscript arrives storyboard-ready. Schema addition
-only; no build until P6. Candidate external tool from Robert for this slot: to be
-evaluated when named — DP Shot Animator (Seedance/Wan) is the working default.
+**Why the anchor image is load-bearing (measured tonight):** with style delivered as
+a text suffix on nano-banana-2-lite, 3 of 4 audition frames kept the style but
+**replaced the scene content** (the engraving invented a jungle temple; the oil
+painted a framed portrait). Style-as-reference-image + scene-first prompt is the
+countermeasure; character sheets ride along as additional references for cast
+continuity (the model accepts 14).
+
+**Studio surface (phase P6 — Storyboard screen):** the shot grid as cards: timecode,
+basis text, generated frame → approve / regenerate / re-prompt; chapter assembly =
+stills on the audio timeline (the existing Ken Burns assembler in `src/motion.mjs`,
+already written, fixed filter pending re-run). Per-shot and per-chapter pts cost
+shown before generation.
+
+**Paste-time implication:** the analyzer gains a fifth ledgered purpose,
+`visual-beats` — drafting the shot grid's content descriptions at intake so a pasted
+manuscript arrives storyboard-ready. Schema addition only; no build until P6.
 
 **SFX depth (folded from tonight's finding):** retrieval is verified but the corpus
 (2,399 CC0 clips) is thin — a "door slam" query top-matched a towel thump at 0.67.
