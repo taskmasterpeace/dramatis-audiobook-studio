@@ -78,7 +78,8 @@ first quality check. Three failures, three fixes, all in `qwen3-batch.py`:
 accented designs, one batch, every output independently pitch-verified over
 the engine's own gate; exit 1 on any mismatch; report at
 `out/voice-regiment-report.json`. Run it after ANY change to the qwen3 engine,
-models, or venv. Auditions of designed voices: check `pitch-check.py` output
+models, or venv. **First full run 2026-07-19: 8/8 PASS in 244 s** (females
+185–311 Hz, males 87–136 Hz — incl. a fresh NOLA-elder design at 214 Hz). Auditions of designed voices: check `pitch-check.py` output
 before delivering to a human, always — the human ear is the last gate, never
 the first.
 
