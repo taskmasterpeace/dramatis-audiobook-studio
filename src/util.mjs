@@ -62,3 +62,17 @@ export async function measureLoudness(file) {
 export function log(stage, msg) {
   console.log(`[${stage}] ${msg}`);
 }
+
+// Canonical text normalization for synthesis. Every TTS engine MUST use this
+// one — four private copies had already drifted (ElevenLabs was missing the
+// ellipsis rule, so the same line produced different audio and a different
+// cache key there). The forced aligner must be handed this same normalized
+// text: it used to receive the RAW line while the audio was synthesized from
+// the normalized one, so it aligned against words that were never spoken.
+export function speakable(text) {
+  return text
+    .replace(/\s*—\s*/g, ', ')
+    .replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
+    .replace(/…/g, '...')
+    .replace(/\s+,/g, ',').replace(/,{2,}/g, ',');
+}

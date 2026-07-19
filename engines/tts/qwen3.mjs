@@ -6,7 +6,7 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { contentKey, cached, pexecFile, pythonExe, log } from '../../src/util.mjs';
+import { contentKey, cached, pexecFile, pythonExe, log, speakable } from '../../src/util.mjs';
 
 const ENGINE = 'qwen3-tts@1';
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -20,14 +20,6 @@ function instruct(emotion) {
   const [k, v] = Object.entries(emotion).sort((a, b) => b[1] - a[1])[0];
   if (v < 0.4) return '';
   return `Speak with a ${v >= 0.75 ? 'very ' : ''}${EMOTION_ADJ[k] || k} tone.`;
-}
-
-function speakable(text) {
-  return text
-    .replace(/\s*—\s*/g, ', ')
-    .replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
-    .replace(/…/g, '...')
-    .replace(/\s+,/g, ',').replace(/,{2,}/g, ',');
 }
 
 export async function renderLines(lines, voices, cacheRoot) {

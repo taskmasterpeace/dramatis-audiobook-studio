@@ -12,6 +12,7 @@ import {
   createReadStream, mkdirSync, unlinkSync,
 } from 'node:fs';
 import { compile, listChapters } from '../src/compile.mjs';
+import { ENGINE_IDS, FREE_ENGINE_IDS, loadRenderer, availableEngines } from '../engines/tts/registry.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const APP = path.join(root, 'studio', 'app');
@@ -191,8 +192,7 @@ const jobPublic = () => job && {
 async function audition({ book: bookId, entity, engine, lineText }) {
   const book = loadBook(bookId);
   if (!book) throw new Error('unknown book');
-  const engines = { kokoro: '../engines/tts/kokoro.mjs', qwen3: '../engines/tts/qwen3.mjs', elevenlabs: '../engines/tts/elevenlabs.mjs', gemini: '../engines/tts/gemini.mjs' };
-  if (!engines[engine]) throw new Error('unknown engine: ' + engine);
+  if (!ENGINE_IDS.includes(engine)) throw new Error(`unknown engine: ${engine} (known: ${ENGINE_IDS.join(', ')})`);
   let voices = book.voices[engine];
   if (!voices) throw new Error(`book has no ${engine} voice map`);
   // pick the entity's longest dialogue line from any compiled chapter (or caller-supplied text)
@@ -210,7 +210,7 @@ async function audition({ book: bookId, entity, engine, lineText }) {
     }
     text = best || 'The quick brown fox jumps over the lazy dog, and the evening settles quietly over the town.';
   }
-  const { renderLines } = await import(engines[engine]);
+  const renderLines = await loadRenderer(engine);
   const line = { id: `aud_${entity}_${engine}`, kind: entity === 'narrator' ? 'narration' : 'dialogue', entity, text };
   const t0 = Date.now();
   const wavs = await renderLines([line], voices, OUT);
@@ -317,7 +317,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, {
         book: b, chapters: chapterStatus(b), preflight: preflight(b), spend: spendRollup(b.id),
         bound, suggestions, validation: validateBook(b),
-        keys: { elevenlabs: !!process.env.ELEVENLABS_API_KEY, gemini: !!process.env.REPLICATE_API_TOKEN, fal: !!process.env.FAL_KEY },
+        keys: { ...availableEngines(), fal: !!process.env.FAL_KEY },
       });
     }
 
@@ -419,9 +419,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && p === '/api/say') {
       const { text, engine = 'kokoro', voice = 'bm_george', design } = await readBody(req);
       if (!text || !text.trim()) return json(res, 422, { error: 'text required' });
-      const engines = { kokoro: '../engines/tts/kokoro.mjs', qwen3: '../engines/tts/qwen3.mjs' };
-      if (!engines[engine]) return json(res, 422, { error: 'engine must be kokoro or qwen3 (the free ones)' });
-      const { renderLines } = await import(engines[engine]);
+      if (!FREE_ENGINE_IDS.includes(engine)) return json(res, 422, { error: `engine must be one of: ${FREE_ENGINE_IDS.join(', ')} (the free ones)` });
+      const renderLines = await loadRenderer(engine);
       const voices = engine === 'qwen3'
         ? { narrator: { design: design || 'Clear natural narrator voice.' } }
         : { narrator: { voice, speed: 1 } };
@@ -543,8 +542,7 @@ const server = http.createServer(async (req, res) => {
         elevenlabs: { narrator: { candidates: [voice], stability: 0.5, style: 0.25 } },
       };
       if (!maps[engine]) return json(res, 422, { error: 'engine must be kokoro | gemini | elevenlabs' });
-      const engines = { kokoro: '../engines/tts/kokoro.mjs', gemini: '../engines/tts/gemini.mjs', elevenlabs: '../engines/tts/elevenlabs.mjs' };
-      const { renderLines } = await import(engines[engine]);
+      const renderLines = await loadRenderer(engine);
       const line = { id: `cast_${engine}_${voice.replace(/\W+/g, '_')}`, kind: 'narration', entity: 'narrator', text: LINE };
       const t0 = Date.now();
       const wavs = await renderLines([line], maps[engine], OUT);

@@ -3,18 +3,10 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { contentKey, cached, pexecFile, pythonExe, log } from '../../src/util.mjs';
+import { contentKey, cached, pexecFile, pythonExe, log, speakable } from '../../src/util.mjs';
 
 const ENGINE = 'kokoro-onnx@1';
 const here = path.dirname(fileURLToPath(import.meta.url));
-
-function speakable(text) {
-  return text
-    .replace(/\s*—\s*/g, ', ')
-    .replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
-    .replace(/…/g, '...')
-    .replace(/\s+,/g, ',').replace(/,{2,}/g, ',');
-}
 
 export async function renderLines(lines, voices, cacheRoot) {
   const jobs = [];

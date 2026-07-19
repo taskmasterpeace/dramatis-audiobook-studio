@@ -3,7 +3,7 @@
 // fallback candidates, so the book config ports across accounts.
 // Requires ELEVENLABS_API_KEY in the environment.
 import { writeFileSync, unlinkSync } from 'node:fs';
-import { contentKey, cached, ffmpeg, log } from '../../src/util.mjs';
+import { contentKey, cached, ffmpeg, log, speakable } from '../../src/util.mjs';
 
 const ENGINE = 'elevenlabs@1';
 const API = 'https://api.elevenlabs.io/v1';
@@ -31,13 +31,6 @@ function apiKey() {
   const key = process.env.ELEVENLABS_API_KEY;
   if (!key) throw new Error('ELEVENLABS_API_KEY not set');
   return key;
-}
-
-function speakable(text) {
-  return text
-    .replace(/\s*—\s*/g, ', ')
-    .replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
-    .replace(/\s+,/g, ',').replace(/,{2,}/g, ',');
 }
 
 let voiceIndex = null;

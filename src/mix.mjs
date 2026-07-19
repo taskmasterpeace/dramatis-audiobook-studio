@@ -2,7 +2,7 @@
 // sidechain-ducked 4-stem mix -> Immersive + Clean masters.
 import { writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { ffmpeg, ffprobeDuration, measureLoudness, ensureDir, log } from './util.mjs';
+import { ffmpeg, ffprobeDuration, measureLoudness, ensureDir, log, speakable } from './util.mjs';
 import { alignLines } from './align.mjs';
 import { renderBeds } from '../engines/ambience/retrieve.mjs';
 import { resolveSfx } from '../engines/sfx/retrieve.mjs';
@@ -111,8 +111,11 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
 
   // 3) sfx stem: retrieval-first sounds, placed at aligned word onsets
   const normById = Object.fromEntries(timeline.map((l) => [l.id, l.norm]));
+  // hand the aligner the SAME normalized text the audio was synthesized from —
+  // it used to get the raw line, so em-dashes/ellipses made it align against
+  // words that were never spoken, quietly degrading every cue's word onset
   const alignment = script.cues.length
-    ? await alignLines(timeline.map((l) => ({ id: l.id, text: l.text })), normById, cacheRoot)
+    ? await alignLines(timeline.map((l) => ({ id: l.id, text: speakable(l.text) })), normById, cacheRoot)
     : {};
   const resolved = await resolveSfx(
     script.cues.map((c) => ({ id: c.id, spec: c.sfx, dur: c.dur, seed: hashSeed(script.book + c.id), approval: c.approval })),
