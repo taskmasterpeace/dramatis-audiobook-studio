@@ -72,7 +72,12 @@ export async function resolveSfx(cues, cacheRoot) {
   const words = (s) => (s || '').toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 3 && !STOP.has(w));
   for (const m of misses) {
     const all = hits[m.id] || [];
-    const cands = all.filter((c) => VOCAL_SPEC.test(m.spec) || !VOCAL_CAP.test(c.caption || ''));
+    // curated house foley outranks wild recordings at comparable similarity
+    // (Robert's ear 2026-07-19: a "barefoot on cement" wild clip beat our clean
+    // generated footsteps on raw score — curation is a signal, use it)
+    const boosted = all.map((c) => ({ ...c, rank: c.score + (/[\\/]house[\\/]/.test(c.file || '') ? 0.08 : 0) }))
+      .sort((a, b) => b.rank - a.rank);
+    const cands = boosted.filter((c) => VOCAL_SPEC.test(m.spec) || !VOCAL_CAP.test(c.caption || ''));
     const sw = words(m.spec);
     const top = cands.find((c) => c.score >= SIM_THRESHOLD && words(c.caption).some((w) => sw.includes(w))) || cands[0] || null;
     if (top && all[0] && top !== all[0]) log('sfx', `"${m.spec}": re-ranked past "${(all[0].caption || '').slice(0, 44)}" -> "${(top.caption || '').slice(0, 44)}"`);

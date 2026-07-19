@@ -57,6 +57,13 @@ export async function renderBeds(sceneSpecs, cacheRoot) {
   const picks = existsSync(INDEX_DIR) ? await clapLookup(types, cacheRoot) : {};
   const out = [];
   for (const s of sceneSpecs) {
+    // scene-level override: ambience {"source":"procgen"} forces the seeded
+    // synth bed — the escape hatch when a retrieved recording carries the wrong
+    // content (a "city-night" clip that reads as a helicopter, 2026-07-19)
+    if (s.spec.source === 'procgen') {
+      out.push({ file: await procgenBed(s.spec, s.dur, s.seed, cacheRoot), source: 'procgen-forced' });
+      continue;
+    }
     const pick = picks[s.spec.type];
     if (pick && pick.file && existsSync(pick.file)) {
       out.push(await loopClip(pick, s.spec, s.dur, cacheRoot, s.id));

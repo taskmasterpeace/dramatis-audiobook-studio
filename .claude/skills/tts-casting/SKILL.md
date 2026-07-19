@@ -146,6 +146,19 @@ unknown until first render — MEASURE IT and record here. Keys: `GEMINI_API_KEY
 (Google) or `REPLICATE_API_TOKEN` (check `D:/git/aiobr/.env`).
 **Robert's take**: best emotional model, dirt cheap, "very good for our actual actors."
 
+## Robert's ear rulings (2026-07-19 listening session — these are canon)
+
+- **Narrator = "Battlerap Algorithm" on `eleven_v3` (#1), `eleven_turbo_v2` (#2).**
+  Ranked blind across the surviving models on identical news copy. (He expected
+  to prefer the retired v1; among survivors v3 won outright.)
+- Seed Audio set-pieces (car-crash interlock + lighthouse scene): "amazing" —
+  SET-PIECE dept is ear-confirmed, not just probed.
+- FSD50K door knock (119833): "really good" — retrieval quality confirmed.
+- Fight-proof v1 REJECTED: wild-recording footsteps read as "barefoot on
+  cement", the city-night bed read as "a helicopter", timing off. Fixes now in
+  code: house-foley rank bonus (+0.08) in the SFX resolver; per-scene
+  `ambience.source: "procgen"` override; cue-level swaps to house clips.
+
 ## The Casting Room (built 2026-07-19)
 
 Studio → Casting Room: the full talent roster, auditionable BEFORE any book —
