@@ -127,6 +127,11 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
       continue;
     }
     const line = timeline.find((l) => l.id === cue.at_line);
+    if (!line) { // anchored to a line that never made it into the mix
+      cueReport.push({ id: cue.id, spec: cue.sfx, skipped: `anchor line ${cue.at_line} not in timeline` });
+      log('mix', `cue ${cue.id} skipped: anchor line not in the rendered timeline`);
+      continue;
+    }
     const p = placeCue(cue, line, alignment[line.id] || [], lastCueAt, r);
     lastCueAt = p.at;
     shots.push({ file: r.file, delayMs: Math.round(p.at * 1000), gainDb: cue.gain_db ?? 0 });

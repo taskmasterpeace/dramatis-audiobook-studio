@@ -83,7 +83,9 @@ function chapterStatus(book) {
       minutes: qa ? +(qa.durationSec / 60).toFixed(1) : null,
       lufs: qa?.immersive?.integratedLufs ?? null,
       flags: qa ? qa.flaggedLines.length : null,
+      flagged: qa?.flaggedLines?.slice(0, 25) || [],   // the detail was read and thrown away
       beds: qa?.beds || [],
+      cues: qa?.cues || [],
       cueCount: qa?.cues?.length ?? null,
       media: existsSync(master) ? `/media/${book.id}/ch-${String(i + 1).padStart(2, '0')}/immersive.m4a` : null,
     };
@@ -145,19 +147,34 @@ function startRender({ book, chapter, tts }) {
     id: `r${Date.now().toString(36)}`, book, chapter: chapter || null, tts: tts || 'hybrid',
     status: 'running', startedAt: Date.now(), log: [], child,
   };
+  // buffer partial chunks: a data event can split mid-line and used to garble
+  // the console (and any [n/total] progress marker we parse out of it)
+  let carry = '';
   const onLine = (buf) => {
-    for (const line of buf.toString().split('\n')) {
+    const parts = (carry + buf.toString()).split('\n');
+    carry = parts.pop() ?? '';
+    for (const line of parts) {
       if (!line.trim()) continue;
       job.log.push(line);
       if (job.log.length > 500) job.log.shift();
+      const m = /(\d+)\s*\/\s*(\d+)/.exec(line);            // "synth 24/59" -> real progress
+      if (m && /synth|lines|chunks/i.test(line)) job.progress = { done: +m[1], total: +m[2] };
       sseSend('log', { line });
     }
   };
   child.stdout.on('data', onLine);
   child.stderr.on('data', onLine);
-  child.on('exit', (code) => {
-    job.status = code === 0 ? 'done' : 'failed';
+  // without this handler a spawn failure is an uncaught exception that kills the server
+  child.on('error', (err) => {
+    job.status = 'failed';
+    job.error = String(err.message).slice(0, 300);
+    job.log.push(`[studio] render failed to start: ${job.error}`);
+    sseSend('status', jobPublic());
+  });
+  child.on('exit', (code, signal) => {
+    if (job.status !== 'cancelled') job.status = code === 0 ? 'done' : 'failed';
     job.exitCode = code;
+    if (signal) job.log.push(`[studio] render ${job.status} (signal ${signal})`);
     sseSend('status', jobPublic());
   });
   sseSend('status', jobPublic());
@@ -166,7 +183,8 @@ function startRender({ book, chapter, tts }) {
 const jobPublic = () => job && {
   id: job.id, book: job.book, chapter: job.chapter, tts: job.tts,
   status: job.status, startedAt: job.startedAt, elapsedSec: Math.round((Date.now() - job.startedAt) / 1000),
-  tail: job.log.slice(-60),
+  progress: job.progress || null, error: job.error || null,
+  tail: job.log.slice(-200),
 };
 
 // ── audition: render ONE line for one entity through one engine ─────────────
@@ -282,7 +300,25 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && bookMatch) {
       const b = loadBook(bookMatch[1]);
       if (!b) return json(res, 404, { error: 'unknown book' });
-      return json(res, 200, { book: b, chapters: chapterStatus(b), preflight: preflight(b), spend: spendRollup(b.id) });
+      // the bound book is the actual deliverable — it existed on disk but nothing linked it
+      const bound = {};
+      for (const m of ['immersive', 'clean']) {
+        const f = path.join(OUT, b.id, `book-${m}.m4b`);
+        if (existsSync(f)) bound[m] = { media: `/media/${b.id}/book-${m}.m4b`, mb: +(statSync(f).size / 1048576).toFixed(1) };
+      }
+      // casting suggestions from the book's own descriptions (src/casting.mjs)
+      const { castingRecipe } = await import('../src/casting.mjs');
+      const suggestions = {};
+      for (const ent of b.entities || []) {
+        if (ent.kind === 'narrator') continue;
+        try { suggestions[ent.id] = castingRecipe(ent); } catch { /* skip */ }
+      }
+      const { validateBook } = await import('../src/validate.mjs');
+      return json(res, 200, {
+        book: b, chapters: chapterStatus(b), preflight: preflight(b), spend: spendRollup(b.id),
+        bound, suggestions, validation: validateBook(b),
+        keys: { elevenlabs: !!process.env.ELEVENLABS_API_KEY, gemini: !!process.env.REPLICATE_API_TOKEN, fal: !!process.env.FAL_KEY },
+      });
     }
 
     // ---- entity edit ----
@@ -295,6 +331,10 @@ const server = http.createServer(async (req, res) => {
       const ent = b.entities.find((e) => e.id === eid);
       if (!ent) return json(res, 404, { error: 'unknown entity' });
       if (typeof body.visual === 'string') ent.visual = body.visual;
+      // role notes: direction for THIS book's performance only — never leaks to
+      // other productions (actor-level craft notes live in actors/<name>/notes.md)
+      if (typeof body.notes === 'string') { if (body.notes.trim()) ent.notes = body.notes; else delete ent.notes; }
+      if (typeof body.actor === 'string') { if (body.actor) ent.actor = body.actor; else delete ent.actor; }
       if (body.voices) for (const [eng, v] of Object.entries(body.voices)) {
         if (typeof b.voices[eng] === 'string') continue; // never clobber an @ref
         if (!b.voices[eng]) { // first edit on a new engine (e.g. gemini) creates its map
@@ -358,6 +398,14 @@ const server = http.createServer(async (req, res) => {
       return json(res, 202, { job: jobPublic() });
     }
     if (req.method === 'GET' && p === '/api/render/status') return json(res, 200, { job: jobPublic() });
+    if (req.method === 'POST' && p === '/api/render/cancel') {
+      if (!job || job.status !== 'running') return json(res, 409, { error: 'nothing is rendering' });
+      job.status = 'cancelled';
+      job.log.push('[studio] cancelled by user — cached work is kept, re-running is cheap');
+      job.child.kill();
+      sseSend('status', jobPublic());
+      return json(res, 200, { ok: true, job: jobPublic() });
+    }
     if (req.method === 'GET' && p === '/api/render/stream') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
       res.write('retry: 2000\n\n');
@@ -390,6 +438,35 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, result);
     }
 
+    // ---- wrap report: joins the files the renderer already writes ----
+    const wrapMatch = p.match(/^\/api\/wrap\/([a-z0-9-]+)$/);
+    if (req.method === 'GET' && wrapMatch) {
+      const b = loadBook(wrapMatch[1]);
+      if (!b) return json(res, 404, { error: 'unknown book' });
+      const chs = chapterStatus(b).filter((c) => c.mastered);
+      const castCount = {};
+      let lines = 0, cues = 0, cuesOnWord = 0, flags = 0;
+      for (const c of chs) {
+        flags += c.flags || 0;
+        for (const cue of c.cues || []) { cues++; if ((cue.confidence ?? 0) >= 0.9) cuesOnWord++; }
+        const sp = path.join(OUT, b.id, `ch-${String(c.n).padStart(2, '0')}`, 'production-script.json');
+        if (!existsSync(sp)) continue;
+        try {
+          const s = JSON.parse(readFileSync(sp, 'utf8'));
+          for (const sc of s.scenes) for (const l of sc.lines) { lines++; castCount[l.entity || 'narrator'] = (castCount[l.entity || 'narrator'] || 0) + 1; }
+        } catch { /* mid-write */ }
+      }
+      const minutes = +chs.reduce((a, c) => a + (c.minutes || 0), 0).toFixed(1);
+      // 11L chars this book actually spent (hero lines) + ledgered LLM cost
+      const pf = preflight(b);
+      const usd = +(spendRollup(b.id).llmUsd + pf.heroChars * 0.00022).toFixed(2);
+      return json(res, 200, {
+        title: b.title, minutes, chapters: chs.length, lines, cues, cuesOnWord, flags, usd,
+        lufs: chs.length ? (chs.reduce((a, c) => a + (c.lufs || 0), 0) / chs.length).toFixed(1) : '—',
+        cast: Object.entries(castCount).map(([entity, n]) => ({ entity, lines: n })).sort((a, b2) => b2.lines - a.lines),
+      });
+    }
+
     // ---- the company: saved character actors (actors/<name>/) ----
     if (req.method === 'GET' && p === '/api/actors') {
       const dir = path.join(root, 'actors');
@@ -402,11 +479,24 @@ const server = http.createServer(async (req, res) => {
         return {
           name, origin,
           transcript: existsSync(f('transcript.txt')) ? readFileSync(f('transcript.txt'), 'utf8').slice(0, 400) : '',
+          // craft notes that travel WITH the actor to every future book
+          notes: existsSync(f('notes.md')) ? readFileSync(f('notes.md'), 'utf8') : '',
           seed: existsSync(f('seed.wav')) ? `/actors/${name}/seed.wav` : null,
           portrait: portrait ? `/actors/${name}/${portrait}` : null,
         };
       });
       return json(res, 200, { actors });
+    }
+    const notesMatch = p.match(/^\/api\/actors\/([a-z0-9-]+)\/notes$/);
+    if (req.method === 'POST' && notesMatch) {
+      const dir = path.join(root, 'actors', notesMatch[1]);
+      if (!existsSync(dir)) return json(res, 404, { error: 'unknown actor' });
+      const { notes } = await readBody(req);
+      const file = path.join(dir, 'notes.md');
+      const tmp = `${file}.tmp`;
+      writeFileSync(tmp, String(notes ?? ''));
+      renameSync(tmp, file);
+      return json(res, 200, { ok: true });
     }
     const portraitMatch = p.match(/^\/api\/actors\/([a-z0-9-]+)\/portrait$/);
     if (req.method === 'POST' && portraitMatch) {

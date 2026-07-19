@@ -128,6 +128,25 @@ h1{font-size:22px;font-weight:600;letter-spacing:-.015em;margin:0 0 4px}
 .dna-row input{font-size:11.5px;padding:3px 7px}
 .dna-row input.wide{flex:1;min-width:120px}
 .dna-row input.tiny{width:52px}
+.suggest{background:var(--sunk);border:1px solid var(--cy-dim);border-radius:7px;padding:8px 10px}
+.actor-note-ro{background:var(--sunk);border-left:2px solid var(--cy);border-radius:5px;padding:7px 10px;font-size:11.5px;color:var(--muted);line-height:1.5}
+.actor-note-ro b{color:var(--cy);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+/* wrap report */
+.wrap-overlay{position:fixed;inset:0;background:rgba(6,9,12,.78);display:grid;place-items:center;z-index:100;padding:20px}
+.wrap-card{background:var(--panel);border:1px solid var(--cy-dim);border-radius:12px;padding:22px 26px;max-width:560px;width:100%;box-shadow:0 24px 70px -20px rgba(0,0,0,.9)}
+.wrap-head{display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.22em;color:var(--cy);margin-bottom:6px}
+.wrap-x{color:var(--dim);font-size:14px}
+.wrap-x:hover{color:var(--text)}
+.wrap-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:10px;margin:14px 0 16px}
+.wrap-stats div{background:var(--sunk);border-radius:8px;padding:9px 6px;text-align:center}
+.wrap-stats b{display:block;font-size:17px}
+.wrap-stats small{font-size:9.5px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.wrap-money b{color:var(--cy)}
+.wrap-cast{display:grid;gap:5px}
+.wrap-row{display:grid;grid-template-columns:110px 1fr 34px;gap:8px;align-items:center;font-size:11.5px}
+.wrap-name{font-family:var(--mono);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wrap-bar{background:var(--sunk);border-radius:99px;height:7px;overflow:hidden}
+.wrap-bar i{display:block;height:100%;border-radius:99px}
 .portrait-zone{border:1px dashed var(--line);border-radius:8px;background:var(--sunk);min-height:150px;display:grid;place-items:center;overflow:hidden;cursor:pointer;transition:border-color .15s}
 .portrait-zone:hover,.portrait-zone.armed{border-color:var(--cy)}
 .portrait-zone:focus{outline:2px solid var(--cy);outline-offset:2px}

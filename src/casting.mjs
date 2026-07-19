@@ -12,15 +12,20 @@
 //                elderly is directed + human-approved, not measured.
 //   - ethnicity/accent -> NOT measurable; directed prompt + human ear only.
 
-const FEMALE = /\b(woman|female|girl|lady|grandmother|mother|aunt|daughter|sister|queen|actress|matriarch|widow|nun|maiden|she|her|hers)\b/i;
-const MALE = /\b(man|male|boy|guy|gentleman|grandfather|father|uncle|son|brother|king|actor|patriarch|widower|monk|he|him|his)\b/i;
+// Compound words matter: "Englishwoman"/"Frenchman" are single tokens, so a bare
+// \bwoman\b misses them (Mrs. White read as gender-unknown until this was fixed).
+// [a-z]*woman catches the compounds; (?<!wo) stops "woman" matching as "man".
+const FEMALE = /\b(?:[a-z]*woman|female|girl|lady|grandmother|mother|aunt|daughter|sister|queen|actress|matriarch|widow|nun|maiden|she|her|hers)\b/i;
+const MALE = /\b(?:[a-z]*(?<!wo)man|male|boy|guy|grandfather|father|uncle|son|brother|king|actor|patriarch|widower|monk|he|him|his)\b/i;
 
 // age bands with the cues that signal them and the voice direction they imply
 const AGE_BANDS = [
   { band: 'child', re: /\b(child|kid|little (boy|girl)|young (boy|girl)|[4-9][- ]?year|toddler|infant|schoolboy|schoolgirl|(four|five|six|seven|eight|nine|ten|eleven|twelve)[- ](years?[- ]old|year))\b/i, years: '8', design: 'a young child about 8 years old, small bright high-pitched voice, innocent and quick', expectHighPitch: true },
   { band: 'teen', re: /\b(teenager|teenage|adolescent|1[0-7][- ]?year|youth|schoolkid|(of|aged|around) (thirteen|fourteen|fifteen|sixteen|seventeen)|(thirteen|fourteen|fifteen|sixteen|seventeen)[- ]years?[- ]old)\b/i, years: '15', design: 'a teenager around fifteen, light youthful voice, still a bit high', expectHighPitch: true },
   { band: 'young-adult', re: /\b(young (man|woman)|in (his|her) (twenties|20s)|college|student)\b/i, years: 'mid-20s', design: 'in their mid-twenties, clear energetic adult voice', expectHighPitch: false },
-  { band: 'elderly', re: /\b(elderly|old (man|woman|lady)|aged|ancient|in (his|her) (seventies|eighties|nineties|70s|80s|90s)|grandmother|grandfather|geriatric|frail|white[- ]haired)\b/i, years: 'in their late 70s', design: 'elderly, in their late seventies, thin weathered voice with a faint age-quaver, breathy and slow', expectHighPitch: false },
+  // NOTE: no bare "aged" — it matches inside "middle-aged" (a middle-aged clerk
+  // was being cast as elderly). Same trap as \bwoman\b inside "Englishwoman".
+  { band: 'elderly', re: /\b(elderly|old (man|woman|lady)|ancient|in (his|her) (seventies|eighties|nineties|70s|80s|90s)|grandmother|grandfather|geriatric|frail|white[- ]haired|(?<!middle[- ])aged\b)/i, years: 'in their late 70s', design: 'elderly, in their late seventies, thin weathered voice with a faint age-quaver, breathy and slow', expectHighPitch: false },
   { band: 'adult', re: /.*/, years: 'middle-aged', design: 'a middle-aged adult, natural full voice', expectHighPitch: false },
 ];
 
@@ -48,7 +53,11 @@ function accentDirection(text) {
 }
 
 export function determine(char) {
-  const desc = [char.visual, char.description, char.names?.join(' '), char.gender, char.age, char.ethnicity, char.accent].filter(Boolean).join(' ');
+  // Alias lists carry possessives that belong to OTHER characters ("his wife",
+  // "his mother") — those made every wife read as male and cancel to unknown.
+  // Strip pronouns from names before they reach gender inference.
+  const nameText = (char.names || []).join(' ').replace(/\b(his|her|hers|him|he|she|their|them|my|your)\b/gi, ' ');
+  const desc = [char.visual, char.description, nameText, char.gender, char.age, char.ethnicity, char.accent].filter(Boolean).join(' ');
   const gender = char.gender
     || (FEMALE.test(desc) && !MALE.test(desc) ? 'female'
       : MALE.test(desc) && !FEMALE.test(desc) ? 'male' : 'unknown');

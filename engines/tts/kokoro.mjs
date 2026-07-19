@@ -21,6 +21,10 @@ export async function renderLines(lines, voices, cacheRoot) {
   const results = {};
   for (const line of lines) {
     const v = voices[line.entity] || voices.narrator;
+    // never silently render a character in the narrator's voice — that defect is
+    // only discoverable by listening to the finished book (an original P0 miss)
+    if (!v) throw new Error(`kokoro: no voice for entity '${line.entity}' and no narrator fallback`);
+    if (!voices[line.entity]) log('render:tts', `WARN kokoro: '${line.entity}' has no voice — using narrator`);
     const text = speakable(line.text);
     const key = contentKey([ENGINE, v.voice, String(v.speed ?? 1), text]);
     const { path: out, hit } = cached(cacheRoot, key);
@@ -29,7 +33,9 @@ export async function renderLines(lines, voices, cacheRoot) {
   }
   log('render:tts', `kokoro: ${lines.length} lines, ${lines.length - jobs.length} cache hits, ${jobs.length} to synthesize`);
   if (jobs.length) {
-    const manifest = path.join(cacheRoot, 'kokoro-manifest.json');
+    // per-run manifest name: a fixed name races with any concurrent caller
+    // (auditioning mid-render used to overwrite the file the batch was reading)
+    const manifest = path.join(cacheRoot, `kokoro-manifest-${contentKey(jobs.map((j) => j.out)).slice(0, 12)}.json`);
     writeFileSync(manifest, JSON.stringify(jobs));
     const { stdout } = await pexecFile(pythonExe(), [path.join(here, 'kokoro-batch.py'), manifest],
       { maxBuffer: 16 * 1024 * 1024 });

@@ -95,6 +95,8 @@ export async function renderLines(lines, voices, cacheRoot) {
   let tagged = 0;
   for (const line of lines) {
     const v = voices[line.entity] || voices.narrator;
+    if (!v) throw new Error(`elevenlabs: no voice for entity '${line.entity}' and no narrator fallback`);
+    if (!voices[line.entity]) log('render:tts', `WARN elevenlabs: '${line.entity}' has no voice — using narrator`);
     const { id: voiceId, name } = await resolveVoice(v.candidates);
     // per-voice model override (e.g. Robert's narrator preference is
     // eleven_monolingual_v1 — "v1 English"); v3 stays the default for tags

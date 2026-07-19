@@ -4,7 +4,7 @@
 //   node bin/dramatis.mjs analyze <manuscript.md> [--book <id>] [--chapter N] [--llm ollama|openrouter]
 // Ingest -> Compile -> Cast -> Render -> Mix per chapter, then bind a
 // chaptered M4B for the whole book. Content-addressed caching throughout.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compile } from '../src/compile.mjs';
@@ -88,6 +88,17 @@ voices = Object.fromEntries(Object.entries(voices).map(([k, v]) =>
 // per-role engine overrides from book.json casting reach the hybrid router
 if (book.casting) voices.__casting = book.casting;
 
+// fail fast: a miscast character used to render silently in the narrator's voice
+const { validateBook, assertAllRendered } = await import('../src/validate.mjs');
+const check = validateBook(book, { tts: ttsName });
+for (const w of check.warnings) log('validate', `WARN ${w}`);
+if (!check.ok) {
+  console.error(`\n[validate] ${book.id} has ${check.errors.length} problem(s):`);
+  for (const e of check.errors) console.error(`  - ${e}`);
+  console.error('\nfix book.json and re-run (nothing was rendered).\n');
+  process.exit(1);
+}
+
 const only = opt('chapter', null);
 const chapters = only
   ? [book.chapters[parseInt(only, 10) - 1]]
@@ -108,6 +119,7 @@ for (let ci = 0; ci < chapters.length; ci++) {
 
   const allLines = script.scenes.flatMap((s) => s.lines);
   const lineWavs = await renderLines(allLines, voices, cacheRoot);
+  assertAllRendered(allLines, lineWavs, existsSync); // named failure, not a cryptic ffmpeg exit in mix
   const result = await mix(script, lineWavs, chOut, cacheRoot);
   produced.push({ n, title: script.chapter, ...result });
   log('produce', `${chapterCfg.heading}: ${Math.round(result.durationSec / 60)} min, ` +

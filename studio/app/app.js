@@ -24,7 +24,9 @@ function toast(msg, err = false) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.remove(), err ? 7000 : 3500);
 }
-const CHIP_COLORS = ['#E08A97', '#7FB3D5', '#92C97F', '#D9B36B', '#8FB3A8', '#C9A0DA00', '#E0A84E', '#7FC9C9', '#B5C97F', '#C97F7F'];
+// NO PURPLE — every hue here is warm/green/blue-teal by rule. (A prior
+// '#C9A0DA00' slot survived the 7-char slice below as lavender; replaced.)
+const CHIP_COLORS = ['#E08A97', '#7FB3D5', '#92C97F', '#D9B36B', '#8FB3A8', '#D98F6B', '#E0A84E', '#7FC9C9', '#B5C97F', '#C97F7F'];
 const entColor = (id, i) => id === 'narrator' ? '#7E8CA0' : CHIP_COLORS[i % CHIP_COLORS.length].slice(0, 7);
 
 // ── state ───────────────────────────────────────────────────────────────────
@@ -44,11 +46,17 @@ es.addEventListener('log', (e) => {
   if (el) { el.innerHTML = renderLogLines(); el.scrollTop = el.scrollHeight; }
 });
 es.addEventListener('status', async (e) => {
+  const prev = S.job?.status;
   S.job = JSON.parse(e.data);
+  // a reload lands here with an empty client log — backfill from the tail the
+  // server already ships, so refreshing mid-render doesn't look like a crash
+  if (!jobLog.length && S.job?.tail?.length) jobLog.push(...S.job.tail);
   paintJob();
-  if (S.job && S.job.status !== 'running') {
-    toast(S.job.status === 'done' ? `Render finished: ${S.job.book}` : `Render FAILED: ${S.job.book}`, S.job.status !== 'done');
+  if (S.job && S.job.status !== 'running' && prev === 'running') {
+    const done = S.job.status === 'done';
+    toast(done ? `Render finished: ${S.job.book}` : `Render ${S.job.status}: ${S.job.book}${S.job.error ? ' — ' + S.job.error : ''}`, !done);
     await refresh();
+    if (done) showWrap(S.job.book);
   }
 });
 function renderLogLines() {
@@ -63,10 +71,21 @@ function paintJob() {
   $('#gputxt').textContent = busy ? `rendering ${S.job.book}${S.job.chapter ? ' ch ' + S.job.chapter : ''} · ${S.job.tts} · ${S.job.elapsedSec}s` : 'idle — RTX 4090';
   $('#rec').className = 'rec' + (busy ? ' live' : '');
   const st = $('#jobstate');
-  if (st) st.textContent = busy ? `● rendering — ${S.job.elapsedSec}s elapsed` : (S.job ? `last render: ${S.job.status}` : 'no render this session');
+  if (st) {
+    const pr = S.job?.progress;
+    const pct = pr && pr.total ? Math.round(100 * pr.done / pr.total) : null;
+    st.textContent = busy
+      ? `● rendering — ${S.job.elapsedSec}s${pr ? ` · ${pr.done}/${pr.total} (${pct}%)` : ''}`
+      : (S.job ? `last render: ${S.job.status}` : 'no render this session');
+  }
+  const cancel = $('#r-cancel');
+  if (cancel) cancel.style.display = busy ? '' : 'none';
   const vu = $('#vu');
   if (vu && busy) {
-    const lit = Math.min(23, Math.floor((S.job.elapsedSec || 0) / 25));
+    // real progress when the pipeline reports n/total; elapsed-time fallback otherwise
+    const pr = S.job?.progress;
+    const lit = pr && pr.total ? Math.min(24, Math.round(24 * pr.done / pr.total))
+      : Math.min(23, Math.floor((S.job.elapsedSec || 0) / 25));
     vu.innerHTML = Array.from({ length: 24 }, (_, i) => `<i class="${i < lit ? 'lit' : i === lit ? 'hot' : ''}"></i>`).join('');
   }
 }
@@ -75,6 +94,37 @@ setInterval(async () => {
     try { const { job } = await api('/api/render/status'); S.job = job; paintJob(); } catch { /* server gone */ }
   }
 }, 3000);
+
+// ── the wrap report: a production wrap card when a render lands ─────────────
+async function showWrap(bookId) {
+  let d;
+  try { d = await api(`/api/wrap/${bookId}`); } catch { return; }
+  const cast = d.cast.slice(0, 8);
+  const max = Math.max(1, ...cast.map((c) => c.lines));
+  const el = document.createElement('div');
+  el.className = 'wrap-overlay';
+  el.innerHTML = `<div class="wrap-card">
+    <div class="wrap-head"><span>🎬 THAT'S A WRAP</span><button class="wrap-x" title="close">✕</button></div>
+    <h2 style="margin:2px 0 4px">${esc(d.title)}</h2>
+    <div class="wrap-stats">
+      <div><b class="num">${d.minutes}</b><small>minutes</small></div>
+      <div><b class="num">${d.chapters}</b><small>chapters</small></div>
+      <div><b class="num">${d.lines}</b><small>lines</small></div>
+      <div><b class="num">${d.cuesOnWord}/${d.cues}</b><small>cues on-word</small></div>
+      <div><b class="num">${d.lufs}</b><small>LUFS</small></div>
+      <div class="wrap-money"><b class="num">$${d.usd.toFixed(2)}</b><small>API spend</small></div>
+    </div>
+    <div class="wrap-cast">${cast.map((c, i) => `
+      <div class="wrap-row"><span class="wrap-name" style="color:${entColor(c.entity, i)}">${esc(c.entity.replace(/_/g, ' '))}</span>
+      <span class="wrap-bar"><i style="width:${Math.round(100 * c.lines / max)}%;background:${entColor(c.entity, i)}"></i></span>
+      <span class="num" style="font-size:11px;color:var(--muted)">${c.lines}</span></div>`).join('')}</div>
+    ${d.flags === 0 ? '<div class="chip ok" style="margin-top:10px">0 QA flags — clean take</div>' : `<div class="chip warn" style="margin-top:10px">${d.flags} QA flag(s)</div>`}
+  </div>`;
+  document.body.appendChild(el);
+  const close = () => el.remove();
+  el.querySelector('.wrap-x').addEventListener('click', close);
+  el.addEventListener('click', (ev) => { if (ev.target === el) close(); });
+}
 
 // ── data ────────────────────────────────────────────────────────────────────
 async function loadShelf() { S.shelf = await api('/api/books'); S.job = S.shelf.job || S.job; }
@@ -185,7 +235,23 @@ function viewBook() {
 }
 
 function viewBoard() {
-  const { chapters, preflight, book } = S.book;
+  const { chapters, preflight, book, bound = {}, validation } = S.book;
+  const boundRow = (bound.immersive || bound.clean) ? `
+    <div class="card" style="padding:14px 16px;margin-bottom:12px;border-color:var(--cy-dim)">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-weight:600">📕 Finished book</span>
+        ${bound.immersive ? `<span class="chip cy">immersive ${bound.immersive.mb} MB</span>` : ''}
+        ${bound.clean ? `<span class="chip">clean ${bound.clean.mb} MB</span>` : ''}
+        ${bound.immersive ? `<a class="btn sm" href="${bound.immersive.media}" download>⬇ download .m4b</a>` : ''}
+      </div>
+      ${bound.immersive ? `<audio controls preload="none" src="${bound.immersive.media}" style="width:100%;margin-top:9px"></audio>` : ''}
+    </div>` : '';
+  const validRow = validation && !validation.ok ? `
+    <div class="card" style="padding:11px 14px;margin-bottom:12px;border-color:var(--crit)">
+      <b style="color:var(--crit)">⚠ ${validation.errors.length} casting/config problem(s) — render will refuse:</b>
+      <ul style="margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--muted)">
+        ${validation.errors.slice(0, 6).map((e) => `<li>${esc(e)}</li>`).join('')}</ul>
+    </div>` : '';
   const rows = chapters.map((c) => `
     <div class="chrow card">
       <div class="t">${esc(c.heading)}<small>chapter ${c.n}</small></div>
@@ -197,7 +263,11 @@ function viewBoard() {
       </div>
       <div class="cell num"><b>${c.minutes ?? '—'}</b> min</div>
       <div class="cell num"><b>${c.lufs ?? '—'}</b> LUFS</div>
-      <div class="cell">${c.flags == null ? '—' : c.flags === 0 ? '<span class="chip ok">0 flags</span>' : `<span class="chip warn">${c.flags} flag(s)</span>`}</div>
+      <div class="cell">${c.flags == null ? '—'
+        : c.flags === 0 ? '<span class="chip ok">0 flags</span>'
+        : `<button class="chip warn" data-flags="${c.n}" title="show the flagged lines">${c.flags} flag(s) ▾</button>`}</div>
+      ${S.openFlags === c.n && c.flagged?.length ? `<div class="chplayer" style="font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--sunk);border-radius:6px;padding:8px 10px">
+        ${c.flagged.map((f) => `<div>${esc(f.id)} · ${esc(f.reason)} · ${f.dur}s</div>`).join('')}</div>` : ''}
       ${c.media ? `<div class="chplayer"><audio controls preload="none" src="${c.media}"></audio></div>` : ''}
     </div>`).join('');
   const scopeOpts = ['<option value="">Whole book</option>']
@@ -205,17 +275,18 @@ function viewBoard() {
   const engines = Object.keys(book.voices).filter((k) => k !== 'hybrid');
   const engOpts = ['hybrid'].concat(engines).map((e) => `<option ${e === 'hybrid' ? 'selected' : ''}>${e}</option>`).join('');
   const busy = S.job && S.job.status === 'running';
-  return `${rows}
+  return `${validRow}${boundRow}${rows}
     <div class="board-split">
       <div><p class="panel-h">Render</p>
         <div class="card preflight">
           <div class="rowline"><span class="l">Scope</span><select id="r-scope">${scopeOpts}</select></div>
           <div class="rowline"><span class="l">Engine</span><select id="r-tts">${engOpts}</select></div>
-          <div class="rowline"><span class="l">Narration → Kokoro</span><span class="v num">${preflight.narration} lines · $0</span></div>
-          <div class="rowline"><span class="l">Dialogue → Qwen3</span><span class="v num">${preflight.dialogue} lines · $0</span></div>
-          <div class="rowline"><span class="l">Hero → ElevenLabs</span><span class="v num">${preflight.hero} lines · ${preflight.heroChars} chars</span></div>
-          <div class="total"><span class="l">Estimated API spend</span><span class="amt num">≈ $${preflight.heroUsdEstimate.toFixed(2)} <small>rest is your GPU</small></span></div>
+          <div class="rowline"><span class="l">Narration → Kokoro</span><span class="v num" id="pf-narr">${preflight.narration} lines · $0</span></div>
+          <div class="rowline"><span class="l">Dialogue → Qwen3</span><span class="v num" id="pf-dial">${preflight.dialogue} lines · $0</span></div>
+          <div class="rowline"><span class="l">Hero → ElevenLabs</span><span class="v num" id="pf-hero">${preflight.hero} lines · ${preflight.heroChars} chars</span></div>
+          <div class="total"><span class="l">Estimated API spend</span><span class="amt num" id="pf-usd">≈ $${preflight.heroUsdEstimate.toFixed(2)} <small>rest is your GPU</small></span></div>
           <button class="btn" id="r-go" ${busy ? 'disabled' : ''}>● Render</button>
+          <button class="btn danger sm" id="r-cancel" style="margin-left:8px;${busy ? '' : 'display:none'}">■ Cancel</button>
           ${busy ? '<span class="chip cy" style="margin-left:9px">GPU busy — one render at a time</span>' : '<span class="chip" style="margin-left:9px">cache makes re-runs surgical</span>'}
         </div>
       </div>
@@ -265,6 +336,20 @@ function viewCast() {
         <span class="aud-player" data-player hidden></span>
       </div>`;
     }).join('');
+    const sug = S.book.suggestions?.[ent.id];
+    const sugStrip = sug ? `
+      <div class="suggest">
+        <div class="f-label" style="margin:0 0 3px">Suggested casting — read from the description</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
+          <span class="chip">${esc(sug.determined.gender)}</span>
+          <span class="chip">${esc(sug.determined.ageBand)}</span>
+          ${sug.determined.accent !== 'none' ? `<span class="chip cy">${esc(sug.determined.accent.split(',')[0])}</span>` : ''}
+          <span class="chip">→ ${esc(sug.recipe.engine)}</span>
+          <button class="btn sm" data-apply-suggest="${ent.id}">Apply</button>
+        </div>
+        <div style="font-size:10px;color:var(--dim);margin-top:4px">${esc(sug.recipe.note)}</div>
+      </div>` : '';
+    const actorNote = (S.actors || []).find((a) => a.name === ent.id || a.name === (ent.actor || ''))?.notes;
     return `<div class="actor card" data-ent="${ent.id}">
       <div class="actor-h"><span class="swatch" style="background:${entColor(ent.id, i)}"></span>
         <span class="nm">${esc(ent.id.replace(/_/g, ' ').toUpperCase())}</span>
@@ -273,9 +358,13 @@ function viewCast() {
           ${['kokoro', 'qwen3', 'elevenlabs', 'gemini'].map((e) => `<option ${casting?.engine === e ? 'selected' : ''}>${e}</option>`).join('')}
         </select></span></div>
       ${ent.names?.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px">${ent.names.map((n) => `<span class="chip">${esc(n)}</span>`).join('')}</div>` : ''}
+      ${sugStrip}
       <div><div class="f-label">Visual brief — feeds character art (manual generation only)</div>
         <textarea data-visual>${esc(ent.visual || '')}</textarea></div>
       <div><div class="f-label">Voice DNA</div><div class="dna">${rows}</div></div>
+      ${actorNote ? `<div class="actor-note-ro"><b>Actor notes</b> (from the company — apply to every book)<br>${esc(actorNote).replace(/\n/g, '<br>')}</div>` : ''}
+      <div><div class="f-label">Role notes — this book only (direction for this performance)</div>
+        <textarea data-rolenote placeholder="e.g. she's grieving from ch3 on — play her warmer, slower">${esc(ent.notes || '')}</textarea></div>
       <div class="savenote" data-savenote></div>
     </div>`;
   }).join('');
@@ -369,6 +458,9 @@ function viewCasting() {
         </div>
         <div style="font-size:12px;color:var(--muted)">${esc(a.origin.character || '')}</div>
         ${a.seed ? `<audio controls preload="none" src="${a.seed}"></audio>` : ''}
+        <div><div class="f-label">Actor notes — travel to every book she's in</div>
+          <textarea data-actornote placeholder="e.g. rolls her R's if you over-direct the accent; keep reference clips under 15s">${esc(a.notes || '')}</textarea></div>
+        <div class="savenote" data-savenote></div>
         <div style="font-size:10.5px;color:var(--dim)">
           voice: ${esc(a.origin.seed_voice || '—')} · gate: ${esc(a.origin.gate || '—')}<br>
           <em>${esc((a.transcript || '').slice(0, 90))}${(a.transcript || '').length > 90 ? '…' : ''}</em>
@@ -443,7 +535,10 @@ function bind(m) {
   m.querySelectorAll('[data-tab]').forEach((el) => el.addEventListener('click', async () => {
     S.tab = el.dataset.tab;
     if (S.tab === 'script') await loadScript(S.chapterN);
-    if (S.tab === 'cast' && !S.roster) { try { S.roster = await api('/api/casting/roster'); } catch { /* offline */ } }
+    if (S.tab === 'cast') {
+      if (!S.roster) { try { S.roster = await api('/api/casting/roster'); } catch { /* offline */ } }
+      if (!S.actors) { try { S.actors = (await api('/api/actors')).actors; } catch { S.actors = []; } }
+    }
     render();
   }));
 
@@ -459,6 +554,29 @@ function bind(m) {
     } catch (e) { toast(e.message, true); }
   });
 
+  $('#r-cancel', m)?.addEventListener('click', async () => {
+    try { await api('/api/render/cancel', { method: 'POST' }); toast('Render cancelled — cached work kept'); }
+    catch (e) { toast(e.message, true); }
+  });
+
+  // cost preflight follows the Scope dropdown (perChapter was computed and discarded)
+  $('#r-scope', m)?.addEventListener('change', (e) => {
+    const pf = S.book.preflight;
+    const n = e.target.value;
+    const src = n ? [pf.perChapter[+n - 1]].filter(Boolean) : pf.perChapter;
+    const sum = (k) => src.reduce((a, c) => a + (c[k] || 0), 0);
+    const chars = sum('heroChars');
+    $('#pf-narr').textContent = `${sum('narration')} lines · $0`;
+    $('#pf-dial').textContent = `${sum('dialogue')} lines · $0`;
+    $('#pf-hero').textContent = `${sum('hero')} lines · ${chars} chars`;
+    $('#pf-usd').innerHTML = `≈ $${(chars * 0.00022).toFixed(2)} <small>rest is your GPU</small>`;
+  });
+
+  m.querySelectorAll('[data-flags]').forEach((b) => b.addEventListener('click', () => {
+    S.openFlags = S.openFlags === +b.dataset.flags ? null : +b.dataset.flags;
+    render();
+  }));
+
   // cast editing
   m.querySelectorAll('.actor').forEach((card) => {
     const eid = card.dataset.ent;
@@ -466,6 +584,25 @@ function bind(m) {
     const saved = () => { note.textContent = 'saved ✓'; setTimeout(() => (note.textContent = ''), 1800); };
     card.querySelector('[data-visual]')?.addEventListener('change', async (e) => {
       try { await api(`/api/books/${S.bookId}/entity/${eid}`, { method: 'PUT', body: { visual: e.target.value } }); saved(); } catch (err) { toast(err.message, true); }
+    });
+    // role notes — this book only
+    card.querySelector('[data-rolenote]')?.addEventListener('change', async (e) => {
+      try { await api(`/api/books/${S.bookId}/entity/${eid}`, { method: 'PUT', body: { notes: e.target.value } }); saved(); }
+      catch (err) { toast(err.message, true); }
+    });
+    // apply the computed casting recipe into the voice fields
+    card.querySelector('[data-apply-suggest]')?.addEventListener('click', async () => {
+      const sug = S.book.suggestions?.[eid];
+      if (!sug) return;
+      const body = { voices: {} };
+      if (sug.recipe.engine === 'gemini') body.voices.gemini = { voice: sug.recipe.voice, prompt: sug.recipe.prompt };
+      else body.voices.qwen3 = { design: sug.recipe.design };
+      body.engine = sug.recipe.engine;
+      try {
+        await api(`/api/books/${S.bookId}/entity/${eid}`, { method: 'PUT', body });
+        toast(`${eid}: cast on ${sug.recipe.engine} — audition it`);
+        await loadBook(S.bookId); render();
+      } catch (err) { toast(err.message, true); }
     });
     card.querySelector('[data-roleeng]')?.addEventListener('change', async (e) => {
       try {
@@ -578,6 +715,19 @@ function bind(m) {
 
   // casting room tabs
   m.querySelectorAll('[data-casttab]').forEach((b) => b.addEventListener('click', () => { S.castTab = b.dataset.casttab; render(); }));
+
+  // actor notes — global craft knowledge, saved to actors/<name>/notes.md
+  m.querySelectorAll('[data-actornote]').forEach((ta) => {
+    const card = ta.closest('[data-actor]');
+    ta.addEventListener('change', async () => {
+      try {
+        await api(`/api/actors/${card.dataset.actor}/notes`, { method: 'POST', body: { notes: ta.value } });
+        const n = card.querySelector('[data-savenote]');
+        if (n) { n.textContent = 'saved ✓ — applies to every book'; setTimeout(() => (n.textContent = ''), 2200); }
+        S.actors = (await api('/api/actors')).actors;
+      } catch (e) { toast(e.message, true); }
+    });
+  });
 
   // portrait paste-to-save (click the box, Ctrl+V an image)
   m.querySelectorAll('[data-portrait]').forEach((zone) => {

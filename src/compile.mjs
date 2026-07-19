@@ -177,7 +177,11 @@ export function compile(bookCfg, chapterCfg, manuscriptPath) {
     }
   }
 
-  // bucket lines into scenes
+  // bucket lines into scenes. The first scene ALWAYS starts at paragraph 0:
+  // otherwise every line above the first anchor is compiled, counted, and then
+  // silently never rendered — and a cue anchored there resolves to a line the
+  // mixer's timeline doesn't contain, throwing 30 minutes into a render.
+  if (sceneDefs.length) sceneDefs[0].startPara = 0;
   const scenes = sceneDefs.map((s, i) => {
     const end = i + 1 < sceneDefs.length ? sceneDefs[i + 1].startPara : Infinity;
     return {
@@ -185,6 +189,12 @@ export function compile(bookCfg, chapterCfg, manuscriptPath) {
       lines: allLines.filter((l) => l.para >= s.startPara && l.para < end),
     };
   });
+  // invariant: every compiled line lives in exactly one scene
+  const bucketed = scenes.reduce((n, s) => n + s.lines.length, 0);
+  if (bucketed !== allLines.length) {
+    throw new Error(`scene coverage gap: ${allLines.length - bucketed} of ${allLines.length} lines fell outside every scene ` +
+      `(scene starts: ${sceneDefs.map((s) => s.startPara).join(', ')}) — fix the scene anchors in book.json`);
+  }
 
   // cues: anchor by text prefix search across lines
   const cues = (chapterCfg.cues || []).map((c) => {

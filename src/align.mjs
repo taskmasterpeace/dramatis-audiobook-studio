@@ -17,8 +17,10 @@ export async function alignLines(lines, wavById, cacheRoot) {
     else missing.push({ line, f });
   }
   if (missing.length) {
-    const manifest = path.join(cacheRoot, 'align-manifest.json');
-    const tmpOut = path.join(cacheRoot, 'align-out.json');
+    // per-run names — fixed names race with any concurrent aligner call
+    const runId = contentKey(missing.map((m) => m.f)).slice(0, 12);
+    const manifest = path.join(cacheRoot, `align-manifest-${runId}.json`);
+    const tmpOut = path.join(cacheRoot, `align-out-${runId}.json`);
     writeFileSync(manifest, JSON.stringify(missing.map((m) => ({ id: m.line.id, wav: wavById[m.line.id], text: m.line.text }))));
     log('align', `${missing.length} lines to align (${lines.length - missing.length} cached)`);
     const { stdout } = await pexecFile(pythonExe(), [ALIGNER, manifest, tmpOut], { maxBuffer: 16 * 1024 * 1024 });

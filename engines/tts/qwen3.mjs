@@ -51,7 +51,8 @@ export async function renderLines(lines, voices, cacheRoot) {
   log('render:tts', `qwen3: ${lines.length} lines, ${lines.length - jobs.length} cache hits, ` +
     `${jobs.length} to synthesize, ${emotive} with emotion instruct`);
   if (jobs.length) {
-    const manifest = path.join(cacheRoot, 'qwen3-manifest.json');
+    // per-run manifest name — fixed names race with concurrent callers
+    const manifest = path.join(cacheRoot, `qwen3-manifest-${contentKey(jobs.map((j) => j.out)).slice(0, 12)}.json`);
     writeFileSync(manifest, JSON.stringify({ cacheRoot, entities, lines: jobs }));
     const { stdout } = await pexecFile(pythonExe(), [path.join(here, 'qwen3-batch.py'), manifest],
       { maxBuffer: 16 * 1024 * 1024 });
