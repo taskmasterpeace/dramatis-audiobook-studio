@@ -57,6 +57,31 @@ having a selection that's been tested" than locking into one engine.
 import Kokoro; ..."` or kokoro-onnx docs. Speed 0.9–1.1 is the useful range.
 Voice map shape: `{ "voice": "bm_george", "speed": 1.0 }`.
 
+## THE REGISTER GATE — no designed voice ships unheard by a machine
+
+**Incident 2026-07-19 (Robert, furious, correctly):** an "elderly Black woman
+from New Orleans" design was delivered sounding unmistakably MALE. Autopsy by
+measurement: the clone step drifted the female design to 106 Hz; a poisoned
+pre-gate cached reference made it unfixable by retry; and the listener was the
+first quality check. Three failures, three fixes, all in `qwen3-batch.py`:
+
+1. **Design refs are pitch-gated** at creation (librosa pyin; female > 170 Hz,
+   male < 150 Hz, from gender words in the design text) with reinforced-prompt
+   retries; a failing design RAISES — it never caches.
+2. **Cached refs are re-verified on every load** (pre-gate cache poisoning was
+   the actual root cause).
+3. **Clone output is gated too** (first line per entity) — drift → corrective
+   instruct re-clone → still wrong → RuntimeError, refusing to ship. Verified
+   live: the gate refused twice, then a clean regeneration measured 203 Hz.
+
+**Standing regiment:** `node scripts/voice-regiment.mjs` — 8 gendered/aged/
+accented designs, one batch, every output independently pitch-verified over
+the engine's own gate; exit 1 on any mismatch; report at
+`out/voice-regiment-report.json`. Run it after ANY change to the qwen3 engine,
+models, or venv. Auditions of designed voices: check `pitch-check.py` output
+before delivering to a human, always — the human ear is the last gate, never
+the first.
+
 ## Qwen3-TTS — write the voice as a sentence
 
 Voice map shape: `{ "design": "<persona sentence>" }` or `{ "speaker": "Ryan" }` (preset).
