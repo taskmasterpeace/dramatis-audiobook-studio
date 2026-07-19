@@ -7,8 +7,25 @@ import { contentKey, cached, ffmpeg, log } from '../../src/util.mjs';
 
 const ENGINE = 'elevenlabs@1';
 const API = 'https://api.elevenlabs.io/v1';
-const MODEL = 'eleven_multilingual_v2';
+const MODEL = 'eleven_v3';
 const CONCURRENCY = 2;
+
+// Production Script emotion { anger: 0.6, ... } -> v3 audio tag for the dominant
+// emotion when clearly present (>= 0.4). Tag is prepended; text stays verbatim.
+const EMOTION_TAGS = {
+  anger: 'angry', sadness: 'sad', joy: 'happy', fear: 'fearful',
+  surprise: 'surprised', disgust: 'annoyed', tenderness: 'warmly', curiosity: 'curious',
+};
+function audioTag(emotion) {
+  if (!emotion) return '';
+  const [k, v] = Object.entries(emotion).sort((a, b) => b[1] - a[1])[0];
+  return v >= 0.4 ? `[${EMOTION_TAGS[k] || k}] ` : '';
+}
+
+// v3 stability is a 3-detent slider: 0 creative / 0.5 natural / 1 robust.
+function snapStability(v) {
+  return v < 0.25 ? 0 : v < 0.75 ? 0.5 : 1;
+}
 
 function apiKey() {
   const key = process.env.ELEVENLABS_API_KEY;
@@ -72,11 +89,14 @@ async function synthOne(job, key) {
 export async function renderLines(lines, voices, cacheRoot) {
   const jobs = [];
   const results = {};
+  let tagged = 0;
   for (const line of lines) {
     const v = voices[line.entity] || voices.narrator;
     const { id: voiceId, name } = await resolveVoice(v.candidates);
-    const text = speakable(line.text);
-    const stability = v.stability ?? 0.45;
+    const tag = audioTag(line.emotion);
+    if (tag) tagged++;
+    const text = tag + speakable(line.text);
+    const stability = snapStability(v.stability ?? 0.5);
     const style = v.style ?? 0.3;
     const key = contentKey([ENGINE, name, MODEL, String(stability), String(style), text]);
     const { path: out, hit } = cached(cacheRoot, key);
@@ -84,8 +104,8 @@ export async function renderLines(lines, voices, cacheRoot) {
     if (!hit) jobs.push({ text, voiceId, stability, style, out });
   }
   const chars = jobs.reduce((a, j) => a + j.text.length, 0);
-  log('render:tts', `elevenlabs: ${lines.length} lines, ${lines.length - jobs.length} cache hits, ` +
-    `${jobs.length} to synthesize (~${chars} chars of credit)`);
+  log('render:tts', `elevenlabs(${MODEL}): ${lines.length} lines, ${lines.length - jobs.length} cache hits, ` +
+    `${jobs.length} to synthesize (~${chars} chars of credit), ${tagged} emotion-tagged`);
   const key = apiKey();
   let i = 0, done = 0;
   await Promise.all(Array.from({ length: CONCURRENCY }, async () => {

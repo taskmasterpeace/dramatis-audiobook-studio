@@ -299,8 +299,9 @@
     <div class="stage">COMPILE<small>LLM → Production Script</small></div><span class="arrow">→</span>
     <div class="stage">CAST<small>voice design / assignment</small></div><span class="arrow">→</span>
     <div class="stage">RENDER<small>DAG: lines, beds, cues</small></div><span class="arrow">→</span>
+    <div class="stage">ALIGN<small>forced word timing</small></div><span class="arrow">→</span>
     <div class="stage">QA<small>ASR · fingerprint · acoustic</small></div><span class="arrow">→</span>
-    <div class="stage">MIX<small>4 stems, ducking, loudness</small></div><span class="arrow">→</span>
+    <div class="stage">MIX<small>5 stems, ducking, loudness</small></div><span class="arrow">→</span>
     <div class="stage">MASTER<small>M4B/MP3/Opus × 2 masters</small></div>
   </div>
   <div class="tablewrap"><table>
@@ -321,14 +322,16 @@
   <div class="tablewrap"><table>
     <tr><th>Role</th><th>Default engine</th><th>License</th><th>VRAM</th><th>Target</th></tr>
     <tr><td>Narrator TTS</td><td>Kokoro-82M</td><td class="num"><span class="pill lic">Apache-2.0</span></td><td class="num">~2 GB / CPU-able</td><td class="num">RTF ≤ 0.3 (GPU)</td></tr>
-    <tr><td>Character TTS + cloning</td><td>Chatterbox (Resemble)</td><td class="num"><span class="pill lic">MIT</span></td><td class="num">~6 GB fp16</td><td class="num">RTF ≤ 1.2</td></tr>
-    <tr><td>Expressive alt (plugin)</td><td>Orpheus-3B</td><td class="num"><span class="pill lic">Apache-2.0</span></td><td class="num">~8 GB</td><td class="num">optional</td></tr>
-    <tr><td>Analyzer LLM</td><td>Any OpenAI/Anthropic-compatible endpoint (local Ollama default)</td><td class="num">n/a (endpoint)</td><td class="num">off-box OK</td><td class="num">≥ 30 tok/s</td></tr>
+    <tr><td>Character TTS</td><td>Qwen3-TTS-1.7B (VoiceDesign → frozen clone prompt, per-line emotion instruct) — <b>shipped</b></td><td class="num"><span class="pill lic">Apache-2.0</span></td><td class="num">~5–8 GB bf16</td><td class="num">batch per entity</td></tr>
+    <tr><td>Expressive alt (plugin)</td><td>ElevenLabs <code>eleven_v3</code> (audio tags) — hero lines only — <b>shipped</b></td><td class="num"><span class="pill lic-warn">proprietary API</span></td><td class="num">cloud</td><td class="num">opt-in spend</td></tr>
+    <tr><td>Analyzer LLM</td><td>Ollama <code>qwen3:14b</code> local default · OpenRouter (<code>gemini-2.5-flash-lite</code>) fallback; every call ledgered (provider/purpose/tokens/cost) — <b>shipped</b></td><td class="num">n/a (endpoint)</td><td class="num">~9 GB local / off-box</td><td class="num">cents per book</td></tr>
+    <tr><td>Word alignment (cues + read-along)</td><td>Qwen3-ForcedAligner-0.6B — <b>shipped</b></td><td class="num"><span class="pill lic">Apache-2.0</span></td><td class="num">~1.4 GB</td><td class="num">80 ms grid</td></tr>
     <tr><td>ASR (QA + word timing)</td><td>faster-whisper</td><td class="num"><span class="pill lic">MIT</span></td><td class="num">~1–3 GB</td><td class="num">word-level ts</td></tr>
     <tr><td>Speaker fingerprint</td><td>SpeechBrain ECAPA-TDNN</td><td class="num"><span class="pill lic">Apache-2.0</span></td><td class="num">&lt;1 GB</td><td class="num">cos-sim gate</td></tr>
-    <tr><td>SFX retrieval</td><td>LAION CLAP over CC0 corpus (Freesound CC0, Sonniss)</td><td class="num"><span class="pill lic">Apache-2.0 / CC0</span></td><td class="num">&lt;1 GB</td><td class="num">retrieval-first</td></tr>
-    <tr><td>Ambience / SFX generation</td><td>Stable Audio Open</td><td class="num"><span class="pill lic-warn">Stability Community¹</span></td><td class="num">~6 GB</td><td class="num">≤ 47 s loopable beds</td></tr>
-    <tr><td>Score (post-1.0 plugin)</td><td>External music pipeline (Ad Lab)</td><td class="num">per service</td><td class="num">off-box</td><td class="num">chapter cues only</td></tr>
+    <tr><td>SFX retrieval</td><td>CLAP (<code>laion/clap-htsat-unfused</code>) over FSD50K CC0 corpus, 2.4k clips indexed — <b>shipped</b></td><td class="num"><span class="pill lic">Apache-2.0 / CC0</span></td><td class="num">&lt;1 GB</td><td class="num">retrieval-first</td></tr>
+    <tr><td>SFX fallback</td><td>ffmpeg procedural recipes (seeded, deterministic) — <b>shipped</b></td><td class="num"><span class="pill lic">n/a</span></td><td class="num">0</td><td class="num">long-tail gap cover</td></tr>
+    <tr><td>SFX / ambience generation</td><td>Stable Audio 3.0 Small-SFX (planned)</td><td class="num"><span class="pill lic-warn">Stability Community¹</span></td><td class="num">~4–6 GB</td><td class="num">≤ 2 min one-shots</td></tr>
+    <tr><td>Score</td><td>muapi/Suno relay — <b>shipped for preview</b> (license unresolved); ACE-Step 1.5 local planned</td><td class="num"><span class="pill lic-warn">relay¹ / Apache-2.0 planned</span></td><td class="num">cloud / ~6 GB</td><td class="num">chapter cues</td></tr>
   </table></div>
   <p class="muted">¹ Free under $1M/yr revenue; outputs usable. Labeled optional plugin per principle 6 — retrieval-first design means the product ships fully functional without it.</p>
   <p><b>Runtime abstraction:</b> engines declare capability + cost against an inference-runtime interface (CUDA / ROCm / DirectML / CPU). Per-(engine, precision, runtime) VRAM costs live in a data table, not code — AMD support is a table row plus CI, not a rewrite.</p>
@@ -339,8 +342,8 @@
   <div class="stems">
     <div class="stem"><div class="bar" style="background:var(--stem-dialog)"></div><b>S1 · DIALOG</b><span>Narration + character lines. The anchor. Dialog-normalized −18 LUFS integrated. Never processed by the immersive layer beyond mastering.</span></div>
     <div class="stem"><div class="bar" style="background:var(--stem-amb)"></div><b>S2 · AMBIENCE</b><span>One loopable bed per scene, derived from <code>scene.env</code>. Sits 15–20 LU under dialog; sidechain duck −4 dB extra (attack 250 ms, release 1.2 s). Equal-power crossfade 2–4 s at scene bounds.</span></div>
-    <div class="stem"><div class="bar" style="background:var(--stem-sfx)"></div><b>S3 · SFX</b><span>One-shots anchored to word timestamps (from ASR pass — zero extra cost). Default −8 LU relative to dialog; never within 150 ms ahead of a stressed word onset.</span></div>
-    <div class="stem"><div class="bar" style="background:var(--stem-music)"></div><b>S4 · MUSIC</b><span>Post-1.0. Chapter opens/closes and marked emotional peaks only. Same ducking law as S2.</span></div>
+    <div class="stem"><div class="bar" style="background:var(--stem-sfx)"></div><b>S3 · SFX</b><span>One-shots anchored to word timestamps (forced alignment, Qwen3-FA — transient at anchor-word onset +100 ms, ≥500 ms separation). Retrieval-first from the CC0 corpus (CLAP sim ≥ 0.25), procedural fallback, weak matches skipped and flagged. Per-cue confidence (word-match × alignment × source) in the QA report. Never within 150 ms ahead of a stressed word onset.</span></div>
+    <div class="stem"><div class="bar" style="background:var(--stem-music)"></div><b>S4 · MUSIC</b><span>Chapter cues/beds from <code>book.json</code> <code>music:</code> entries (text-anchored, prompt-specified). Sits ~20 LU under dialog; same ducking law as S2. muapi/Suno today (preview licensing); ACE-Step local planned. Engine + license recorded per cue in the QA report.</span></div>
   </div>
   <div class="tablewrap"><table>
     <tr><th>Parameter</th><th>Value</th><th>Why</th></tr>
@@ -397,6 +400,7 @@
 
 <section>
   <h2><span class="no">13</span>Milestones</h2>
+  <p class="muted">Status as of 2026-07-18: <b>M0+M1 shipped</b> (full book bound, 8/8 chapters, 0 QA flags, 5-stem mix with retrieval SFX, word-aligned cues, music stem, LLM analyzer + ledger, hybrid v2 default). M2 next; motion-comic track runs parallel as M4b below.</p>
   <div class="tablewrap"><table>
     <tr><th>Milestone</th><th>Scope</th><th>Exit criterion</th></tr>
     <tr><td class="num">M0 · v0.1<br><span class="muted">walking skeleton</span></td><td>One .txt chapter → Compile → 2 voices → 1 ambience bed → 2 library SFX → 4-stem mix → M4B. MCP tools stubbed but real.</td><td>Before/after demo clip of the same chapter, clean vs. immersive. Every pipeline joint exercised.</td></tr>
@@ -404,6 +408,7 @@
     <tr><td class="num">M2 · v0.3<br><span class="muted">series memory</span></td><td>Series bible, alias merge UX, cross-book voice persistence, voice cloning (consent-gated).</td><td>Book 2 of a series auto-casts returning characters correctly, including one renamed character.</td></tr>
     <tr><td class="num">M3 · v0.4<br><span class="muted">director's console</span></td><td>Script editor with cited spans, waveform review, cast board, scene ambience editor, streamed preview.</td><td>A flagged chapter can be reviewed and fixed entirely in-app in under 10 minutes.</td></tr>
     <tr><td class="num">M4 · v1.0<br><span class="muted">ship</span></td><td>Pinokio package + installers, first-run model wizard, docs, MCP API frozen at 1.0.</td><td>Cold machine → finished audiobook with no terminal usage.</td></tr>
+    <tr><td class="num">M4b · motion comic<br><span class="muted">graphic audio, seen</span></td><td>Directors Palette character sheets + location refs from the Production Script; scene-anchored panels timed by word-level alignment; image→video where it pays off; MP4 per chapter.</td><td>One chapter exported as a motion-comic MP4 that tracks the immersive master.</td></tr>
   </table></div>
 </section>
 

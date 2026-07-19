@@ -11,17 +11,15 @@ function stripMd(s) {
   return s.replace(/\*+/g, '').replace(/\s+/g, ' ').trim();
 }
 
-export function compile(bookCfg, chapterCfg, manuscriptPath) {
+// Chapter text -> paragraphs with manuscript offsets (cites). Shared by the
+// deterministic compiler and the LLM analyzer.
+export function chapterParagraphs(manuscriptPath, heading) {
   const raw = readFileSync(manuscriptPath, 'utf8');
-
-  // isolate requested chapter
   const chapters = raw.split(/^## /m).filter((c) => c.trim());
-  const chapterSrc = chapters.find((c) => c.startsWith(chapterCfg.heading));
-  if (!chapterSrc) throw new Error(`chapter heading not found: ${chapterCfg.heading}`);
+  const chapterSrc = chapters.find((c) => c.startsWith(heading));
+  if (!chapterSrc) throw new Error(`chapter heading not found: ${heading}`);
   const chapterTitle = chapterSrc.split('\n')[0].trim();
   const body = chapterSrc.slice(chapterSrc.indexOf('\n') + 1);
-
-  // paragraphs (keep source offsets for cites)
   const paragraphs = [];
   let cursor = raw.indexOf(body);
   for (const block of body.split(/\n\s*\n/)) {
@@ -30,6 +28,25 @@ export function compile(bookCfg, chapterCfg, manuscriptPath) {
     if (text && !text.startsWith('<!--')) paragraphs.push({ text, cite: [at, at + text.length] });
     cursor = at + block.length;
   }
+  return { chapterTitle, paragraphs };
+}
+
+// heading matches either the raw heading prefix ("Chapter One") or a
+// 1-based index ("1" -> first chapter)
+function startsWithHeading(chapterSrc, heading) {
+  return chapterSrc.startsWith(heading);
+}
+
+export function listChapters(manuscriptPath) {
+  const raw = readFileSync(manuscriptPath, 'utf8');
+  return raw.split(/^## /m)
+    .map((c) => c.trim())
+    .filter((c) => c && !c.startsWith('#')) // drop front matter (H1 title etc.)
+    .map((c) => c.split('\n')[0].trim());
+}
+
+export function compile(bookCfg, chapterCfg, manuscriptPath) {
+  const { chapterTitle, paragraphs } = chapterParagraphs(manuscriptPath, chapterCfg.heading);
 
   // scene boundaries: match book.json anchors by paragraph prefix
   const sceneDefs = chapterCfg.scenes.map((s) => ({ ...s, startPara: -1 }));
@@ -147,10 +164,16 @@ export function compile(bookCfg, chapterCfg, manuscriptPath) {
       const clean = stripMd(seg.text).replace(/^[—\-,.\s]+|[—\-\s]+$/g, (c) => (/[.!?…]/.test(c) ? c : ''));
       if (!clean || !/[a-zA-Z0-9一-鿿]/.test(clean)) continue;
       const entity = seg.kind === 'dialogue' ? speakerOf[rec.pIdx] : 'narrator';
-      allLines.push({
+      const line = {
         id: `lin_${String(lineNo++).padStart(4, '0')}`,
         para: rec.pIdx, kind: seg.kind, entity, text: clean, cite: rec.cite,
-      });
+      };
+      // a hint may carry an emotion payload { anger: 0.7, ... } for the engines
+      if (seg.kind === 'dialogue') {
+        const h = hints.find((hh) => clean.startsWith(hh.match));
+        if (h?.emotion) line.emotion = h.emotion;
+      }
+      allLines.push(line);
     }
   }
 
@@ -170,9 +193,16 @@ export function compile(bookCfg, chapterCfg, manuscriptPath) {
     return { ...c, at_line: line.id };
   });
 
+  // music cues: same text anchoring, placed on their own stem in the mix
+  const music = (chapterCfg.music || []).map((c) => {
+    const line = allLines.find((l) => l.text.includes(c.anchor));
+    if (!line) throw new Error(`music anchor not found: ${c.anchor}`);
+    return { ...c, at_line: line.id };
+  });
+
   const script = {
     book: bookCfg.id, chapter: chapterTitle, revision: 1,
-    entities: bookCfg.entities, scenes, cues,
+    entities: bookCfg.entities, scenes, cues, music,
   };
   log('compile', `${paragraphs.length} paragraphs -> ${allLines.length} lines, ${scenes.length} scenes, ${cues.length} cues`);
   return script;

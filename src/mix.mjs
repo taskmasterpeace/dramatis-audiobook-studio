@@ -3,14 +3,50 @@
 import { writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { ffmpeg, ffprobeDuration, measureLoudness, ensureDir, log } from './util.mjs';
+import { alignLines } from './align.mjs';
 import { renderBed } from '../engines/ambience/procgen.mjs';
-import { renderSfx } from '../engines/sfx/procgen.mjs';
+import { resolveSfx } from '../engines/sfx/retrieve.mjs';
+import { renderTrack } from '../engines/music/suno.mjs';
 
 const GAP_LINE = 0.45;       // s between segments
 const GAP_SCENE = 2.2;       // s at scene boundaries
 const BED_LEAD = 1.5;        // ambience starts before first line of scene
 const AMB_GAIN_DB = -16;     // bed level under dialog before ducking
+const MUS_GAIN_DB = -20;     // music sits lower still; same ducking law as beds
 const DUCK = 'sidechaincompress=threshold=0.02:ratio=6:attack=180:release=1100:makeup=1';
+
+// words that never anchor a sound cue
+const STOPWORDS = new Set(('instead,before,after,there,their,about,would,could,should,then,than,when,while,' +
+  'with,from,this,that,these,those,them,they,what,where,which,whose,into,onto,upon').split(','));
+
+// Place a cue at the onset of its anchor word + 100 ms (film-sync convention:
+// a transient slightly after the word reads as simultaneous). Falls back to
+// line start + manual offset. Confidence blends: word-anchor hit, alignment
+// coverage, and sound-source quality (CLAP sim / deterministic recipe).
+function placeCue(cue, line, words, lastCueAt, r) {
+  let at = line.start + (cue.offset || 0);
+  let method = 'line-fallback';
+  let wordMatched = false;
+  if (words.length && cue.anchor) {
+    const cand = cue.anchor.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)
+      .filter((w) => w.length >= 4 && !STOPWORDS.has(w));
+    const target = cand[0] || cue.anchor.toLowerCase().split(/\s+/).at(-1);
+    if (target) {
+      const hit = words.find((w) => {
+        const ww = w.word.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return ww && (ww.startsWith(target.slice(0, 5)) || target.startsWith(ww.slice(0, 5)));
+      });
+      if (hit) { at = line.start + hit.start + 0.1; method = 'word-align'; wordMatched = true; }
+    }
+  }
+  if (at < lastCueAt + 0.5) at = lastCueAt + 0.5; // one-shot separation
+  at = Math.min(at, line.start + line.dur + 0.3);
+  const coverage = words.length ? Math.min(1, words.length / Math.max(1, line.text.split(/\s+/).length)) : 0;
+  const retrieval01 = r.source === 'retrieval' ? Math.min(1, (r.score || 0) / 0.35)
+    : r.source === 'procgen' ? 0.5 : 0.8;
+  const confidence = +(0.4 * (wordMatched ? 1 : 0) + 0.3 * coverage + 0.3 * retrieval01).toFixed(2);
+  return { at, method, wordMatched, confidence };
+}
 
 export async function mix(script, lineWavs, outDir, cacheRoot) {
   ensureDir(outDir);
@@ -32,7 +68,7 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
       const norm = wav.replace(/\.wav$/, '-48k.wav');
       if (!existsSync(norm)) await ffmpeg(['-i', wav, '-ar', '48000', '-ac', '1', norm]);
       const dur = await ffprobeDuration(norm);
-      timeline.push({ id: line.id, entity: line.entity, start: +t.toFixed(2), dur: +dur.toFixed(2), text: line.text });
+      timeline.push({ id: line.id, entity: line.entity, start: +t.toFixed(2), dur: +dur.toFixed(2), text: line.text, norm });
       concatEntries.push(`file '${norm.replace(/\\/g, '/')}'`);
       concatEntries.push(`file '${path.join(outDir, 'silence_line.wav').replace(/\\/g, '/')}'`);
       t += dur + GAP_LINE;
@@ -64,26 +100,63 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
   const ambienceStem = path.join(outDir, 'stem-ambience.wav');
   await overlay(beds, total, ambienceStem);
 
-  // 3) sfx stem: cues anchored to line start times
-  const lineStart = Object.fromEntries(timeline.map((l) => [l.id, l.start]));
+  // 3) sfx stem: retrieval-first sounds, placed at aligned word onsets
+  const normById = Object.fromEntries(timeline.map((l) => [l.id, l.norm]));
+  const alignment = script.cues.length
+    ? await alignLines(timeline.map((l) => ({ id: l.id, text: l.text })), normById, cacheRoot)
+    : {};
+  const resolved = await resolveSfx(
+    script.cues.map((c) => ({ id: c.id, spec: c.sfx, dur: c.dur, seed: hashSeed(script.book + c.id) })),
+    cacheRoot);
+  const cueReport = [];
   const shots = [];
+  let lastCueAt = -Infinity;
   for (const cue of script.cues) {
-    const at = lineStart[cue.at_line] + (cue.offset || 0);
-    const seed = hashSeed(script.book + cue.id);
-    const wav = await renderSfx(cue.sfx, seed, cacheRoot, cue.dur);
-    shots.push({ file: wav, delayMs: Math.round(at * 1000), gainDb: cue.gain_db ?? 0 });
-    log('mix', `cue ${cue.id} (${cue.sfx}) @${fmt(at)}`);
+    const r = resolved[cue.id];
+    if (!r?.file) {
+      cueReport.push({ id: cue.id, sfx: cue.sfx, skipped: r?.reason || 'unresolved' });
+      continue;
+    }
+    const line = timeline.find((l) => l.id === cue.at_line);
+    const p = placeCue(cue, line, alignment[line.id] || [], lastCueAt, r);
+    lastCueAt = p.at;
+    shots.push({ file: r.file, delayMs: Math.round(p.at * 1000), gainDb: cue.gain_db ?? 0 });
+    cueReport.push({
+      id: cue.id, sfx: cue.sfx, at: +p.at.toFixed(2), method: p.method, confidence: p.confidence,
+      source: r.source, ...(r.score != null && { sim: r.score }), ...(r.caption && { caption: r.caption }),
+    });
+    log('mix', `cue ${cue.id} (${cue.sfx}) @${fmt(p.at)} [${r.source}/${p.method} conf=${p.confidence}]`);
   }
   const sfxStem = path.join(outDir, 'stem-sfx.wav');
   await overlay(shots, total, sfxStem);
 
-  // 4) masters (per-chapter .m4a; the book binder assembles chaptered .m4b)
+  // 4) music stem: chapter cues/beds on their own stem, ducked like ambience
+  const musicReport = [];
+  const musicShots = [];
+  for (const mc of script.music || []) {
+    const line = timeline.find((l) => l.id === mc.at_line);
+    const at = line.start + (mc.offset || 0);
+    try {
+      const t = await renderTrack(mc.spec, mc.dur, cacheRoot);
+      musicShots.push({ file: t.file, delayMs: Math.round(at * 1000), gainDb: mc.gain_db ?? 0 });
+      musicReport.push({ id: mc.id, spec: mc.spec, at: +at.toFixed(2), engine: t.engine, license: t.license });
+      log('mix', `music ${mc.id} @${fmt(at)} (${t.engine})`);
+    } catch (e) {
+      musicReport.push({ id: mc.id, spec: mc.spec, skipped: String(e.message).slice(0, 140) });
+      log('mix', `music ${mc.id} skipped: ${String(e.message).slice(0, 140)}`);
+    }
+  }
+  const musicStem = path.join(outDir, 'stem-music.wav');
+  await overlay(musicShots, total, musicStem);
+
+  // 5) masters (per-chapter .m4a; the book binder assembles chaptered .m4b)
   const immersive = path.join(outDir, 'immersive.m4a');
   await ffmpeg([
-    '-i', dialogStem, '-i', ambienceStem, '-i', sfxStem,
+    '-i', dialogStem, '-i', ambienceStem, '-i', sfxStem, '-i', musicStem,
     '-filter_complex',
-    `[1:a]volume=${AMB_GAIN_DB}dB[ambq];[ambq][0:a]${DUCK}[ducked];` +
-    `[0:a][ducked][2:a]amix=inputs=3:duration=first:normalize=0,` +
+    `[1:a]volume=${AMB_GAIN_DB}dB[ambq];[3:a]volume=${MUS_GAIN_DB}dB[musq];` +
+    `[ambq][0:a]${DUCK}[duckedA];[musq][0:a]${DUCK}[duckedM];` +
+    `[0:a][duckedA][2:a][duckedM]amix=inputs=4:duration=first:normalize=0,` +
     `loudnorm=I=-18:TP=-2:LRA=11[out]`,
     '-map', '[out]', '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
     '-metadata', `title=${script.chapter}`, immersive,
@@ -108,6 +181,8 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
     durationSec: Math.round(total),
     lines: timeline.length,
     flaggedLines: flags,
+    cues: cueReport,
+    music: musicReport,
     immersive: { file: immersive, ...(await measureLoudness(immersive)) },
     clean: { file: clean, ...(await measureLoudness(clean)) },
   };

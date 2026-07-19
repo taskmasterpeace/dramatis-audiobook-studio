@@ -2,9 +2,22 @@ import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 export const pexecFile = promisify(execFile);
+
+// Python for engine sidecars: explicit env override, else the project venv,
+// else whatever "python" resolves to on PATH.
+export function pythonExe() {
+  if (process.env.DRAMATIS_PYTHON) return process.env.DRAMATIS_PYTHON;
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  for (const rel of ['.venv/Scripts/python.exe', '.venv/bin/python']) {
+    const p = path.join(root, ...rel.split('/'));
+    if (existsSync(p)) return p;
+  }
+  return 'python';
+}
 
 export function contentKey(parts) {
   return createHash('sha1').update(parts.join('|')).digest('hex').slice(0, 24);

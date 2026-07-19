@@ -3,7 +3,7 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { contentKey, cached, pexecFile, log } from '../../src/util.mjs';
+import { contentKey, cached, pexecFile, pythonExe, log } from '../../src/util.mjs';
 
 const ENGINE = 'kokoro-onnx@1';
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -31,7 +31,7 @@ export async function renderLines(lines, voices, cacheRoot) {
   if (jobs.length) {
     const manifest = path.join(cacheRoot, 'kokoro-manifest.json');
     writeFileSync(manifest, JSON.stringify(jobs));
-    const { stdout } = await pexecFile('python', [path.join(here, 'kokoro-batch.py'), manifest],
+    const { stdout } = await pexecFile(pythonExe(), [path.join(here, 'kokoro-batch.py'), manifest],
       { maxBuffer: 16 * 1024 * 1024 });
     log('render:tts', stdout.trim().split('\n').pop());
   }

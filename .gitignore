@@ -2,3 +2,6 @@ out/
 node_modules/
 *.log
 models/
+corpus/
+.venv/
+__pycache__/

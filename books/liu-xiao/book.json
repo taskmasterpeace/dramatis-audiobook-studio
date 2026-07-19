@@ -5,16 +5,16 @@
   "protagonist": "liu",
   "entities": [
     { "id": "narrator", "kind": "narrator", "names": [] },
-    { "id": "liu", "kind": "character", "names": ["Liu", "Liu Xiao"] },
-    { "id": "wen", "kind": "character", "names": ["Wen"] },
-    { "id": "stranger", "kind": "character", "names": [] },
-    { "id": "young_man", "kind": "character", "names": ["young man", "flying man"] },
-    { "id": "older_man", "kind": "character", "names": ["older man", "second man", "older one"] },
-    { "id": "sergeant", "kind": "character", "names": ["sergeant"] },
-    { "id": "dr_han", "kind": "character", "names": ["Han"] },
-    { "id": "president", "kind": "character", "names": ["President"] },
-    { "id": "muyang", "kind": "character", "names": ["Muyang", "Yang", "watcher"] },
-    { "id": "lee", "kind": "character", "names": ["Lee"] }
+    { "id": "liu", "kind": "character", "names": ["Liu", "Liu Xiao"], "visual": "Elderly Chinese man in his 70s, blind masseur. Thin wiry build, weathered face, clouded unseeing eyes behind small dark glasses, short neat white hair, plain dark mandarin-collar tunic, bamboo cane." },
+    { "id": "wen", "kind": "character", "names": ["Wen"], "visual": "Blind Chinese woman in her 40s, warm round face, unseeing eyes, practical dark clothing, quick expressive hands." },
+    { "id": "stranger", "kind": "character", "names": [], "visual": "Tall pale man of indeterminate age, long black coat perfectly dry in heavy rain, unsettling stillness, dark glasses, faint half-smile." },
+    { "id": "young_man", "kind": "character", "names": ["young man", "flying man"], "visual": "Chinese man in his early 20s, lean, bright-eyed, cheap windbreaker, hovering slightly above the wet pavement." },
+    { "id": "older_man", "kind": "character", "names": ["older man", "second man", "older one"], "visual": "Heavyset older man, soaked flat cap and jacket, frightened eyes, trembling hands." },
+    { "id": "sergeant", "kind": "character", "names": ["sergeant"], "visual": "Chinese police sergeant, 40s, cropped hair, rain cape over uniform, hard authoritative face." },
+    { "id": "dr_han", "kind": "character", "names": ["Han"], "visual": "Female scientist in her 50s, white lab coat over dark clothes, precise tired eyes, hair pinned back." },
+    { "id": "president", "kind": "character", "names": ["President"], "visual": "Elderly statesman, dark suit, silver hair, grave controlled expression, weight of office in his posture." },
+    { "id": "muyang", "kind": "character", "names": ["Muyang", "Yang", "watcher"], "visual": "Quiet soft-featured man in his 40s, plain grey jacket, melancholy watchful eyes, always slightly damp from the night air." },
+    { "id": "lee", "kind": "character", "names": ["Lee"], "visual": "Chinese man in his 30s, earnest warm face, work jacket, strong careful hands like his father's." }
   ],
   "voices": {
     "sapi": {
@@ -43,7 +43,20 @@
       "muyang":    { "voice": "am_echo",    "speed": 1.0 },
       "lee":       { "voice": "am_liam",    "speed": 1.05 }
     },
-    "hybrid": { "kokoro": "@kokoro", "elevenlabs": "@elevenlabs" },
+    "hybrid": { "kokoro": "@kokoro", "qwen3": "@qwen3", "elevenlabs": "@elevenlabs" },
+    "qwen3": {
+      "narrator":  { "design": "Calm, measured middle-aged male storyteller; low, warm register; unhurried documentary delivery." },
+      "liu":       { "design": "Elderly Chinese man in his 70s; thin, weathered voice with quiet strength; slightly breathy; light Mandarin-accented English." },
+      "wen":       { "design": "Elderly Chinese woman; gentle, warm, slightly frail voice; soft Mandarin-accented English." },
+      "stranger":  { "design": "Cold, ageless male voice; unnaturally calm, slow and precise; faintly synthetic smoothness." },
+      "young_man": { "design": "Young man in his early 20s; bright, clear tenor; quick and earnest." },
+      "older_man": { "design": "Gruff older man; rough, weary voice; low and slow." },
+      "sergeant":  { "design": "Police sergeant; authoritative male voice, hard-edged, clipped commands." },
+      "dr_han":    { "design": "Female scientist; precise, clinical mid-register voice; calm and exact." },
+      "president": { "design": "Statesman; deep, grave male voice; controlled, weighty delivery." },
+      "muyang":    { "design": "Soft-spoken man; melancholic, intimate, tired voice; unhurried." },
+      "lee":       { "design": "Adult man in his 30s; earnest, warm mid-range voice." }
+    },
     "elevenlabs": {
       "narrator":  { "candidates": ["George", "Brian", "Daniel"], "stability": 0.6, "style": 0.15 },
       "liu":       { "candidates": ["George", "Bill", "Brian"], "stability": 0.5, "style": 0.35 },
@@ -59,35 +72,35 @@
     }
   },
   "hints": [
-    { "match": "Liu Xiao!", "entity": "stranger" },
+    { "match": "Liu Xiao!", "entity": "stranger", "emotion": { "surprise": 0.6 } },
     { "match": "Lao xiansheng", "entity": "young_man" },
     { "match": "Old sir,", "entity": "young_man" },
-    { "match": "Stop! Let him go", "entity": "liu" },
-    { "match": "Wei. Off the weapon.", "entity": "sergeant" },
+    { "match": "Stop! Let him go", "entity": "liu", "emotion": { "anger": 0.7 } },
+    { "match": "Wei. Off the weapon.", "entity": "sergeant", "emotion": { "anger": 0.5 } },
     { "match": "Nanites,", "entity": "dr_han" },
-    { "match": "You're dying,", "entity": "muyang" },
+    { "match": "You're dying,", "entity": "muyang", "emotion": { "sadness": 0.6 } },
     { "match": "So,", "entity": "president" },
-    { "match": "I know,", "entity": "liu" },
-    { "match": "What do you want", "entity": "president" },
-    { "match": "Don't kill him,", "entity": "liu" },
+    { "match": "I know,", "entity": "liu", "emotion": { "sadness": 0.5 } },
+    { "match": "What do you want", "entity": "president", "emotion": { "curiosity": 0.5 } },
+    { "match": "Don't kill him,", "entity": "liu", "emotion": { "fear": 0.6 } },
     { "match": "He is a boy,", "entity": "liu" },
     { "match": "Where,", "entity": "liu" },
     { "match": "is the President?", "entity": "liu" },
-    { "match": "Out,", "entity": "liu" },
+    { "match": "Out,", "entity": "liu", "emotion": { "anger": 0.6 } },
     { "match": "Up. Get clear of this room.", "entity": "liu" },
     { "match": "I'm here,", "entity": "liu" },
-    { "match": "Go home,", "entity": "liu" },
-    { "match": "Baba, you could have died", "entity": "lee" }
+    { "match": "Go home,", "entity": "liu", "emotion": { "tenderness": 0.5 } },
+    { "match": "Baba, you could have died", "entity": "lee", "emotion": { "fear": 0.6, "sadness": 0.4 } }
   ],
   "chapters": [
     {
       "heading": "Chapter One",
       "scenes": [
-        { "id": "c1-parlor", "anchor": "The rain came early that evening", "ambience": { "type": "rain", "intensity": 0.35 } },
-        { "id": "c1-vigil", "anchor": "He found his cane where it leaned", "ambience": { "type": "rain", "intensity": 0.7 } },
-        { "id": "c1-walk", "anchor": "He stood. He shook out the cheap plastic poncho", "ambience": { "type": "rain", "intensity": 1.0 } },
-        { "id": "c1-encounter", "anchor": "It came from up ahead, across the street", "ambience": { "type": "rain", "intensity": 1.0, "drone": true } },
-        { "id": "c1-courtyard", "anchor": "He woke on his back, on concrete", "ambience": { "type": "roomtone-morning", "intensity": 0.6 } }
+        { "id": "c1-parlor", "anchor": "The rain came early that evening", "ambience": { "type": "rain", "intensity": 0.35 }, "characters": ["liu", "wen"], "visual": "Covered massage parlor arcade off Wangfujing pedestrian street at dusk, row of massage tables under a long awning, first rain falling, warm shop light on wet stone." },
+        { "id": "c1-vigil", "anchor": "He found his cane where it leaned", "ambience": { "type": "rain", "intensity": 0.7 }, "characters": ["liu"], "visual": "The same parlor in full downpour; empty tables, an old security guard dozing by the gate, sheets of rain beyond the awning." },
+        { "id": "c1-walk", "anchor": "He stood. He shook out the cheap plastic poncho", "ambience": { "type": "rain", "intensity": 1.0 }, "characters": ["liu"], "visual": "Flooded Beijing pedestrian street at night in torrential rain; an old man in a cheap plastic poncho with a bamboo cane walks alone past shuttered storefronts." },
+        { "id": "c1-encounter", "anchor": "It came from up ahead, across the street", "ambience": { "type": "rain", "intensity": 1.0, "drone": true }, "characters": ["stranger", "young_man", "older_man", "liu"], "visual": "Dark street intersection in driving rain; five floating metallic spheres hovering in a loose ring; a pale stranger in a black coat perfectly dry; two frightened men." },
+        { "id": "c1-courtyard", "anchor": "He woke on his back, on concrete", "ambience": { "type": "roomtone-morning", "intensity": 0.6 }, "characters": ["liu"], "visual": "Grey early morning in a concrete housing-block courtyard, puddles, an old man lying on his back on wet concrete, apartment towers looming." }
       ],
       "cues": [
         { "id": "c1-thunder-1", "sfx": "thunder-distant", "anchor": "The rain came early that evening", "offset": 1.0, "gain_db": -8 },
@@ -96,6 +109,9 @@
         { "id": "c1-tear", "sfx": "riser-tear", "anchor": "and then nothing at all", "offset": 0.0, "gain_db": -6 },
         { "id": "c1-hum", "sfx": "sphere-hum", "anchor": "There were five of them", "offset": 0.5, "dur": 90, "gain_db": -14 },
         { "id": "c1-snap", "sfx": "tentacle-snap", "anchor": "A tentacle uncoiled from the nearest sphere", "offset": 1.2, "gain_db": -3 }
+      ],
+      "music": [
+        { "id": "c1-theme", "anchor": "The rain came early that evening", "spec": "somber cinematic underscore, sparse felt piano and low sustained strings, rain-washed melancholy, restrained, slow build, no drums", "dur": 90, "gain_db": -6 }
       ]
     },
     {

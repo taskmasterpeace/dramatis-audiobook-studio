@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // DRAMATIS CLI:
-//   node bin/dramatis.mjs produce <book.json> [--chapter N] [--tts sapi|kokoro]
+//   node bin/dramatis.mjs produce <book.json> [--chapter N] [--tts kokoro|qwen3|hybrid|elevenlabs|sapi]
+//   node bin/dramatis.mjs analyze <manuscript.md> [--book <id>] [--chapter N] [--llm ollama|openrouter]
 // Ingest -> Compile -> Cast -> Render -> Mix per chapter, then bind a
 // chaptered M4B for the whole book. Content-addressed caching throughout.
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -19,8 +20,39 @@ const opt = (name, dflt) => {
   return i >= 0 ? args[i + 1] : dflt;
 };
 
+if (cmd === 'analyze') {
+  if (!bookPath) {
+    console.log('usage: dramatis analyze <manuscript.md> [--book <id>] [--chapter N|"Heading"] [--llm ollama|openrouter]');
+    process.exit(1);
+  }
+  const manuscriptArg = path.resolve(bookPath);
+  const bookId = opt('book', path.basename(manuscriptArg).replace(/\.[^.]+$/, ''));
+  const { analyzeChapter } = await import('../src/analyze.mjs');
+  await analyzeChapter({
+    manuscriptPath: manuscriptArg, bookId,
+    chapter: opt('chapter', null), provider: opt('llm', null),
+    cacheRoot: path.join(root, 'out'),
+  });
+  process.exit(0);
+}
+
+if (cmd === 'motion') {
+  if (!bookPath) {
+    console.log('usage: dramatis motion <book.json> --chapter N');
+    process.exit(1);
+  }
+  const book = JSON.parse(readFileSync(bookPath, 'utf8'));
+  const n = parseInt(opt('chapter', '1'), 10);
+  const chapterCfg = book.chapters[n - 1];
+  if (!chapterCfg) throw new Error(`no chapter ${n}`);
+  const { motionChapter } = await import('../src/motion.mjs');
+  await motionChapter({ book, chapterCfg, n, outRoot: ensureDir(path.join(root, 'out', book.id)) });
+  process.exit(0);
+}
+
 if (cmd !== 'produce' || !bookPath) {
-  console.log('usage: dramatis produce <book.json> [--chapter N] [--tts sapi|kokoro]');
+  console.log('usage: dramatis produce <book.json> [--chapter N] [--tts sapi|kokoro|qwen3|hybrid|elevenlabs]\n' +
+    '       dramatis analyze <manuscript.md> [--book <id>] [--chapter N|"Heading"] [--llm ollama|openrouter]');
   process.exit(1);
 }
 
