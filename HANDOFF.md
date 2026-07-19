@@ -1,6 +1,43 @@
-# DRAMATIS — Handoff (2026-07-18, evening update)
+# DRAMATIS — Handoff (2026-07-18, late-night: STUDIO SHIPPED)
 
 Read `README.md` + `docs/SPEC.html` first. This file is the live state.
+
+## LATE-NIGHT SESSION: DRAMATIS Studio v1 BUILT AND VERIFIED
+
+`node studio/server.mjs` → http://localhost:4600 (or Studio launch config in
+`.claude/launch.json`). Zero dependencies. Spec: `docs/superpowers/specs/
+2026-07-18-dramatis-studio-design.md`. Smoke: `node studio/smoke.mjs` (13/13).
+
+**Verified live in the browser tonight (all through the UI, not just API):**
+- Bookshelf with truthful staleness + warnings; Production board with stage
+  chips, LUFS/flags, chapter players, pre-flight cost BEFORE render
+- Render button → spawned produce → SSE console streaming real pipeline logs
+- Cast screen: 4-engine voice DNA editing, per-role engine override (writes
+  book.casting; hybrid router honors it), one-click AUDITIONS — verified
+  kokoro (cache-hit instant), elevenlabs, qwen3 (75s cold / ~5s warm), and
+  the NEW gemini engine (live via Replicate, 7s)
+- Script screen: screenplay view, hint popover (verified write + revert),
+  SFX cue pins → panel with current clip + CLAP library alternatives →
+  Approve/Swap/Reject persisted to book.json and honored by the mixer
+- New Book intake: pasted The Signal-Man (Dickens) → analyzer drafted 3
+  entities/21 scenes/58 cues (trains, bells, rumble) → book.json scaffolded
+  (src/scaffold.mjs; also `dramatis scaffold` CLI) → rendered via the UI
+- NARRATOR MATRIX delivered to Robert: same line through kokoro/Battlerap
+  Algorithm(11L)/gemini-Charon/qwen3 — his ear picks; Studio locks it
+- Ambience is retrieval-first now (engines/ambience/retrieve.mjs): real CC0
+  recordings, same source clip per type (consistent), procgen fallback,
+  provenance in qa-report.beds[]
+- SFX capabilities verified: gunshot 0.61, car-door 0.52, rain 0.61 in corpus
+- Images/video: MANUAL ONLY (banner in UI; nothing auto-generates)
+- Style bible recorded for monkeys-paw: live-action (period film still),
+  anchor URL + phrase, auto_generate false
+
+**New/changed since evening:** studio/ (server+app+smoke), src/scaffold.mjs,
+engines/ambience/retrieve.mjs, engines/tts/gemini.mjs, hybrid per-role
+routing, sfx approval honoring, mix beds report, said-verbs already in.
+Known rough edges: analyzer still over-cues (58 on Signal-Man — approval
+gate is the filter); qwen3 first-audition model load ~75s; screenshot tool
+in the dev browser pane flaky (page itself fine).
 
 ## EVENING SESSION (Robert's directive: AUDIO ONLY — motion/visuals DEFERRED)
 

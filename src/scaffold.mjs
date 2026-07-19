@@ -37,12 +37,12 @@ export async function createBook({ title, author = '', text }, { root, analyze =
     voices: houseTemplate([]),
     hints: [],
     chapters: headings.map((heading) => {
-      const paras = chapterParagraphs(samplePath, heading);
+      const { paragraphs } = chapterParagraphs(samplePath, heading);
       return {
         heading,
         scenes: [{
           id: `${slugify(heading)}-1`,
-          anchor: paras[0].text.slice(0, 60),
+          anchor: paragraphs[0].text.slice(0, 60),
           ambience: { type: 'room-hum', intensity: 0.3 },
         }],
         cues: [],
@@ -83,7 +83,7 @@ function mergeAnalysis(book, analysis, chapterIdx, samplePath) {
   if (!book.protagonist && analysis.protagonist) book.protagonist = analysis.protagonist;
 
   const heading = book.chapters[chapterIdx].heading;
-  const paras = chapterParagraphs(samplePath, heading);
+  const { paragraphs: paras } = chapterParagraphs(samplePath, heading);
   const scenes = [];
   const cues = [];
   const lineText = {};
@@ -91,10 +91,14 @@ function mergeAnalysis(book, analysis, chapterIdx, samplePath) {
     for (const l of sc.lines || []) lineText[l.id] = l.text;
     const firstPara = sc.lines?.[0]?.para;
     if (firstPara == null || !paras[firstPara]) continue;
+    const KNOWN_AMBIENCE = ['rain', 'roomtone-morning', 'room-hum', 'crowd', 'city-night', 'lab-cold', 'battle'];
+    const amb = sc.ambience && KNOWN_AMBIENCE.includes(sc.ambience.type)
+      ? sc.ambience
+      : { type: 'room-hum', intensity: sc.ambience?.intensity ?? 0.3 };
     scenes.push({
       id: sc.id || `sc-${scenes.length + 1}`,
       anchor: paras[firstPara].text.slice(0, 60),
-      ambience: sc.ambience && sc.ambience.type ? sc.ambience : { type: 'room-hum', intensity: 0.3 },
+      ambience: amb,
     });
   }
   for (const c of analysis.cues || []) {

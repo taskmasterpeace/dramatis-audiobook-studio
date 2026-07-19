@@ -170,7 +170,14 @@
     "hybrid": {
       "kokoro": "@kokoro",
       "qwen3": "@qwen3",
-      "elevenlabs": "@elevenlabs"
+      "elevenlabs": "@elevenlabs",
+      "gemini": "@gemini"
+    },
+    "gemini": {
+      "narrator": {
+        "voice": "Charon",
+        "prompt": "AUDIO PROFILE: A fireside storyteller narrating a classic English ghost story. THE SCENE: A quiet study, late at night, reading aloud by lamplight. DIRECTOR NOTES: - Style: measured, warm, with quiet dread underneath. - Accent: neutral British. - Pace: unhurried, letting silences breathe."
+      }
     }
   },
   "hints": [
