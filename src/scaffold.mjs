@@ -101,9 +101,14 @@ function mergeAnalysis(book, analysis, chapterIdx, samplePath) {
       ambience: amb,
     });
   }
+  // Human-vocal "SFX" are categorically wrong: the cast performs the lines —
+  // a voice cue double-casts the scene with a stranger from the library
+  // (measured: "human voice calling out" retrieved a teacher yelling at a class).
+  const VOCAL = /\b(voice|voices|yell(?:ing)?|shout(?:ing)?|scream(?:s|ing)?|speech|talking|whisper(?:ing)?|murmur|says|saying|calling(?:\s+out)?|cries|crying|moan|groan|sob(?:bing)?|laugh(?:ter|ing)?|sing(?:ing)?|chant(?:ing)?)\b/i;
   for (const c of analysis.cues || []) {
     const t = lineText[c.at_line];
     if (!t) continue;
+    if (VOCAL.test(c.sfx)) continue;
     cues.push({ id: c.id, sfx: c.sfx, anchor: t.slice(0, 44), gain_db: c.gain_db ?? -8, ...(c.dur ? { dur: c.dur } : {}) });
   }
   if (scenes.length) book.chapters[chapterIdx].scenes = scenes;

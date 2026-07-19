@@ -269,24 +269,6 @@
       ],
       "cues": [
         {
-          "id": "cue_1",
-          "sfx": "human voice yelling",
-          "anchor": "HALLOA! Below there!",
-          "gain_db": -10
-        },
-        {
-          "id": "cue_2",
-          "sfx": "human voice calling",
-          "anchor": "When he heard a voice thus calling to him, h",
-          "gain_db": -12
-        },
-        {
-          "id": "cue_3",
-          "sfx": "human voice yelling",
-          "anchor": "Halloa! Below!",
-          "gain_db": -10
-        },
-        {
           "id": "cue_4",
           "sfx": "low rumble, vibration",
           "anchor": "He looked up at me without replying, and I l",
@@ -306,12 +288,6 @@
           "anchor": "He looked up at me without replying, and I l",
           "gain_db": -8,
           "dur": 3
-        },
-        {
-          "id": "cue_7",
-          "sfx": "human voice calling out",
-          "anchor": "All right!",
-          "gain_db": -14
         },
         {
           "id": "cue_8",
@@ -371,12 +347,6 @@
           "gain_db": -18
         },
         {
-          "id": "cue_17",
-          "sfx": "human voice calling out",
-          "anchor": "And when you come down to-morrow night, don'",
-          "gain_db": -14
-        },
-        {
           "id": "cue_18",
           "sfx": "distant train approaching",
           "anchor": "He wished me good-night, and held up his lig",
@@ -407,18 +377,6 @@
           "anchor": "With that we walked side by side to his box,",
           "gain_db": -18,
           "dur": 5
-        },
-        {
-          "id": "cue_23",
-          "sfx": "human voice calling out, hoarse",
-          "anchor": "And when you come down to-morrow night, don'",
-          "gain_db": -10
-        },
-        {
-          "id": "cue_24",
-          "sfx": "human voice calling out repeatedly, urgent",
-          "anchor": "I was sitting here, when I heard a voice cry",
-          "gain_db": -10
         },
         {
           "id": "cue_25",
@@ -454,18 +412,6 @@
           "gain_db": -20
         },
         {
-          "id": "cue_30",
-          "sfx": "faint echo or whisper",
-          "anchor": "was just a year ago. Six or seven months pas",
-          "gain_db": -18
-        },
-        {
-          "id": "cue_31",
-          "sfx": "human screams and cries, distant",
-          "anchor": "That very day, as a train came out of the tu",
-          "gain_db": -8
-        },
-        {
           "id": "cue_32",
           "sfx": "wind wailing",
           "anchor": "I could think of nothing to say, to any purp",
@@ -477,18 +423,6 @@
           "sfx": "low hum or click",
           "anchor": "At the Danger-light.",
           "gain_db": -16
-        },
-        {
-          "id": "cue_34",
-          "sfx": "human voice yelling with passion",
-          "anchor": "For God's sake, clear the way!",
-          "gain_db": -8
-        },
-        {
-          "id": "cue_35",
-          "sfx": "human voice calling out, agonized",
-          "anchor": "I have no peace or rest for it. It calls to ",
-          "gain_db": -10
         },
         {
           "id": "cue_36",
@@ -561,12 +495,6 @@
           "gain_db": -15
         },
         {
-          "id": "cue_47",
-          "sfx": "human voice, solemn",
-          "anchor": "Signal-man killed this morning, sir.",
-          "gain_db": -14
-        },
-        {
           "id": "cue_48",
           "sfx": "heavy impact, metal on metal",
           "anchor": "He was cut down by an engine, sir. No man in",
@@ -606,28 +534,10 @@
           "dur": 3
         },
         {
-          "id": "cue_54",
-          "sfx": "human voice shouting",
-          "anchor": "I saw him at the end, like as if I saw him d",
-          "gain_db": -6
-        },
-        {
-          "id": "cue_55",
-          "sfx": "human voice shouting urgently",
-          "anchor": "I said, 'Below there! Look out! Look out! Fo",
-          "gain_db": -6
-        },
-        {
           "id": "cue_56",
           "sfx": "sharp intake of breath",
           "anchor": "I was sitting here, when I heard a voice cry",
           "gain_db": -12
-        },
-        {
-          "id": "cue_57",
-          "sfx": "human voice shouting, desperate",
-          "anchor": "When he heard a voice thus calling to him, h",
-          "gain_db": -7
         },
         {
           "id": "cue_58",
