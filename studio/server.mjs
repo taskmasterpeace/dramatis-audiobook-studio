@@ -11,7 +11,7 @@ import {
   readFileSync, writeFileSync, renameSync, existsSync, readdirSync, statSync,
   createReadStream, mkdirSync, unlinkSync,
 } from 'node:fs';
-import { compile, listChapters } from '../src/compile.mjs';
+import { compile, listChapters, chapterConfigHash } from '../src/compile.mjs';
 import { ENGINE_IDS, FREE_ENGINE_IDS, loadRenderer, availableEngines } from '../engines/tts/registry.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -67,7 +67,6 @@ const mtime = (p) => (existsSync(p) ? statSync(p).mtimeMs : 0);
 
 // ── book status rollup ──────────────────────────────────────────────────────
 function chapterStatus(book) {
-  const bookMtime = mtime(bookPath(book.id));
   return book.chapters.map((ch, i) => {
     const dir = path.join(OUT, book.id, `ch-${String(i + 1).padStart(2, '0')}`);
     const script = path.join(dir, 'production-script.json');
@@ -80,7 +79,14 @@ function chapterStatus(book) {
       heading: ch.heading,
       compiled: existsSync(script),
       mastered: existsSync(master),
-      stale: existsSync(script) && bookMtime > mtime(script),
+      // precise: only THIS chapter's own config (its scenes/cues + the cast) —
+      // whole-book mtime marked every chapter stale when one cue was approved
+      stale: existsSync(script) && (() => {
+        try {
+          const s = JSON.parse(readFileSync(script, 'utf8'));
+          return s.configHash ? s.configHash !== chapterConfigHash(book, ch) : mtime(bookPath(book.id)) > mtime(script);
+        } catch { return false; }
+      })(),
       minutes: qa ? +(qa.durationSec / 60).toFixed(1) : null,
       lufs: qa?.immersive?.integratedLufs ?? null,
       flags: qa ? qa.flaggedLines.length : null,
@@ -105,9 +111,21 @@ function spendRollup(bookId) {
   return { llmUsd: +llm.toFixed(4) };
 }
 
-// hero-line estimate straight from the compiler (pure, no side effects)
+// hero-line estimate straight from the compiler (pure, no side effects).
+// Memoized on (book.json mtime + manuscript mtime): this compiles EVERY chapter,
+// and it used to re-run on every single page load.
+const preflightCache = new Map();
 function preflight(book) {
-  const manuscript = path.resolve(path.dirname(bookPath(book.id)), book.manuscript);
+  const manuscriptPath = path.resolve(path.dirname(bookPath(book.id)), book.manuscript);
+  const stamp = `${mtime(bookPath(book.id))}:${mtime(manuscriptPath)}`;
+  const hit = preflightCache.get(book.id);
+  if (hit && hit.stamp === stamp) return hit.value;
+  const value = computePreflight(book, manuscriptPath);
+  preflightCache.set(book.id, { stamp, value });
+  return value;
+}
+function computePreflight(book, manuscriptArg) {
+  const manuscript = manuscriptArg || path.resolve(path.dirname(bookPath(book.id)), book.manuscript);
   let narr = 0, dial = 0, hero = 0, heroChars = 0;
   const perChapter = [];
   for (const ch of book.chapters) {

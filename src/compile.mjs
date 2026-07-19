@@ -45,6 +45,25 @@ export function listChapters(manuscriptPath) {
     .map((c) => c.split('\n')[0].trim());
 }
 
+// Fingerprint of everything that actually affects THIS chapter's render. Stored
+// in the production script so staleness is precise: approving one cue in ch3
+// used to mark every chapter in the book stale (whole-book mtime), which trains
+// you to ignore the warning entirely.
+export function chapterConfigHash(bookCfg, chapterCfg) {
+  const relevant = {
+    chapter: chapterCfg,
+    entities: bookCfg.entities,
+    voices: bookCfg.voices,
+    casting: bookCfg.casting || null,
+    hints: bookCfg.hints || [],
+    protagonist: bookCfg.protagonist || null,
+  };
+  let h = 0;
+  const s = JSON.stringify(relevant);
+  for (let i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) | 0; }
+  return String(h >>> 0);
+}
+
 export function compile(bookCfg, chapterCfg, manuscriptPath) {
   const { chapterTitle, paragraphs } = chapterParagraphs(manuscriptPath, chapterCfg.heading);
 
@@ -212,6 +231,7 @@ export function compile(bookCfg, chapterCfg, manuscriptPath) {
 
   const script = {
     book: bookCfg.id, chapter: chapterTitle, revision: 1,
+    configHash: chapterConfigHash(bookCfg, chapterCfg),
     entities: bookCfg.entities, scenes, cues, music,
   };
   log('compile', `${paragraphs.length} paragraphs -> ${allLines.length} lines, ${scenes.length} scenes, ${cues.length} cues`);
