@@ -14,7 +14,9 @@ import { contentKey, ensureDir, ffmpeg, ffprobeDuration, log } from './util.mjs'
 // no default: this is a self-hosted image service, so the endpoint belongs in
 // your own config rather than baked into the source
 const DP_BASE = process.env.DP_BASE_URL;
-const STYLE = 'Stylized comic book illustration, dark cinematic lighting, rain-soaked Beijing noir, graphic novel realism, bold shadows, NOT photorealistic';
+// default look for generated panels; override per book via book.json style
+const STYLE = process.env.DRAMATIS_ART_STYLE
+  || 'Stylized comic book illustration, dark cinematic lighting, graphic novel realism, bold shadows, NOT photorealistic';
 const W = 1920, H = 1080, FPS = 30, XFADE = 1.0;
 
 function dpKey() {

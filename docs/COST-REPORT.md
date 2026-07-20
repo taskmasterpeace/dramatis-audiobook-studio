@@ -6,7 +6,7 @@
 
 | Book | Source | Chapters | Runtime | Engine config | QA flags |
 |---|---|---|---|---|---|
-| Liu Xiao: Protector of China | Robert's manuscript | 8 | 104.1 min | kokoro (all-local voices — see correction note) | 0 |
+| Liu Xiao: Protector of China (not in repo) | original manuscript | 8 | 101.9 min | kokoro (all-local voices — see correction note) | 0 |
 | The Monkey's Paw (W. W. Jacobs, 1902) | Project Gutenberg | 3 | 26.2 min | **hybrid v2** (Kokoro narration + Qwen3 designed voices + 11L hero lines) | 1 (benign: 4-char "yes." held 1.76 s) |
 | The Open Window (Saki, 1914) | Project Gutenberg | 1 | 7.7 min | **hybrid v2** | 0 |
 
@@ -65,7 +65,7 @@ analyzer's review queue) is the only human step between manuscript and master.
 
 **Correction (2026-07-18 late):** an earlier draft of this report labeled the bound Liu
 Xiao M4B "hybrid v1 with ElevenLabs dialogue." Wrong — `book-report.json` says `tts:
-kokoro`: the shipped 104-minute book is 100% local voices, ≈ $0.09 total API. The ≈ $3.35
+kokoro`: the shipped 102-minute book is 100% local voices, ≈ $0.09 total API. The ≈ $3.35
 of 11L credits were spent on experimental chapter renders (v1 hybrid trials + the v2→v3
 migration) that are cached but not in the bound book. The v1 $/hr row now reflects a
 *projection* from those measured chars, not the shipped artifact.
@@ -81,7 +81,7 @@ migration) that are cached but not in the bound book. The v1 $/hr row now reflec
 
 ## Hear it
 
-- `out/liu-xiao/book-immersive.m4b` — 104 min, 8 chapters (also `book-clean.m4b`)
+- `out/liu-xiao/book-immersive.m4b` — 102 min, 8 chapters (also `book-clean.m4b`)
 - `out/monkeys-paw/book-immersive.m4b` — 26.2 min, 3 chapters (also clean)
 - `out/open-window/ch-01/immersive.m4a` — 7.7 min (also `clean.m4a`)
 - `out/excerpts/` — 2-minute MP3 excerpts: Liu Xiao rain opening · Paw parlor (Qwen3 cast) ·

@@ -19,3 +19,10 @@ secrets.json
 # internal working notes - kept locally, not published
 HANDOFF.md
 docs/TECHNICAL-HANDOVER.md
+
+# author's own unpublished novel - stays local
+samples/liu-xiao-protector-of-china.md
+books/liu-xiao/
+
+# internal engineering skills - kept private
+.claude/skills/
