@@ -20,19 +20,19 @@ const OUT = path.join(root, 'out');
 const BOOKS = path.join(root, 'books');
 const PORT = (() => { const i = process.argv.indexOf('--port'); return i > 0 ? +process.argv[i + 1] : 4600; })();
 
-// ── keys: load from the known env files at boot (never printed) ─────────────
+// ── keys: load from env files at boot (never printed) ───────────────────────
+// Precedence: real environment > .env.local > .env > anything listed in
+// DRAMATIS_ENV_FILES (a path list, so you can point at a key store you already
+// keep elsewhere without hard-coding anyone's directory layout into the source).
+const KEY_NAMES = ['ELEVENLABS_API_KEY', 'OPENROUTER_API_KEY', 'FAL_KEY',
+  'REPLICATE_API_TOKEN', 'GEMINI_API_KEY', 'MUAPI_API_KEY', 'DP_API_KEY'];
+
 function loadKeys() {
-  const sources = [
-    // repo-local .env wins (gitignored) — drop DRAMATIS keys here, e.g. FAL_KEY
-    [path.join(root, '.env'), ['ELEVENLABS_API_KEY', 'OPENROUTER_API_KEY', 'FAL_KEY', 'REPLICATE_API_TOKEN', 'GEMINI_API_KEY', 'MUAPI_API_KEY', 'DP_API_KEY']],
-    ['D:/git/yourehired/.env', ['ELEVENLABS_API_KEY', 'OPENROUTER_API_KEY']],
-    ['D:/git/aiobr/.env', ['MUAPI_API_KEY', 'DP_API_KEY', 'REPLICATE_API_TOKEN', 'GEMINI_API_KEY']],
-    ['D:/git/directors-palette-v2/.env.local', ['FAL_KEY']],
-  ];
-  for (const [file, names] of sources) {
+  const extra = (process.env.DRAMATIS_ENV_FILES || '').split(/[;,]/).map((s) => s.trim()).filter(Boolean);
+  for (const file of [path.join(root, '.env.local'), path.join(root, '.env'), ...extra]) {
     if (!existsSync(file)) continue;
     const txt = readFileSync(file, 'utf8');
-    for (const n of names) {
+    for (const n of KEY_NAMES) {
       if (process.env[n]) continue;
       const m = txt.match(new RegExp(`^${n}=(.*)$`, 'm'));
       if (m) process.env[n] = m[1].trim().replace(/\r$/, '');

@@ -621,8 +621,7 @@
   "style": {
     "name": "live-action (period film still)",
     "phrase": "shot in the style of a photorealistic period-drama film still, moonlit interior, shallow depth of field, 35mm film grain",
-    "anchor": "https://tarohelkwuurakbxjyxm.supabase.co/storage/v1/object/public/directors-palette/generations/d3a01f94-671e-483a-89f6-0284f7aaaf85/drrzcmacq9rmt0czf0wrfpa05r.png",
-    "approved_by": "robert 2026-07-18",
+    "anchor": null,
     "auto_generate": false
   }
 }

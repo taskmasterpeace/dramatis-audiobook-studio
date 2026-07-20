@@ -306,16 +306,18 @@ clip (cached in `out/voices/qwen3/`), then all lines clone from it — so the pe
 frozen per character; per-line emotion goes through instruct ("Speak with a very
 fearful tone."). Engine: `engines/tts/qwen3.mjs` + `qwen3-batch.py` (resumable chunks).
 
-## ElevenLabs — Robert's account roster (fetched 2026-07-18)
+## ElevenLabs — your account roster
 
-Stock: George, Brian, Daniel, Bill, Callum, Archer, Alice, Matilda, Rachel*, Sarah,
-Laura, Charlie, Chris, River, Harry, Liam, Jessica, Eric, Bella, Adam, Roger, Will,
-Lily, Hope, Juniper. (*Rachel resolves via fallback; verify.)
-**Custom / narrator-flavored (the interesting ones):** "Robert Task Smith (Narrator)",
-"Bruce - Deep American Narrator Voice", "Action Novel: PERFECT male narrator",
-"Alexander Kensington - Studio Quality", "W. L. Oxley", "Michael Caine™ - British Icon",
-"Madison - wise old lady", "Narrator A", plus ~100 "Dynamic Voice <timestamp>" entries
-(AIOBR-generated; ignore for casting).
+The roster is whatever `GET /v1/voices` returns for YOUR key, so it differs per
+account and is never hard-coded here. Stock voices are common to all accounts
+(George, Brian, Daniel, Bill, Callum, Alice, Matilda, Sarah, Laura, Charlie,
+River, Liam, Jessica, Eric, Bella, Adam, Roger, Will, Lily, Hope, Juniper);
+anything else is your own custom or cloned voices. The Casting Room reads the
+live roster and filters out the auto-generated `Dynamic Voice <timestamp>`
+entries some tools leave behind.
+**Never document a specific account's custom voice names in this repo** — they
+are account data, and cloned voices are often named after real people, which is
+not something to publish. Read them at runtime instead.
 Resolution: name matched case-insensitively against `name.split(' - ')[0]` — so
 candidates use base names. Voice map shape:
 `{ "candidates": ["George","Eric","Bill"], "stability": 0.5, "style": 0.4 }`.
@@ -360,7 +362,7 @@ DIRECTOR'S NOTES:
 **Pricing**: $2/M input tokens, $0.04/1k output tokens → measured ≈ **$0.001/line**
 at audiobook line lengths (a hero line is cheap; whole-book narration would add up,
 so it stays a character/hero engine, not the default narrator). Key:
-`REPLICATE_API_TOKEN` (in `D:/git/aiobr/.env`).
+`REPLICATE_API_TOKEN` (set it in the repo's gitignored `.env`).
 **Robert's take**: best emotional model, dirt cheap, "very good for our actual actors."
 
 ## Casting is computed, not typed (src/casting.mjs — wired into the Studio)

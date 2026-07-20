@@ -11,13 +11,16 @@ import { createWriteStream } from 'node:fs';
 import { postJson } from './llm.mjs';
 import { contentKey, ensureDir, ffmpeg, ffprobeDuration, log } from './util.mjs';
 
-const DP_BASE = process.env.DP_BASE_URL || 'https://directors-palette-v2.vercel.app';
+// no default: this is a self-hosted image service, so the endpoint belongs in
+// your own config rather than baked into the source
+const DP_BASE = process.env.DP_BASE_URL;
 const STYLE = 'Stylized comic book illustration, dark cinematic lighting, rain-soaked Beijing noir, graphic novel realism, bold shadows, NOT photorealistic';
 const W = 1920, H = 1080, FPS = 30, XFADE = 1.0;
 
 function dpKey() {
   const key = process.env.DP_API_KEY;
   if (!key) throw new Error('DP_API_KEY not set');
+  if (!DP_BASE) throw new Error('DP_BASE_URL not set — point it at your image service');
   return key;
 }
 

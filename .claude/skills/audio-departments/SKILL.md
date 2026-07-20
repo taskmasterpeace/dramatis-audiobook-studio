@@ -27,8 +27,8 @@ does it serve, and does it beat the incumbent THERE?"
 
 **Replicate, fal.ai, or ElevenLabs — nothing else for now.** No Higgsfield, no
 Segmind, no per-model one-off accounts. Any new model must be reachable through
-one of these three (fal key lives in directors-palette-v2/.env.local as FAL_KEY;
-Replicate token in aiobr/.env; ElevenLabs in yourehired/.env).
+one of these three (`FAL_KEY`, `REPLICATE_API_TOKEN`, `ELEVENLABS_API_KEY` — all
+read from the repo's gitignored `.env`).
 
 ## SET-PIECE dept — Seed Audio 1.0 facts (PROBED LIVE on fal, 2026-07-19)
 
