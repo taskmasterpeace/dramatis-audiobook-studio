@@ -3,7 +3,7 @@
 // line.emotion -> inline [tag] prepended to the text (Gemini interprets bracketed
 // modifiers natively). Content-addressed per line like every other engine.
 import { contentKey, cached, log } from '../../src/util.mjs';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, unlinkSync } from 'node:fs';
 
 const ENGINE = 'gemini-tts@1';
 const MODEL = 'google/gemini-3.1-flash-tts';
@@ -26,6 +26,28 @@ function inlineTag(emotion) {
   return (EMOTION_TAGS[name] || `[${name}]`) + ' ';
 }
 
+// Gemini caps text at 4,000 BYTES per call (text+prompt ≤ 8,000). Long text used
+// to be silently sliced at 3,900 chars — words just vanished. Now it splits on
+// sentence boundaries, renders each chunk, and ffmpeg-concats the pieces.
+const MAX_CHUNK = 3200; // conservative: multibyte chars count as bytes, not chars
+function splitChunks(text, limit = MAX_CHUNK) {
+  if (Buffer.byteLength(text) <= limit) return [text];
+  const out = [];
+  let buf = '';
+  for (const s of text.split(/(?<=[.!?…])\s+/)) {
+    if (Buffer.byteLength(buf) + Buffer.byteLength(s) + 1 > limit && buf) { out.push(buf); buf = s; }
+    else buf = buf ? `${buf} ${s}` : s;
+    while (Buffer.byteLength(buf) > limit) { // one giant sentence: hard split
+      let cut = Math.min(buf.length, limit);
+      while (cut > 0 && buf[cut] !== ' ') cut--;
+      out.push(buf.slice(0, cut || limit));
+      buf = buf.slice(cut || limit).trim();
+    }
+  }
+  if (buf) out.push(buf);
+  return out;
+}
+
 async function synthOne(job, key) {
   const create = await fetch(`https://api.replicate.com/v1/models/${MODEL}/predictions`, {
     method: 'POST',
@@ -44,8 +66,29 @@ async function synthOne(job, key) {
   if (pred.status !== 'succeeded') throw new Error(`gemini prediction ${pred.status}: ${String(pred.error).slice(0, 200)}`);
   const url = Array.isArray(pred.output) ? pred.output[0] : pred.output;
   const audio = await fetch(url);
-  writeFileSync(job.out, Buffer.from(await audio.arrayBuffer()));
+  writeFileSync(job.outFile, Buffer.from(await audio.arrayBuffer()));
   return pred;
+}
+
+// render one logical job = 1..N chunks, concatenated into job.out
+async function synthJob(job, key) {
+  if (job.chunks.length === 1) {
+    await synthOne({ input: { text: job.chunks[0], voice: job.voice, prompt: job.prompt, language_code: job.language_code }, outFile: job.out }, key);
+    return;
+  }
+  log('render:tts', `gemini: long text -> ${job.chunks.length} chunks`);
+  const parts = [];
+  for (let i = 0; i < job.chunks.length; i++) {
+    const partFile = job.out.replace(/\.wav$/, `.part${i}.wav`);
+    await synthOne({ input: { text: job.chunks[i], voice: job.voice, prompt: job.prompt, language_code: job.language_code }, outFile: partFile }, key);
+    parts.push(partFile);
+  }
+  const list = job.out.replace(/\.wav$/, '.concat.txt');
+  writeFileSync(list, parts.map((p) => `file '${p.replace(/\\/g, '/').replace(/'/g, "'\\''")}'`).join('\n'));
+  const { ffmpeg } = await import('../../src/util.mjs');
+  await ffmpeg(['-f', 'concat', '-safe', '0', '-i', list, '-ar', '48000', '-ac', '1', job.out]);
+  for (const p of parts) { try { unlinkSync(p); } catch { /* fine */ } }
+  try { unlinkSync(list); } catch { /* fine */ }
 }
 
 export async function renderLines(lines, voices, cacheRoot) {
@@ -57,12 +100,12 @@ export async function renderLines(lines, voices, cacheRoot) {
     if (!v) throw new Error(`gemini: no voice for entity ${line.entity} and no narrator fallback`);
     const tag = inlineTag(line.emotion);
     if (tag) tagged++;
-    const text = (tag + line.text).slice(0, 3900); // 4,000-byte input cap
+    const text = tag + line.text;                 // full text — chunked below, never sliced
     const prompt = (v.prompt || 'Narrate naturally and clearly.').slice(0, 3900);
     const key = contentKey([ENGINE, v.voice || 'Kore', prompt, text]);
     const { path: out, hit } = cached(cacheRoot, key);
     results[line.id] = out;
-    if (!hit) jobs.push({ input: { text, voice: v.voice || 'Kore', prompt, language_code: v.language_code || 'en-US' }, out });
+    if (!hit) jobs.push({ chunks: splitChunks(text), voice: v.voice || 'Kore', prompt, language_code: v.language_code || 'en-US', out });
   }
   log('render:tts', `gemini(${MODEL}): ${lines.length} lines, ${lines.length - jobs.length} cache hits, ` +
     `${jobs.length} to synthesize, ${tagged} emotion-tagged`);
@@ -71,7 +114,7 @@ export async function renderLines(lines, voices, cacheRoot) {
   await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
     while (i < jobs.length) {
       const job = jobs[i++];
-      await synthOne(job, key);
+      await synthJob(job, key);
       if (++done % 10 === 0) log('render:tts', `gemini ${done}/${jobs.length}`);
     }
   }));

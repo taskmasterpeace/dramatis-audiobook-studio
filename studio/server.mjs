@@ -481,6 +481,16 @@ const server = http.createServer(async (req, res) => {
       const { text, engine = 'kokoro', voice, design, prompt } = await readBody(req);
       if (!text || !text.trim()) return json(res, 422, { error: 'text required' });
       if (!ENGINE_IDS.includes(engine)) return json(res, 422, { error: `engine must be one of: ${ENGINE_IDS.join(', ')}` });
+      // enforce the registry's declared limits: chunked engines take any length,
+      // the rest get a clear refusal instead of a truncation or API error
+      const { ENGINES } = await import('../engines/tts/registry.mjs');
+      const lim = ENGINES[engine].limits;
+      if (lim && !lim.chunked && text.trim().length > lim.perCall) {
+        return json(res, 422, {
+          error: `${engine} caps at ~${lim.perCall} chars per request (you sent ${text.trim().length}). ` +
+            (lim.note || '') + ' Use kokoro or gemini for long text — they chunk automatically.',
+        });
+      }
       const renderLines = await loadRenderer(engine);
       const voices = {
         kokoro: { narrator: { voice: voice || 'bm_george', speed: 1 } },
@@ -597,16 +607,35 @@ const server = http.createServer(async (req, res) => {
       let eleven = [];
       try {
         const r = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY || '' } });
-        if (r.ok) eleven = (await r.json()).voices
-          .map((v) => v.name.trim())
-          .filter((n) => !/^Dynamic Voice \d+$/.test(n))
-          .map((n) => n.split(/\s+-\s+/)[0].trim());
-        eleven = [...new Set(eleven)];
+        if (r.ok) {
+          const seen = new Set();
+          eleven = (await r.json()).voices
+            .filter((v) => !/^Dynamic Voice \d+$/.test(v.name.trim()))
+            .map((v) => ({
+              voice: v.name.trim().split(/\s+-\s+/)[0].trim(),
+              // the API ships gender/age/accent labels — the filterable truth
+              gender: v.labels?.gender || null,
+              age: v.labels?.age?.replace(/_/g, ' ') || null,
+              accent: v.labels?.accent || null,
+              note: [v.labels?.gender, v.labels?.age?.replace(/_/g, ' '), v.labels?.accent].filter(Boolean).join(' · ')
+                || v.name.split(/\s+-\s+/)[1]?.trim() || 'custom',
+            }))
+            .filter((v) => (seen.has(v.voice) ? false : seen.add(v.voice)));
+        }
       } catch { /* offline */ }
       return json(res, 200, {
-        kokoro: kokoro.map((id) => ({ voice: id, note: (id[0] === 'a' ? 'US' : 'UK') + (id[1] === 'f' ? ' female' : ' male') })),
-        gemini: gemini.map(([voice, note]) => ({ voice, note })),
-        elevenlabs: eleven.map((voice) => ({ voice, note: 'account roster' })),
+        kokoro: kokoro.map((id) => ({
+          voice: id,
+          gender: id[1] === 'f' ? 'female' : 'male',
+          accent: id[0] === 'a' ? 'american' : 'british',
+          note: (id[0] === 'a' ? 'US' : 'UK') + (id[1] === 'f' ? ' female' : ' male'),
+        })),
+        gemini: gemini.map(([voice, note]) => ({
+          voice,
+          gender: note.startsWith('F') ? 'female' : 'male',
+          note,
+        })),
+        elevenlabs: eleven,
         qwen3: [{ voice: '(design your own)', note: 'describe any voice in a sentence — see Cast screen' }],
       });
     }

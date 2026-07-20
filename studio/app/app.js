@@ -667,8 +667,26 @@ function viewCasting() {
       </div>`).join('')}</div>`
       : `<div class="empty">No company members yet. Seed a voice you love (Gemini/ElevenLabs), then save it to <code>actors/</code>.</div>`);
   } else {
-    const voices = S.roster[S.castTab] || [];
-    body = `<div style="display:flex;flex-wrap:wrap;gap:7px">
+    let voices = S.roster[S.castTab] || [];
+    // filters: find an actor by gender / age / accent / name (Robert's ask)
+    const f = S.castFilter || {};
+    const ages = [...new Set(voices.map((v) => v.age).filter(Boolean))];
+    const accents = [...new Set(voices.map((v) => v.accent).filter(Boolean))].sort();
+    if (f.gender) voices = voices.filter((v) => v.gender === f.gender);
+    if (f.age) voices = voices.filter((v) => v.age === f.age);
+    if (f.accent) voices = voices.filter((v) => v.accent === f.accent);
+    if (f.q) voices = voices.filter((v) => (v.voice + ' ' + (v.note || '')).toLowerCase().includes(f.q.toLowerCase()));
+    const filterBar = S.castTab === 'qwen3' ? '' : `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+        <input id="cf-q" placeholder="search name…" value="${esc(f.q || '')}" style="width:150px">
+        <select id="cf-gender"><option value="">any gender</option>
+          <option value="female" ${f.gender === 'female' ? 'selected' : ''}>female</option>
+          <option value="male" ${f.gender === 'male' ? 'selected' : ''}>male</option></select>
+        ${ages.length ? `<select id="cf-age"><option value="">any age</option>${ages.map((a) => `<option ${f.age === a ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select>` : ''}
+        ${accents.length ? `<select id="cf-accent"><option value="">any accent</option>${accents.map((a) => `<option ${f.accent === a ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select>` : ''}
+        <span style="font-size:11px;color:var(--dim)">${voices.length} match${voices.length === 1 ? '' : 'es'}</span>
+      </div>`;
+    body = filterBar + `<div style="display:flex;flex-wrap:wrap;gap:7px">
       ${voices.map((v) => `
         <div class="card" style="padding:8px 11px;display:flex;align-items:center;gap:8px" data-cast-voice="${esc(v.voice)}" data-cast-eng="${S.castTab}">
           <span style="font-size:12.5px;font-weight:600">${esc(v.voice)}</span>
@@ -691,10 +709,10 @@ function viewSay() {
   const el11 = (S.roster?.elevenlabs || []).map((v) => v.voice);
   const opt = (list, sel) => list.map((v) => `<option ${v === sel ? 'selected' : ''}>${esc(v)}</option>`).join('');
   const ENGINE_META = {
-    kokoro: { label: 'Kokoro — free local', cost: () => '$0.00' },
-    qwen3: { label: 'Qwen3 — free local (designed voice)', cost: () => '$0.00' },
-    elevenlabs: { label: 'ElevenLabs — premium', cost: (c) => `≈ $${(c * 0.00022).toFixed(2)}` },
-    gemini: { label: 'Gemini — directed', cost: (c) => `≈ $${Math.max(0.001, c * 0.000012).toFixed(3)}` },
+    kokoro: { label: 'Kokoro — free local', cost: () => '$0.00', limit: null }, // chunks any length
+    qwen3: { label: 'Qwen3 — free local (designed voice)', cost: () => '$0.00', limit: 1500 },
+    elevenlabs: { label: 'ElevenLabs — premium', cost: (c) => `≈ $${(c * 0.00022).toFixed(2)}`, limit: 5000 },
+    gemini: { label: 'Gemini — directed', cost: (c) => `≈ $${Math.max(0.001, c * 0.000012).toFixed(3)}`, limit: null }, // chunks any length
   };
   const voiceField =
     eng === 'kokoro' ? `<label class="mini">Voice <select id="say-voice">${opt(kok.length ? kok : ['bm_george', 'af_sarah', 'am_onyx'], 'bm_george')}</select></label>`
@@ -1011,12 +1029,21 @@ function bind(m) {
 
   // quick narrate — any engine, live estimate, persisted history
   $('#say-engine', m)?.addEventListener('change', (e) => { S.sayEngine = e.target.value; S.sayText = $('#say-text')?.value || ''; render(); });
+  const SAY_LIMITS = { qwen3: 1500, elevenlabs: 5000 }; // chunked engines have no cap
   const sayEst = () => {
     const el = $('#say-estimate'); if (!el) return;
     const speed = S.sayStats?.speed?.[S.sayEngine];
     const chars = ($('#say-text')?.value || '').trim().length;
-    if (speed && chars) el.textContent = `~${Math.max(1, Math.round(chars / speed))}s estimated for ${chars} chars (engine averages ${speed} chars/sec)`;
-    else if (speed) el.textContent = `this engine averages ${speed} chars/sec — estimate updates as you type`;
+    const cap = SAY_LIMITS[S.sayEngine];
+    const parts = [];
+    if (cap) parts.push(chars > cap
+      ? `⚠ ${chars}/${cap} chars — OVER this engine's per-request cap; kokoro & gemini chunk any length`
+      : `${chars}/${cap} chars`);
+    else if (chars) parts.push(`${chars} chars — no cap (this engine chunks long text automatically)`);
+    if (speed && chars) parts.push(`~${Math.max(1, Math.round(chars / speed))}s estimated (${speed} chars/sec measured)`);
+    else if (speed) parts.push(`engine averages ${speed} chars/sec`);
+    el.innerHTML = parts.join(' · ');
+    el.style.color = cap && chars > cap ? 'var(--warn)' : 'var(--dim)';
   };
   $('#say-text', m)?.addEventListener('input', sayEst);
   sayEst();
@@ -1043,8 +1070,13 @@ function bind(m) {
     btn.disabled = false;
   });
 
-  // casting room tabs
-  m.querySelectorAll('[data-casttab]').forEach((b) => b.addEventListener('click', () => { S.castTab = b.dataset.casttab; render(); }));
+  // casting room tabs + attribute filters
+  m.querySelectorAll('[data-casttab]').forEach((b) => b.addEventListener('click', () => { S.castTab = b.dataset.casttab; S.castFilter = {}; render(); }));
+  const setFilter = (k, v) => { S.castFilter = { ...(S.castFilter || {}), [k]: v }; render(); };
+  $('#cf-q', m)?.addEventListener('input', (e) => { S.castFilter = { ...(S.castFilter || {}), q: e.target.value }; clearTimeout(S._cfT); S._cfT = setTimeout(render, 250); });
+  $('#cf-gender', m)?.addEventListener('change', (e) => setFilter('gender', e.target.value));
+  $('#cf-age', m)?.addEventListener('change', (e) => setFilter('age', e.target.value));
+  $('#cf-accent', m)?.addEventListener('change', (e) => setFilter('accent', e.target.value));
 
   // actor notes — global craft knowledge, saved to actors/<name>/notes.md
   m.querySelectorAll('[data-actornote]').forEach((ta) => {
