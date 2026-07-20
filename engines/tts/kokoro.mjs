@@ -4,6 +4,7 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { contentKey, cached, pexecFile, pythonExe, log, speakable } from '../../src/util.mjs';
+import { KOKORO_LANG } from '../../src/voice-tables.mjs';
 
 const ENGINE = 'kokoro-onnx@1';
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -18,10 +19,15 @@ export async function renderLines(lines, voices, cacheRoot) {
     if (!v) throw new Error(`kokoro: no voice for entity '${line.entity}' and no narrator fallback`);
     if (!voices[line.entity]) log('render:tts', `WARN kokoro: '${line.entity}' has no voice — using narrator`);
     const text = speakable(line.text);
-    const key = contentKey([ENGINE, v.voice, String(v.speed ?? 1), text]);
+    // lang is normally a pure function of the voice id (already in the key), so
+    // the base key shape is left alone — appending a 5th element unconditionally
+    // would invalidate every cached line in the catalog for no audible change.
+    // Only an explicit override changes the key.
+    const base = [ENGINE, v.voice, String(v.speed ?? 1), text];
+    const key = contentKey(v.lang ? [...base, v.lang] : base);
     const { path: out, hit } = cached(cacheRoot, key);
     results[line.id] = out;
-    if (!hit) jobs.push({ text, voice: v.voice, speed: v.speed ?? 1, out });
+    if (!hit) jobs.push({ text, voice: v.voice, speed: v.speed ?? 1, lang: v.lang || KOKORO_LANG[v.voice] || 'en-us', out });
   }
   log('render:tts', `kokoro: ${lines.length} lines, ${lines.length - jobs.length} cache hits, ${jobs.length} to synthesize`);
   if (jobs.length) {

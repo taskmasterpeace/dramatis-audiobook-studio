@@ -602,8 +602,7 @@ const server = http.createServer(async (req, res) => {
 
     // ---- casting room: the full talent roster + audition any voice ----
     if (req.method === 'GET' && p === '/api/casting/roster') {
-      const kokoro = ['af_alloy', 'af_aoede', 'af_bella', 'af_heart', 'af_jessica', 'af_kore', 'af_nicole', 'af_nova', 'af_river', 'af_sarah', 'af_sky', 'am_adam', 'am_echo', 'am_eric', 'am_fenrir', 'am_liam', 'am_michael', 'am_onyx', 'am_puck', 'am_santa', 'bf_alice', 'bf_emma', 'bf_isabella', 'bf_lily', 'bm_daniel', 'bm_fable', 'bm_george', 'bm_lewis'];
-      const gemini = [['Zephyr', 'F Bright'], ['Puck', 'M Upbeat'], ['Charon', 'M Informative'], ['Kore', 'F Firm'], ['Fenrir', 'M Excitable'], ['Leda', 'F Youthful'], ['Orus', 'M Firm'], ['Aoede', 'F Breezy'], ['Callirrhoe', 'F Easy-going'], ['Autonoe', 'F Bright'], ['Enceladus', 'M Breathy'], ['Iapetus', 'M Clear'], ['Umbriel', 'M Easy-going'], ['Algenib', 'M Gravelly'], ['Despina', 'F Smooth'], ['Erinome', 'F Clear'], ['Laomedeia', 'F Upbeat'], ['Achernar', 'F Soft'], ['Algieba', 'M Smooth'], ['Schedar', 'M Even'], ['Gacrux', 'F Mature'], ['Pulcherrima', 'F Forward'], ['Achird', 'M Friendly'], ['Zubenelgenubi', 'M Casual'], ['Vindemiatrix', 'F Gentle'], ['Sadachbia', 'M Lively'], ['Sadaltager', 'M Knowledgeable'], ['Sulafat', 'F Warm'], ['Alnilam', 'M Firm'], ['Rasalgethi', 'M Informative']];
+      const { KOKORO_VOICES, GEMINI_VOICES } = await import('../src/voice-tables.mjs');
       let eleven = [];
       try {
         const r = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY || '' } });
@@ -624,36 +623,82 @@ const server = http.createServer(async (req, res) => {
         }
       } catch { /* offline */ }
       return json(res, 200, {
-        kokoro: kokoro.map((id) => ({
-          voice: id,
-          gender: id[1] === 'f' ? 'female' : 'male',
-          accent: id[0] === 'a' ? 'american' : 'british',
-          note: (id[0] === 'a' ? 'US' : 'UK') + (id[1] === 'f' ? ' female' : ' male'),
+        // best-graded first: the published grade is what separates the ~5
+        // audiobook-grade Kokoro voices from the ones that sound rough
+        kokoro: KOKORO_VOICES.slice().sort((a, b) => b.score - a.score).map((v) => ({
+          voice: v.voice, label: v.name, gender: v.gender, accent: v.accent, grade: v.grade,
+          note: `${v.voice} · grade ${v.grade} · ${v.accent}${v.note ? ` — ${v.note}` : ''}`,
         })),
-        gemini: gemini.map(([voice, note]) => ({
-          voice,
-          gender: note.startsWith('F') ? 'female' : 'male',
-          note,
+        gemini: GEMINI_VOICES.map((v) => ({
+          voice: v.voice, gender: v.gender, age: v.ageSkew || null, character: v.character,
+          note: v.note,
         })),
         elevenlabs: eleven,
-        qwen3: [{ voice: '(design your own)', note: 'describe any voice in a sentence — see Cast screen' }],
       });
     }
     if (req.method === 'POST' && p === '/api/casting/audition') {
-      const { engine, voice } = await readBody(req);
-      const LINE = 'The rain came early that evening, and the city held its breath — this is how the story begins.';
+      const { engine, voice, params, line: lineText } = await readBody(req);
+      const LINE = lineText || 'The rain came early that evening, and the city held its breath — this is how the story begins.';
       const maps = {
-        kokoro: { narrator: { voice, speed: 1.0 } },
-        gemini: { narrator: { voice, prompt: 'A natural, engaging storyteller reading the opening line of an audiobook.' } },
-        elevenlabs: { narrator: { candidates: [voice], stability: 0.5, style: 0.25 } },
+        kokoro: { narrator: params || { voice, speed: 1.0 } },
+        gemini: { narrator: params || { voice, prompt: 'A natural, engaging storyteller reading the opening line of an audiobook.' } },
+        elevenlabs: { narrator: params || { candidates: [voice], stability: 0.5, style: 0.25 } },
+        qwen3: { narrator: params || { design: voice } },
       };
-      if (!maps[engine]) return json(res, 422, { error: 'engine must be kokoro | gemini | elevenlabs' });
+      if (!maps[engine]) return json(res, 422, { error: `engine must be one of ${Object.keys(maps).join(' | ')}` });
       const renderLines = await loadRenderer(engine);
-      const line = { id: `cast_${engine}_${voice.replace(/\W+/g, '_')}`, kind: 'narration', entity: 'narrator', text: LINE };
+      const id = `cast_${engine}_${String(voice).replace(/\W+/g, '_').slice(0, 40)}`;
+      const line = { id, kind: 'narration', entity: 'narrator', text: LINE };
       const t0 = Date.now();
       const wavs = await renderLines([line], maps[engine], OUT);
       const rel = path.relative(OUT, wavs[line.id]).split(path.sep).join('/');
       return json(res, 200, { media: `/media/${rel}`, engine, voice, ms: Date.now() - t0 });
+    }
+
+    if (req.method === 'POST' && p === '/api/casting/design') {
+      const char = await readBody(req);
+      const { candidateSlate, SEED_LINE } = await import('../src/voicedesign.mjs');
+      let elevenlabs = [];
+      try {
+        const r = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY || '' } });
+        if (r.ok) {
+          elevenlabs = (await r.json()).voices
+            .filter((v) => !/^Dynamic Voice \d+$/.test(v.name.trim()))
+            .map((v) => ({
+              voice: v.name.trim().split(/\s+-\s+/)[0].trim(),
+              gender: v.labels?.gender || null,
+              age: v.labels?.age?.replace(/_/g, ' ') || null,
+              accent: v.labels?.accent || null,
+            }));
+        }
+      } catch { /* offline: the slate simply won't include an 11L candidate */ }
+      const slate = candidateSlate(char, { elevenlabs });
+      return json(res, 200, { ...slate, line: SEED_LINE });
+    }
+
+    if (req.method === 'POST' && p === '/api/casting/hire') {
+      const { name, engine, voice, params, media, character } = await readBody(req);
+      const slug = String(name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      if (!slug) return json(res, 422, { error: 'give them a name first' });
+      const dir = path.join(root, 'actors', slug);
+      if (existsSync(dir)) return json(res, 409, { error: `"${slug}" is already in the company — pick another name` });
+      const rel = String(media || '').replace(/^\/media\//, '');
+      const src = path.resolve(OUT, rel);
+      if (!src.startsWith(OUT) || !existsSync(src)) return json(res, 422, { error: 'audition clip not found — play the take first' });
+      const { SEED_LINE } = await import('../src/voicedesign.mjs');
+      const { ffmpeg } = await import('../src/util.mjs');
+      mkdirSync(dir, { recursive: true });
+      // normalise to 24k mono wav: this clip is a CLONE REFERENCE, and Qwen3
+      // cloning wants clean mono >=24kHz (mp3 previews from 11L land here too)
+      await ffmpeg(['-y', '-i', src, '-ar', '24000', '-ac', '1', path.join(dir, 'seed.wav')]);
+      writeFileSync(path.join(dir, 'transcript.txt'), SEED_LINE);
+      writeFileSync(path.join(dir, 'origin.json'), JSON.stringify({
+        seed_engine: engine, seed_voice: voice, params: params || null,
+        character: character || '', created: new Date().toISOString(),
+        gate: 'auditioned + approved by ear',
+      }, null, 2));
+      writeFileSync(path.join(dir, 'notes.md'), '');
+      return json(res, 200, { ok: true, name: slug });
     }
 
     // ---- cue preview: current clip + top-3 library alternatives for swap ----

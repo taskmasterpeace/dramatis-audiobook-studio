@@ -88,4 +88,45 @@ test('casting: gender/age determination on known traps', () => {
   // accent routes to the character tier
   assert.match(t('Elderly Chinese man, blind masseur.').accent, /Mandarin/);
   assert.strictEqual(castingRecipe({ id: 'liu', visual: 'Elderly Chinese man.' }).recipe.engine, 'gemini');
+  // a BARE "boy"/"girl" is a child — this read as middle-aged until 2026-07-20
+  assert.strictEqual(t('A frightened boy of about nine.').ageBand, 'child');
+  assert.strictEqual(t('A girl, barefoot in the yard.').ageBand, 'child');
+  // ...but the word must stand alone: compounds are not children
+  assert.strictEqual(t('A cowboy in his forties.').ageBand, 'adult');
+  assert.strictEqual(t('His girlfriend, a lawyer in her thirties.').ageBand, 'adult');
+  // "teenage girl" matches BOTH bands; teen must win or a 15-year-old gets the
+  // eight-year-old design ("small bright high-pitched") — an audible miscast
+  assert.strictEqual(t('A nervous teenage girl.').ageBand, 'teen');
+});
+
+test('voice designer: slate picks the right voice per engine', async () => {
+  const { candidateSlate } = await import('../src/voicedesign.mjs');
+  const slate = (visual, roster = []) => candidateSlate({ id: 'x', visual }, { elevenlabs: roster });
+  const gem = (s) => s.candidates.find((c) => c.engine === 'gemini');
+
+  // texture words must reach Google's published characteristic: Algenib is the
+  // ONLY gravelly male, so a gruff dockworker routed to "Informative" would
+  // spend the whole book fighting its own preset
+  assert.strictEqual(gem(slate('A gruff Irish dockworker, been shouting over machinery for thirty years.')).voice, 'Algenib');
+  // age outranks texture: Gacrux is the only aged-reading female and is our
+  // ear-approved nola-elder seed — "warm elderly woman" must not land on Sulafat
+  assert.strictEqual(gem(slate('An elderly Black woman from New Orleans, warm and slow.')).voice, 'Gacrux');
+
+  // locale is a real accent lever, but our accent directions all end in
+  // "...speaking English" — a bare /english/ test sent New Orleans to en-GB
+  assert.strictEqual(gem(slate('An elderly Black woman from New Orleans.')).params.language_code, 'en-US');
+  assert.strictEqual(gem(slate('A dockworker from Dublin, Irish.')).params.language_code, 'en-GB');
+
+  // the director's note must never carry the header that gets read aloud
+  assert.doesNotMatch(gem(slate('A calm narrator.')).params.prompt, /DIRECTOR/);
+  assert.match(gem(slate('A calm narrator.')).params.prompt, /Synthesize this performance as speech/);
+
+  // ElevenLabs is matched against the user's OWN roster by its labels
+  const withRoster = slate('An elderly woman.', [
+    { voice: 'Madison', gender: 'female', age: 'old', accent: 'american' },
+    { voice: 'Callum', gender: 'male', age: 'middle aged', accent: 'irish' },
+  ]);
+  assert.strictEqual(withRoster.candidates.find((c) => c.engine === 'elevenlabs').voice, 'Madison');
+  // ...and is simply absent when the roster is empty, never invented
+  assert.strictEqual(slate('An elderly woman.').candidates.some((c) => c.engine === 'elevenlabs'), false);
 });

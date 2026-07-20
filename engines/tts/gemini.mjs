@@ -15,15 +15,36 @@ const apiKey = () => {
   return k;
 };
 
-const EMOTION_TAGS = {
-  anger: '[angrily]', fear: '[fearfully]', sadness: '[sadly]', surprise: '[surprised]',
-  joy: '[joyfully]', tenderness: '[tenderly]', curiosity: '[curiously]', disgust: '[disgusted]',
+// Emotion goes in the PROMPT, never in a bracket tag. Google documents four tag
+// behaviours, and "vocalized markup" — where the tag is SPOKEN ALOUD as a word —
+// is triggered by exactly the adjective/adverb shape we used to emit
+// ([angrily], [sadly], [curiously]); the fallback `[${name}]` emitted bare nouns
+// ([sadness]), the highest-risk shape of all. Since `prompt` and `text` are
+// separate API fields and the prompt is built per call, per-line emotion can ride
+// in the direction instead — which is also what Google recommends for steering.
+const EMOTION_DIRECTION = {
+  anger: 'This line is angry — hard consonants, pushed volume, clipped ends.',
+  fear: 'This line is frightened — tight throat, unsteady breath, faster than they mean to be.',
+  sadness: 'This line is grief-heavy — quieter, slower, the voice thinning out at the end.',
+  surprise: 'This line lands as a shock — a caught breath before it, then higher and faster.',
+  joy: 'This line is delighted — lifted, open, a smile audible in the vowels.',
+  tenderness: 'This line is tender — soft, close, almost private.',
+  curiosity: 'This line is genuinely curious — rising at the end, leaning in.',
+  disgust: 'This line is repelled — pulled back, flattened, distaste in the tone.',
 };
-function inlineTag(emotion) {
+function emotionDirection(emotion) {
   if (!emotion) return '';
   const [name, weight] = Object.entries(emotion).sort((a, b) => b[1] - a[1])[0] || [];
   if (!name || weight < 0.4) return '';
-  return (EMOTION_TAGS[name] || `[${name}]`) + ' ';
+  return EMOTION_DIRECTION[name] || `This line carries ${name}.`;
+}
+
+// the API caps are in BYTES; slicing by character overflows on multibyte text
+function clampBytes(s, limit) {
+  if (Buffer.byteLength(s) <= limit) return s;
+  let out = s;
+  while (Buffer.byteLength(out) > limit) out = out.slice(0, Math.floor(out.length * 0.95));
+  return out;
 }
 
 // Gemini caps text at 4,000 BYTES per call (text+prompt ≤ 8,000). Long text used
@@ -98,17 +119,23 @@ export async function renderLines(lines, voices, cacheRoot) {
   for (const line of lines) {
     const v = voices[line.entity] || voices.narrator;
     if (!v) throw new Error(`gemini: no voice for entity ${line.entity} and no narrator fallback`);
-    const tag = inlineTag(line.emotion);
-    if (tag) tagged++;
-    const text = tag + line.text;                 // full text — chunked below, never sliced
-    const prompt = (v.prompt || 'Narrate naturally and clearly.').slice(0, 3900);
+    const dir = emotionDirection(line.emotion);
+    if (dir) tagged++;
+    const text = line.text;                       // full text — chunked below, never sliced
+    // A vague prompt is a documented failure mode: it can trip the synthesis
+    // classifier (PROHIBITED_CONTENT) or make the model read the notes aloud.
+    const base = v.prompt || 'Synthesize this performance as speech. PERFORMANCE\nStyle: a natural, engaging audiobook narrator. Pace: unhurried and clear.';
+    const prompt = clampBytes(dir ? `${base}\n${dir}` : base, 3900);
     const key = contentKey([ENGINE, v.voice || 'Kore', prompt, text]);
     const { path: out, hit } = cached(cacheRoot, key);
     results[line.id] = out;
-    if (!hit) jobs.push({ chunks: splitChunks(text), voice: v.voice || 'Kore', prompt, language_code: v.language_code || 'en-US', out });
+    // text and prompt share an 8,000-byte budget per call, so a long director's
+    // note shrinks how much text may ride with it — chunk against what's left
+    const room = Math.min(MAX_CHUNK, 7800 - Buffer.byteLength(prompt));
+    if (!hit) jobs.push({ chunks: splitChunks(text, room), voice: v.voice || 'Kore', prompt, language_code: v.language_code || 'en-US', out });
   }
   log('render:tts', `gemini(${MODEL}): ${lines.length} lines, ${lines.length - jobs.length} cache hits, ` +
-    `${jobs.length} to synthesize, ${tagged} emotion-tagged`);
+    `${jobs.length} to synthesize, ${tagged} emotion-directed`);
   const key = apiKey();
   let i = 0, done = 0;
   await Promise.all(Array.from({ length: CONCURRENCY }, async () => {

@@ -22,6 +22,13 @@ MODELS = HERE.parent.parent / "models" / "kokoro"
 MAX_CHARS = 280        # conservative: 510 phonemes is roughly 300-400 chars
 GAP_SEC = 0.18         # breath between chunks so the joins sound natural
 
+# Voice-id prefix -> phonemizer language. Probed against this install: bare "fr"
+# and "zh" are INVALID; the accepted codes are "fr-fr" and "cmn".
+LANG_BY_PREFIX = {
+    "a": "en-us", "b": "en-gb", "e": "es", "f": "fr-fr", "h": "hi",
+    "i": "it", "j": "ja", "p": "pt-br", "z": "cmn",
+}
+
 
 def split_chunks(text, limit=MAX_CHARS):
     """Sentence-first packing; falls back to clauses, then a hard split."""
@@ -76,7 +83,12 @@ def main(manifest_path: str) -> None:
     items = json.loads(pathlib.Path(manifest_path).read_text(encoding="utf-8"))
     kokoro = Kokoro(str(MODELS / "kokoro-v1.0.onnx"), str(MODELS / "voices-v1.0.bin"))
     for n, it in enumerate(items, 1):
-        lang = "en-gb" if it["voice"].startswith("b") else "en-us"
+        # Language comes from the voice's id prefix, not "does it start with b".
+        # The old rule ("en-gb" if b*, else "en-us") fed every Spanish, French,
+        # Hindi, Italian, Portuguese, Japanese and Chinese voice AMERICAN ENGLISH
+        # phonemes — 26 of the 54 voices were mis-phonemized. Note fr-fr and cmn:
+        # bare "fr" and "zh" are rejected by the phonemizer.
+        lang = it.get("lang") or LANG_BY_PREFIX.get(it["voice"][:1], "en-us")
         chunks = split_chunks(it["text"])
         if len(chunks) > 1:
             print(f"[kokoro] long text -> {len(chunks)} chunks", flush=True)

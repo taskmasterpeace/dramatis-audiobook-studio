@@ -627,12 +627,89 @@ function cuePopover() {
   </div>`;
 }
 
+// Voice Designer: describe a person -> we infer gender/age/accent, pick the best
+// candidate on every engine, you hear them side by side and hire one. The approved
+// take is saved as the actor's seed clip, so they can be re-hired free forever.
+function viewDesigner() {
+  const d = S.design || (S.design = { form: {}, slate: null, takes: {} });
+  const f = d.form;
+  const sel = (v, o) => (v === o ? 'selected' : '');
+  const form = `
+    <div class="card" style="padding:16px;margin-bottom:14px">
+      <div style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:13px">
+        <b style="color:var(--text)">Describe the person. We work out the rest.</b>
+        DRAMATIS reads your description, decides gender, age band and accent, then picks the best
+        candidate on <b>every engine</b> — a directed Gemini take, the closest voice on your own
+        ElevenLabs roster, a free local design, and a free preset. Hear them side by side, hire one.
+        The take you approve becomes that actor's <b>seed clip</b>, so they can be re-hired in any
+        book for free, forever.
+      </div>
+      <div class="f-label">Character name</div>
+      <input id="vd-name" placeholder="e.g. Marcus Kane" value="${esc(f.name || '')}">
+      <div class="f-label" style="margin-top:10px">Describe them — the way you would to a casting director</div>
+      <textarea id="vd-desc" rows="3" placeholder="a gruff Irish dockworker in his fifties, been shouting over machinery his whole life — warm underneath it">${esc(f.description || '')}</textarea>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:11px;align-items:flex-end">
+        <div><div class="f-label">Gender</div><select id="vd-gender" style="width:110px">
+          <option value="">infer it</option>
+          <option value="female" ${sel(f.gender, 'female')}>female</option>
+          <option value="male" ${sel(f.gender, 'male')}>male</option></select></div>
+        <div><div class="f-label">Age</div><input id="vd-age" style="width:74px" placeholder="55" value="${esc(f.age || '')}"></div>
+        <div><div class="f-label">Ethnicity / accent</div><input id="vd-acc" style="width:190px" placeholder="Irish" value="${esc(f.accent || '')}"></div>
+        <button class="go" id="vd-find">${d.slate ? 'Re-cast' : 'Find candidates'} →</button>
+      </div>
+    </div>`;
+
+  if (!d.slate) return form;
+
+  const det = d.slate.determined || {};
+  const chips = [
+    ['gender', det.gender], ['age', det.ageBand],
+    ['accent', det.accent || 'none — no accent direction needed'],
+  ].map(([k, v]) => `<span class="chip" style="margin-right:6px">${esc(k)}: <b>${esc(String(v))}</b></span>`).join('');
+
+  const cards = d.slate.candidates.map((c, i) => {
+    const take = d.takes[i];
+    return `
+    <div class="card" data-cand="${i}" style="padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="chip ${c.tier === 'free' ? '' : 'cy'}">${esc(c.engine)}</span>
+        <b style="font-size:13px">${esc(c.voice)}</b>
+        <span style="font-size:10.5px;color:var(--dim)">${c.tier === 'free' ? 'free' : 'paid'}</span>
+        ${c.best ? '<span class="chip cy" title="best fit for this character">★ best fit</span>' : ''}
+        ${c.weak ? '<span class="chip warn" title="known limitation">⚠ can\'t do accents</span>' : ''}
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);line-height:1.5">${esc(c.why)}</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button class="aud" data-vd-play="${i}">${take ? '↻ again' : '▶ audition'}</button>
+        ${take ? `<audio controls src="${take.media}" style="width:210px;height:30px"></audio>
+          <span style="font-size:10.5px;color:var(--dim)">${(take.ms / 1000).toFixed(1)}s</span>` : ''}
+        ${take ? `<button class="go" data-vd-hire="${i}">Hire ${esc(f.name || 'them')} →</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  return `${form}
+    <div class="card" style="padding:12px 14px;margin-bottom:12px;border-color:var(--cy-dim)">
+      <div style="font-size:11px;color:var(--dim);margin-bottom:7px">WHAT WE WORKED OUT FROM YOUR DESCRIPTION</div>
+      ${chips}
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <button class="go" id="vd-all">🎧 Audition all ${d.slate.candidates.length}</button>
+      <span style="font-size:11px;color:var(--dim)">they all speak the same line, so it's a fair comparison — and it's long enough to be a clone seed</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px">${cards}</div>
+    <div class="card" style="padding:11px 14px;margin-top:12px;font-size:11.5px;color:var(--muted)">
+      <b style="color:var(--text)">The line they're reading:</b> <em>${esc(d.slate.line)}</em>
+    </div>`;
+}
+
 function viewCasting() {
   if (!S.roster) return `<p class="crumb">Talent</p><h1>Casting Room</h1><div class="empty">loading roster…</div>`;
-  const ENGLABEL = { company: '🎭 The Company', kokoro: 'Kokoro — free', gemini: 'Gemini — directed', elevenlabs: 'ElevenLabs — your roster', qwen3: 'Qwen3 — designed' };
-  const tabs = ['company', 'kokoro', 'gemini', 'elevenlabs', 'qwen3'];
+  const ENGLABEL = { company: '🎭 The Company', design: '✨ Design a Voice', kokoro: 'Kokoro — free', gemini: 'Gemini — directed', elevenlabs: 'ElevenLabs — your roster' };
+  const tabs = ['company', 'design', 'kokoro', 'gemini', 'elevenlabs'];
   S.castTab = S.castTab || 'company';
   const counts = { company: (S.actors || []).length, ...Object.fromEntries(Object.entries(S.roster).map(([k, v]) => [k, v.length])) };
+  delete counts.design;
   const tabBar = `<div class="tabs">${tabs.map((t) => `<button data-casttab="${t}" class="${S.castTab === t ? 'on' : ''}">${esc(ENGLABEL[t])} <span style="opacity:.6">${counts[t] ?? 0}</span></button>`).join('')}</div>`;
 
   let body;
@@ -665,7 +742,9 @@ function viewCasting() {
           <em>${esc((a.transcript || '').slice(0, 90))}${(a.transcript || '').length > 90 ? '…' : ''}</em>
         </div>
       </div>`).join('')}</div>`
-      : `<div class="empty">No company members yet. Seed a voice you love (Gemini/ElevenLabs), then save it to <code>actors/</code>.</div>`);
+      : `<div class="empty">No company members yet — use <b>✨ Design a Voice</b> to make your first one.</div>`);
+  } else if (S.castTab === 'design') {
+    body = viewDesigner();
   } else {
     let voices = S.roster[S.castTab] || [];
     // filters: find an actor by gender / age / accent / name (Robert's ask)
@@ -689,7 +768,7 @@ function viewCasting() {
     body = filterBar + `<div style="display:flex;flex-wrap:wrap;gap:7px">
       ${voices.map((v) => `
         <div class="card" style="padding:8px 11px;display:flex;align-items:center;gap:8px" data-cast-voice="${esc(v.voice)}" data-cast-eng="${S.castTab}">
-          <span style="font-size:12.5px;font-weight:600">${esc(v.voice)}</span>
+          <span style="font-size:12.5px;font-weight:600">${esc(v.label || v.voice)}</span>
           <span style="font-size:10.5px;color:var(--dim)">${esc(v.note)}</span>
           ${S.castTab === 'qwen3' ? '' : `<button class="aud" data-cast-play title="hear this voice">▶</button>`}
           <span data-cast-slot></span>
@@ -1120,6 +1199,84 @@ function bind(m) {
       card.querySelector('[data-cast-slot]').innerHTML = `<audio controls autoplay src="${r.media}" style="width:150px"></audio>`;
     } catch (e) { toast(`${card.dataset.castVoice}: ${e.message}`, true); }
     btn.disabled = false; btn.textContent = '▶';
+  }));
+
+  // ---- Voice Designer: describe -> slate -> audition -> hire ----
+  const vdForm = () => ({
+    name: $('#vd-name', m)?.value.trim() || '',
+    description: $('#vd-desc', m)?.value.trim() || '',
+    gender: $('#vd-gender', m)?.value || '',
+    age: $('#vd-age', m)?.value.trim() || '',
+    accent: $('#vd-acc', m)?.value.trim() || '',
+  });
+  $('#vd-find', m)?.addEventListener('click', async () => {
+    const btn = $('#vd-find', m);
+    const f = vdForm();
+    if (!f.description && !f.gender && !f.accent) return toast('describe them first — even one line helps', true);
+    S.design = { form: f, slate: null, takes: {} };
+    btn.disabled = true; btn.textContent = 'Working it out…';
+    try {
+      // the server infers gender/age/accent, then picks the best voice per engine
+      S.design.slate = await api('/api/casting/design', {
+        method: 'POST',
+        body: { visual: f.description, gender: f.gender || undefined, age: f.age || undefined, ethnicity: f.accent || undefined, id: f.name || 'character' },
+      });
+      render();
+    } catch (e) { toast(e.message, true); btn.disabled = false; btn.textContent = 'Find candidates →'; }
+  });
+
+  const auditionCand = async (i, btn) => {
+    const d = S.design; const c = d.slate.candidates[i];
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    try {
+      const r = await api('/api/casting/audition', {
+        method: 'POST',
+        body: { engine: c.engine, voice: c.voice, params: c.params, line: d.slate.line },
+      });
+      d.takes[i] = r;
+      return r;
+    } catch (e) {
+      toast(`${c.engine}: ${e.message}`, true);
+      if (btn) { btn.disabled = false; btn.textContent = '▶ audition'; }
+      return null;
+    }
+  };
+  m.querySelectorAll('[data-vd-play]').forEach((btn) => btn.addEventListener('click', async () => {
+    await auditionCand(+btn.dataset.vdPlay, btn); render();
+  }));
+  $('#vd-all', m)?.addEventListener('click', async () => {
+    const btn = $('#vd-all', m);
+    btn.disabled = true;
+    const cands = S.design.slate.candidates;
+    // network engines run together; qwen3 is local GPU, so it goes last, alone
+    const net = cands.map((c, i) => [c, i]).filter(([c]) => c.engine !== 'qwen3');
+    const gpu = cands.map((c, i) => [c, i]).filter(([c]) => c.engine === 'qwen3');
+    btn.textContent = `auditioning ${net.length}…`;
+    await Promise.all(net.map(([, i]) => auditionCand(i)));
+    render();
+    for (const [, i] of gpu) {
+      const b2 = $('#vd-all', m);
+      if (b2) { b2.disabled = true; b2.textContent = 'designing the local voice (~1 min)…'; }
+      await auditionCand(i);
+      render();
+    }
+  });
+  m.querySelectorAll('[data-vd-hire]').forEach((btn) => btn.addEventListener('click', async () => {
+    const i = +btn.dataset.vdHire;
+    const d = S.design; const c = d.slate.candidates[i]; const take = d.takes[i];
+    const name = d.form.name || prompt('Name this actor:');
+    if (!name) return;
+    btn.disabled = true; btn.textContent = 'Hiring…';
+    try {
+      const r = await api('/api/casting/hire', {
+        method: 'POST',
+        body: { name, engine: c.engine, voice: c.voice, params: c.params, media: take.media, character: d.form.description },
+      });
+      S.actors = (await api('/api/actors')).actors;
+      S.castTab = 'company'; S.design = null;
+      toast(`${r.name} joined the company — their seed clip is saved, they can be re-hired free forever`);
+      render();
+    } catch (e) { toast(e.message, true); btn.disabled = false; btn.textContent = 'Hire →'; }
   }));
 
   // new book

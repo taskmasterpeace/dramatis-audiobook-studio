@@ -49,6 +49,113 @@ having a selection that's been tested" than locking into one engine.
    (hybrid `@refs`). Target state: narrator on 11L, Liu on Qwen3 (Mandarin accent),
    minor parts on Kokoro, emotional cast on Gemini — all in one book.
 
+## THE VOICE DESIGNER — describe a person, hire an actor (built 2026-07-20)
+
+Casting Room → **✨ Design a Voice**. Robert's ask: "we need an easier way to design
+our own voice… calculate all that stuff behind the scenes and make my new cast member."
+Flow: plain-English description → `determine()` infers gender/age/accent → a
+**slate of one candidate per engine**, each carrying the reasoning that picked it →
+audition all → **Hire** writes `actors/<slug>/`. Code: `src/voicedesign.mjs`
+(`candidateSlate`), routes `POST /api/casting/{design,audition,hire}`.
+
+**The approved take IS the seed clip** — that's why the audition line is ~13 s
+(`SEED_LINE`), inside the 8–15 s clone sweet spot. `hire` ffmpeg-normalises to
+24 kHz mono, so an 11L mp3 preview and a Gemini wav both land as valid clone refs.
+One render, no second pass.
+
+Selection logic worth keeping straight:
+- **Gemini**: gender is a hard filter; then TEXTURE (description words → Google's
+  published one-word characteristic) then AGE. **Age must outrank texture** —
+  "warm elderly woman" has to land on Gacrux (the only aged-reading female, our
+  ear-approved `nola-elder`), not Sulafat (Warm).
+- **ElevenLabs**: scored against the user's OWN roster labels; absent, never
+  invented, when the roster can't be fetched.
+- **Kokoro**: best published GRADE that fits gender+accent, and it self-declares
+  `⚠ can't do accents` when an accent was detected.
+
+## KOKORO — the published quality grades (researched 2026-07-20)
+
+**54 voices installed** (we were only exposing 28). Upstream publishes a grade per
+voice and NOTHING else — no timbre notes; the entire catalog's character metadata is
+three emoji. The grade is the field that matters and we were discarding it: it
+separates the ~5 audiobook-grade voices from the 20 that sound rough.
+
+**The only voices worth narrating with:** `af_heart` **A** (flagship), `af_bella`
+**A-**, `af_nicole` **B-** (close-mic), `bf_emma` **B-** (best UK), `ff_siwis` **B-**
+(French). Then a C+ tier (`af_aoede/af_kore/af_sarah`, `am_fenrir/am_michael/am_puck`,
+`jf_alpha`). Our house narrator `bm_george` is only a **C**; `am_adam` is **F+** —
+never cast it. Full table: `src/voice-tables.mjs`.
+
+**Voice BLENDING works** and is the free tier's real design lever — pass a numpy
+array as `voice=` instead of a string: `(v1*0.6 + v2*0.4).astype(np.float32)` over
+`get_voice_style()` output. Verified deterministic (self-blend is bit-exact with the
+plain voice, so blends cache correctly). **Gotcha:** blend the WHOLE `(510,1,256)`
+array — the style is length-conditioned and indexed by token count, so a `(1,256)`
+slice raises IndexError. There is **no pitch control** — the ONNX graph takes only
+tokens/style/speed. Blend or post-process; that's all there is.
+
+**Bug found + fixed 2026-07-20:** `kokoro-batch.py` derived language as
+`"en-gb" if voice.startswith("b") else "en-us"` — so all 26 non-English voices were
+fed **American English phonemes**. Now `LANG_BY_PREFIX`. Note `fr-fr` and `cmn` are
+the valid codes; bare `fr` and `zh` are rejected.
+
+## GEMINI — the tag hazard that was in our shipped audio (researched 2026-07-20)
+
+Google documents **four tag behaviours**, and one of them is a trap:
+- Mode 1 non-speech (`[sigh] [laughing] [uhm]`) — safe, documented.
+- Mode 2 style modifiers (`[sarcasm] [robotic] [shouting] [whispering]`) — safe.
+- **Mode 3 VOCALIZED — the tag is SPOKEN ALOUD as a word.** Triggered by exactly the
+  adjective/adverb shape. Google: *"likely an undesired side effect for most use cases."*
+- Mode 4 pacing (`[short pause]` ≈250 ms, `[medium]` ≈500, `[long]` ≈1000+) — safe.
+
+**We were emitting Mode-3 shapes on every emotional line** — `[angrily]`,
+`[sadly]`, `[curiously]` — with a fallback that emitted bare nouns (`[sadness]`), the
+highest-risk shape of all. **Fix: emotion now rides in the PROMPT, not in tags**
+(`EMOTION_DIRECTION` in `gemini.mjs`), which is also what Google recommends. `prompt`
+and `text` are separate API fields and the prompt is built per call, so per-line
+direction costs nothing.
+
+Two more prompt rules, each traceable to a documented failure:
+- Header must be **`PERFORMANCE`**, never `DIRECTOR'S NOTES` — that literal string has
+  been observed spoken, apostrophes being a classifier hazard.
+- **Never send a vague prompt.** Google warns it can trip the synthesis classifier
+  (`PROHIBITED_CONTENT`) or make the model read the notes aloud. Always open with an
+  explicit synthesis imperative.
+
+**`language_code` is free accent leverage** (87 values; `en-GB` / `en-IN` / `en-AU`
+are stronger than prompt wording alone) — now set from the detected accent. Trap:
+our accent directions all end "…speaking English", so a naive `/english/` test sent
+**New Orleans to en-GB**. American regions must be tested first.
+
+**Custom voices on Gemini: definitively NO.** The `voice` field is a closed enum of
+30; cloning lives on a different, allow-listed model family (Chirp 3). So a Gemini
+character IS `(voice, prompt, language_code)` — which is exactly why seed-then-clone
+-into-Qwen3 is not a workaround but the only way to make one permanent.
+Only 4 of the 30 carry any age/texture signal in Google's own words: **Leda**
+(Youthful), **Gacrux** (Mature), **Algenib** (Gravelly), **Enceladus** (Breathy).
+Multi-speaker is NOT supported on the Replicate endpoint — one voice per call.
+
+## ELEVENLABS — voice design, and the limit that actually bites
+
+`POST /v1/text-to-voice/design` → returns **exactly 3 previews** → `POST /v1/text-to-voice`
+saves one. Only `voice_description` is required (**20–1000 chars**); `text` 100–1000;
+`model_id` is `eleven_multilingual_ttv_v2` (default) or `eleven_ttv_v3` (the only one
+taking reference audio). **Cost = 1 credit per character of preview text, charged ONCE
+for all three** — so a design call can never exceed ~1000 credits. Quota accounting
+lags 1–2 min; don't read-after-write.
+
+**The scarce resource is voice SLOTS, not characters.** Account (2026-07-20): Pro,
+**982,767 chars/cycle with 899,836 left**, overage enabled up to +1M — ~2M characters
+before any wall, i.e. rendering is effectively unlimited. But **144 of 160 voice slots
+are used, only 16 free, and `can_extend_voice_limit: false`.** Designing and
+previewing costs NO slot (nothing persists until you save), so audition freely — but
+**never auto-save a designed voice into the account.** DRAMATIS saves the preview
+audio as a local seed clip instead: same voice, zero slots, and it clones into Qwen3
+for free volume.
+
+Per-request caps: flash_v2_5 40k · flash_v2 30k · multilingual_v2 10k · **eleven_v3 5k**.
+Exceeding tier concurrency queues (~50 ms), it does not error.
+
 ## Kokoro — preset ids proven in production
 
 `bm_george` (house narrator so far), `am_onyx` (deep US male), `am_eric`, `am_michael`,
