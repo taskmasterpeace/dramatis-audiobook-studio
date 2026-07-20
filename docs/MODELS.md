@@ -277,6 +277,16 @@ an **8× corpus expansion at zero licensing cost**, before any new source.
   engine's deadlines account for it.
 - **Quality consensus**: "between Suno 4.5 and 5", occasionally "samey" — which
   is close to a feature for low-key underscore that must sit beneath narration.
+- **Measured here (RTX 4090, 2026-07-20)**, two 30 s beds through our own
+  `renderTrack()`: first render **845 s** — almost entirely one-time model load
+  into VRAM — second render **8.3 s**, cache re-hit **0 ms**. So steady state is
+  roughly 8 s per 30 s bed, and a chapter's worth of cues costs seconds. Output
+  is 48 kHz stereo, correct duration to the sample, healthy level
+  (−17.5 and −20.7 dB mean). Machine gates passed; clips are in
+  `out/eartest-music/` for the ear, which is the last check and never the first.
+- **Ops note**: the first request after install can block for minutes while the
+  server lazily downloads ~8.4 GB of weights. Keep the sidecar warm across a
+  render — tearing it out of VRAM between cues makes every cue pay the load.
 
 ### ElevenLabs Music (API, paid) — premium underscore
 - Commercial use from Starter+; audiobooks are not in the self-serve exclusion
