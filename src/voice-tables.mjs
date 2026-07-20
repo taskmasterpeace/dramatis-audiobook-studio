@@ -106,6 +106,24 @@ export const GEMINI_VOICES = G.map(([voice, gender, character, ageSkew]) => ({
   note: `${gender === 'female' ? 'F' : 'M'} · ${character}${ageSkew ? ` · reads ${ageSkew}` : ''}`,
 }));
 
+// Accent -> BCP-47 locale for Gemini. Locale is a STRONGER accent lever than
+// prompt wording alone and costs nothing, but it was plumbed through the engine
+// and never set by the caster — so all 87 available locales collapsed to en-US.
+// American regions are tested FIRST on purpose: our accent directions are
+// phrased "<origin> accent, speaking English", so a bare /english/ test sent
+// "deep New Orleans Southern Black accent, speaking English" to en-GB.
+export function localeFor(accent) {
+  const t = String(accent || '').toLowerCase();
+  if (/new orleans|southern|american|creole|nola|african american|texan|midwest/.test(t)) return 'en-US';
+  if (/irish|dublin/.test(t)) return 'en-IE';
+  if (/british|english|london|cockney|scottish|welsh|rp\b/.test(t)) return 'en-GB';
+  if (/indian|delhi|mumbai|bengali|punjabi/.test(t)) return 'en-IN';
+  if (/australian|aussie/.test(t)) return 'en-AU';
+  if (/nigerian|kenyan|west african|ghanaian/.test(t)) return 'en-NG';
+  if (/south africa/.test(t)) return 'en-ZA';
+  return 'en-US';
+}
+
 // our age bands -> the labels ElevenLabs actually publishes on voices
 export function ageToEleven(band) {
   return { child: 'young', teen: 'young', 'young-adult': 'young', adult: 'middle aged', elderly: 'old' }[band] || null;

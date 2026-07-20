@@ -7,7 +7,12 @@
 // An engine with chunked:false will fail or truncate past perCall — warn early.
 export const ENGINES = {
   kokoro: { id: 'kokoro', label: 'Kokoro', local: true, free: true, gpu: false, limits: { perCall: 280, chunked: true }, load: () => import('./kokoro.mjs') },
-  qwen3: { id: 'qwen3', label: 'Qwen3', local: true, free: true, gpu: true, limits: { perCall: 1500, chunked: false, note: 'long text risks generation loops — keep lines under ~1500 chars' }, load: () => import('./qwen3.mjs') },
+  // 8192 output frames at 12.5 Hz = 655 s of audio; at a measured 17 chars/s
+  // that is ~11,100 chars, so our old 1,500 was ~7x too conservative. Held at
+  // 6,000: the real risk is a runaway generation loop, whose confirmed triggers
+  // are exotic characters and a ~0.5% random end-of-speech failure rather than
+  // length itself — but one degenerate line drags its whole batch to 11 minutes.
+  qwen3: { id: 'qwen3', label: 'Qwen3', local: true, free: true, gpu: true, limits: { perCall: 6000, chunked: false, note: 'hard ceiling ~11,000 chars (655 s of audio); kept lower because a runaway line stalls its batch' }, load: () => import('./qwen3.mjs') },
   elevenlabs: { id: 'elevenlabs', label: 'ElevenLabs', local: false, free: false, gpu: false, key: 'ELEVENLABS_API_KEY', limits: { perCall: 5000, chunked: false, note: 'API cap ~5k chars/request' }, load: () => import('./elevenlabs.mjs') },
   gemini: { id: 'gemini', label: 'Gemini 3.1 Flash TTS', local: false, free: false, gpu: false, key: 'REPLICATE_API_TOKEN', limits: { perCall: 3200, chunked: true, note: '4,000-byte API cap; engine chunks + concats automatically' }, load: () => import('./gemini.mjs') },
 };

@@ -12,6 +12,8 @@
 //                elderly is directed + human-approved, not measured.
 //   - ethnicity/accent -> NOT measurable; directed prompt + human ear only.
 
+import { localeFor } from './voice-tables.mjs';
+
 // Compound words matter: "Englishwoman"/"Frenchman" are single tokens, so a bare
 // \bwoman\b misses them (Mrs. White read as gender-unknown until this was fixed).
 // [a-z]*woman catches the compounds; (?<!wo) stops "woman" matching as "man".
@@ -111,6 +113,9 @@ export function castingRecipe(char) {
         engine: 'gemini',
         voice: gender === 'female' ? (ageBand === 'child' ? 'Leda' : 'Gacrux') : (ageBand === 'child' ? 'Puck' : 'Enceladus'),
         prompt: directedPrompt,
+        // locale is free accent leverage and was never being set — every
+        // character, however cast, was rendering at en-US
+        language_code: localeFor(accent),
         note: 'character actor: seed on Gemini, then clone into Qwen3 for free volume',
       }
     : { // generic tier — free Qwen3 design

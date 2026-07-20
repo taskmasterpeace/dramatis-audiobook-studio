@@ -55,7 +55,11 @@ function clampBytes(s, limit) {
 // Gemini caps text at 4,000 BYTES per call (text+prompt ≤ 8,000). Long text used
 // to be silently sliced at 3,900 chars — words just vanished. Now it splits on
 // sentence boundaries, renders each chunk, and ffmpeg-concats the pieces.
-const MAX_CHUNK = 3200; // conservative: multibyte chars count as bytes, not chars
+// splitChunks measures BYTES, so this can sit close to the real 4,000-byte cap
+// rather than leaving headroom for a character-vs-byte mixup. Fewer chunks means
+// fewer seams and fewer calls. 3,900 leaves a small margin for the emotion
+// direction that gets appended to the prompt, not the text.
+const MAX_CHUNK = 3900;
 function splitChunks(text, limit = MAX_CHUNK) {
   if (Buffer.byteLength(text) <= limit) return [text];
   const out = [];
@@ -173,10 +177,12 @@ export async function renderLines(lines, voices, cacheRoot) {
     const key = contentKey([ENGINE, v.voice || 'Kore', prompt, text]);
     const { path: out, hit } = cached(cacheRoot, key);
     results[line.id] = out;
-    // text and prompt share an 8,000-byte budget per call, so a long director's
-    // note shrinks how much text may ride with it — chunk against what's left
-    const room = Math.min(MAX_CHUNK, 7800 - Buffer.byteLength(prompt));
-    if (!hit) jobs.push({ chunks: splitChunks(text, room), voice: v.voice || 'Kore', prompt, language_code: v.language_code || 'en-US', out, lineId: line.id, entity: line.entity });
+    // No combined-cap arithmetic here: text and prompt each cap at 4,000 bytes,
+    // so the worst case is exactly 8,000 — the documented combined limit can
+    // never actually be violated. The subtraction this used to do could never
+    // bind and was dead code. Measured 2026-07-20: 4,001 bytes is a HARD
+    // failure (E006), not a truncation, so chunking is what keeps us safe.
+    if (!hit) jobs.push({ chunks: splitChunks(text), voice: v.voice || 'Kore', prompt, language_code: v.language_code || 'en-US', out, lineId: line.id, entity: line.entity });
   }
   log('render:tts', `gemini(${MODEL}): ${lines.length} lines, ${lines.length - jobs.length} cache hits, ` +
     `${jobs.length} to synthesize, ${tagged} emotion-directed`);

@@ -296,7 +296,22 @@ const server = http.createServer(async (req, res) => {
         const warnings = [];
         if (chapters.some((c) => c.stale)) warnings.push(`${chapters.filter((c) => c.stale).length} chapter(s) stale — book.json changed since render`);
         const manuscript = path.resolve(path.dirname(bookPath(id)), b.manuscript);
-        if (existsSync(manuscript) && /truncat/i.test(readFileSync(manuscript, 'utf8'))) warnings.push('manuscript has a truncation marker');
+        // Does the manuscript actually END mid-sentence? The old check was a
+        // substring search for "truncat" anywhere in the PROSE, so a story whose
+        // character said "the call was truncated" got flagged — and the warning
+        // read "manuscript has a truncation marker", which means nothing to
+        // anyone. Look at the real evidence instead: the last line of text not
+        // closing with terminal punctuation is what a cut-off paste looks like.
+        if (existsSync(manuscript)) {
+          // strip HTML comments first: a note ABOUT the manuscript is not the
+          // manuscript, and quoting one back at the user explains nothing
+          const txt = readFileSync(manuscript, 'utf8').replace(/<!--[\s\S]*?-->/g, '').trimEnd();
+          const lastLine = txt.split('\n').filter((l) => l.trim()).pop() || '';
+          const endsClean = /[.!?…"'”’)\]]\s*$/.test(lastLine) || /^#{1,6}\s/.test(lastLine.trim());
+          if (!endsClean) {
+            warnings.push(`the last sentence is unfinished — this manuscript looks cut off: "…${lastLine.trim().slice(-50)}"`);
+          }
+        }
         return {
           id, title: b.title, author: b.author || '', chapters: chapters.length, done,
           minutes: +chapters.reduce((a, c) => a + (c.minutes || 0), 0).toFixed(1),

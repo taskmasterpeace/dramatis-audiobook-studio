@@ -26,7 +26,8 @@ VD = "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign"
 BASE = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
 CUSTOM = "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
 
-CLONE_INSTRUCT_OK = None  # probed once: does generate_voice_clone take instruct?
+# (a CLONE_INSTRUCT_OK probe lived here; it could never fail, so it only ever
+#  printed a false claim that clones accept instruct. See clone() below.)
 
 # ── voice sanity gate ───────────────────────────────────────────────────────
 # Incident 2026-07-19: an "elderly woman" design produced a FEMALE reference
@@ -66,10 +67,9 @@ REINFORCE = {
     "female-range": "A clearly FEMALE voice — a woman speaking in her natural high register. ",
     "male-range": "A clearly MALE voice — a man speaking in his natural low register. ",
 }
-CORRECTIVE = {
-    "female-range": " Speak as a woman, in a clearly female, higher-pitched natural voice.",
-    "male-range": " Speak as a man, in a clearly male, lower-pitched natural voice.",
-}
+# CORRECTIVE used to be appended to a clone's instruct on a gate failure. It
+# never reached the model — the clone path has no instruct — so it is gone
+# rather than left around looking like a working safety mechanism.
 
 
 def load(model_id):
@@ -95,7 +95,6 @@ def pick_ref_text(texts):
 
 
 def main(manifest_path):
-    global CLONE_INSTRUCT_OK
     m = json.loads(pathlib.Path(manifest_path).read_text(encoding="utf-8"))
     cache_root = m["cacheRoot"]
     entities = m["entities"]
@@ -162,19 +161,16 @@ def main(manifest_path):
     if design_ids:
         base = load(BASE)
 
-        def clone(texts, langs, prompt, instructs):
-            global CLONE_INSTRUCT_OK
-            if CLONE_INSTRUCT_OK is not False:
-                try:
-                    out = base.generate_voice_clone(
-                        text=texts, language=langs, voice_clone_prompt=prompt, instruct=instructs)
-                    if CLONE_INSTRUCT_OK is None:
-                        CLONE_INSTRUCT_OK = True
-                        print("[qwen3] clone path accepts per-line instruct", flush=True)
-                    return out
-                except TypeError:
-                    CLONE_INSTRUCT_OK = False
-                    print("[qwen3] clone path ignores instruct; emotion via text cues only", flush=True)
+        def clone(texts, langs, prompt):
+            # NO instruct here, deliberately. generate_voice_clone() has no
+            # instruct parameter — anything passed lands in **kwargs and is
+            # read back off a dict via getattr(), i.e. silently dropped. It
+            # never raises, so the TypeError probe that used to live here ALWAYS
+            # took the success branch and logged "clone path accepts per-line
+            # instruct" — a false claim about our own capability, printed on
+            # every render. Upstream confirms it: the Base model has no
+            # instruction control. Per-line emotion on a cloned voice must be
+            # baked into the reference clip or routed to another engine.
             return base.generate_voice_clone(text=texts, language=langs, voice_clone_prompt=prompt)
 
         for e in design_ids:
@@ -184,27 +180,31 @@ def main(manifest_path):
             prompt = base.create_voice_clone_prompt(ref_audio=str(rp), ref_text=rt)
             lines = [ln for ln in by_entity[e] if not pathlib.Path(ln["out"]).exists()]
             print(f"[qwen3] {e}: {len(lines)} lines to synth", flush=True)
-            corrective = ""  # set if the first chunk drifts register
             for c0 in range(0, len(lines), CHUNK):
                 chunk = lines[c0:c0 + CHUNK]
                 texts = [ln["text"] for ln in chunk]
                 langs = ["English"] * len(chunk)
-                instructs = [(ln.get("instruct") or "") + corrective for ln in chunk]
-                wavs, sr = clone(texts, langs, prompt, instructs)
+                wavs, sr = clone(texts, langs, prompt)
                 # GATE the first rendered line of each entity: this is where the
                 # 2026-07-19 female->male clone drift slipped through unheard
                 if c0 == 0 and want is not None:
                     got, hz = measure_register(wavs[0], sr)
                     if got is not None and got != want:
-                        print(f"[qwen3] GATE: clone of {e} drifted to {got} ({hz:.0f}Hz), wanted {want} — re-cloning with corrective instruct", flush=True)
-                        corrective = CORRECTIVE.get(want, "")
-                        instructs = [(ln.get("instruct") or "") + corrective for ln in chunk]
-                        wavs, sr = clone(texts, langs, prompt, instructs)
+                        # Honest about the mechanism: this is a RE-ROLL, not a
+                        # correction. It used to claim it was "re-cloning with
+                        # corrective instruct", but instruct is inert on this
+                        # path (see clone() above), so the retry only ever
+                        # differed by the sampler's dice. It is still worth
+                        # doing — upstream measures clone gender drift at ~20%
+                        # of requests, so a fresh roll usually lands right — but
+                        # nobody should debug it looking for a corrective effect.
+                        print(f"[qwen3] GATE: clone of {e} drifted to {got} ({hz:.0f}Hz), wanted {want} — re-rolling (instruct cannot steer a clone)", flush=True)
+                        wavs, sr = clone(texts, langs, prompt)
                         got, hz = measure_register(wavs[0], sr)
                         if got is not None and got != want:
                             unload(base)
                             raise RuntimeError(
-                                f"clone of '{e}' failed the register gate after corrective retry "
+                                f"clone of '{e}' failed the register gate twice "
                                 f"(got {got} {hz:.0f}Hz, wanted {want}) — refusing to ship")
                         print(f"[qwen3] gate passed after correction: {got} {hz:.0f}Hz", flush=True)
                     elif got is not None:

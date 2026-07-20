@@ -313,8 +313,11 @@ function viewShelf() {
         ${b.style ? `<span class="chip cy">${esc(b.style.split(' ')[0])}</span>` : ''}
       </div>
       <div class="meter"><i style="width:${b.chapters ? (100 * b.done / b.chapters) : 0}%"></i></div>
-      <div class="bstats"><span><b>${b.done}/${b.chapters}</b> chapters</span><span><b class="num">${b.minutes.toFixed(1)}</b> min</span><span>LLM <b class="num">$${(b.spend?.llmUsd || 0).toFixed(3)}</b></span></div>
-      <div class="leftline"><span class="k">LEFT</span>${b.warnings.length
+      <div class="bstats"><span><b>${b.done}/${b.chapters}</b> chapters</span><span><b class="num">${b.minutes.toFixed(1)}</b> min</span>${
+        // sub-penny LLM spend on every card was noise — show it only once it is
+        // a number someone would actually act on
+        (b.spend?.llmUsd || 0) >= 0.01 ? `<span>LLM <b class="num">$${b.spend.llmUsd.toFixed(2)}</b></span>` : ''}</div>
+      <div class="leftline">${b.warnings.length
         ? b.warnings.map((w) => `<span class="chip ${/stale/.test(w) ? 'warn' : 'crit'}">${esc(w)}</span>`).join('')
         : `<span class="chip ok">Up to date${b.flags ? ` · ${b.flags} flag(s)` : ' · 0 flags'}</span>`}</div>
     </div>`).join('');
