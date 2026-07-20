@@ -404,8 +404,9 @@ the most useful contribution available.
 | DiffRhythm | Apache-2.0 | **VAE inherits Stability licence** | ⚠ tainted | Pass — the VAE trap |
 | InspireMusic | Apache-2.0 | no licence tag (unverified) | ? | Pass — slow, English-only |
 | Suno (via relays) | n/a | n/a | **unverifiable** | Deleted from the codebase — the licence could not be verified |
-| **Lyria 3 / Pro** (Google, via Replicate/fal) | n/a | preview terms carve Lyria out for commercial use; no indemnity; SynthID baked in | ⚠ likely, pass-through undocumented | **Rejected for underscore** (2026-07-20): user consensus = top fidelity, "corporate/soulless" composition 1–3 gens behind Suno; **no duration parameter**; auto-adds vocals (breaks the cast-only law); $0.04/30 s. Possible hand-picked stinger source, never an automated lane |
-| MiniMax Music 1.5/2.5 | n/a | **no affirmative commercial grant in MiniMax's own terms** + mandatory AI-labeling/watermark duties | ❌ unclear = no | Rejected — the Suno rule: unverifiable means no |
+| **Lyria 3 / Pro** (Google, via Replicate/fal) | n/a | preview terms carve Lyria out for commercial use; no indemnity; SynthID baked in | ⚠ likely, pass-through undocumented | **Rejected for underscore** (2026-07-20): blind ELO **#4 instrumental / #7 vocals** (behind Suno V5.5/V5 and Mureka V8 on both boards); user consensus = top fidelity, "corporate/soulless" composition; **no duration parameter, no seed** (Lyria 2 had both seed + negative_prompt — dropped); auto-adds vocals (breaks the cast-only law); $0.04/30 s. Possible hand-picked stinger source, never an automated lane |
+| MiniMax Music 1.5/2.5 | n/a | **no affirmative commercial grant in MiniMax's own terms** + mandatory AI-labeling/watermark duties | ❌ unclear = no | Rejected — the Suno rule: unverifiable means no. (Its 2.5+/2.6 sit at #4–5 on the blind VOCAL board — capability isn't the problem, the paper trail is) |
+| Mureka V8 | ? | **unexamined** | ? | **Next candidate if the music slot reopens**: #2 on the blind instrumental ELO board, above Lyria and Suno V5 — nobody here has read its licence yet, so it is exactly one licence-read away from a verdict |
 
 ---
 
