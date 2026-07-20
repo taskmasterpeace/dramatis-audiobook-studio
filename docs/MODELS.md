@@ -113,15 +113,55 @@ checkpoint in its family; the Flash tier stays API-only.
 | Dia / Dia2 | Apache-2.0 | Apache-2.0 | ✅ | ~8–10 GB | audio-prompt | Skip for books — voice drifts run-to-run |
 | Kitten 15M / Supertonic | Apache / MIT | Apache / OpenRAIL-M | ✅ | CPU | no | Skip — below Kokoro |
 
-**If we add one engine: Chatterbox.** MIT on code *and* weights (the only
-quality-tier model with zero commercial strings), clones from ~10 s references —
-exactly the spec our `actors/` seeds are already normalised to — and it gives
-cloned voices a **per-line emotion dial**, which is precisely what Qwen3 clone
-mode cannot do (`instruct` is ignored on clones) and what currently forces hero
-lines onto paid engines. ~4 GB, so it runs beside Qwen3 on one card. Caveats:
-English-only on Turbo, its ElevenLabs-beating numbers are vendor-run, and a
-PerTh watermark is on by default (removable under MIT — a deliberate decision,
-not a default to drift into).
+### Chatterbox — TESTED, not just recommended (battery run 2026-07-20)
+
+The paper case was strong: MIT on code *and* weights (the only quality-tier
+model with zero commercial strings), clones from ~10 s references, ~4 GB so it
+runs beside Qwen3, and a **per-line emotion dial** on cloned voices — precisely
+what Qwen3 clone mode cannot do (`instruct` is ignored on clones) and what
+currently forces hero lines onto paid engines.
+
+So we ran it: `scripts/candidate-tts-battery.py` clones our real company actors
+and pitch-gates the output exactly like the Qwen3 register gate;
+`scripts/candidate-tts-control.py` is the control arm on unambiguous voices.
+
+| Reference | F0 in | ex 0.5 → | drift | ex 1.0 → | drift | Gate |
+|---|---|---|---|---|---|---|
+| Control female (Kokoro `af_heart`) | 202 Hz | 209 Hz | **+7** | 242 Hz | **+40** | PASS / PASS |
+| Control male (Kokoro `am_onyx`) | 84 Hz | 88 Hz | **+3** | 118 Hz | **+34** | PASS / PASS |
+| `nola-elder` (elderly woman) | 159 Hz | 155 Hz | −4 | 230 Hz | +71 | FAIL / PASS |
+| `liu-xiao` (elderly man) | 136 Hz | 168 Hz | **+31** | 178 Hz | **+42** | **FAIL / FAIL** |
+
+**What the numbers actually say:**
+1. **Cloning fidelity at `exaggeration=0.5` is excellent** — +3 and +7 Hz on
+   clear voices. That is a genuinely good cloner.
+2. **The emotion dial is also a pitch dial.** `exaggeration=1.0` adds ~+34 to
+   +42 Hz in *every single case*, controls included. The feature that justified
+   adopting it costs you register control — so it must be used in small doses,
+   under a gate, never opened up on a boundary voice.
+3. **It fails on elderly/boundary voices**, which are our most valuable
+   characters. A consistent upward drift pushes a 136 Hz male across the 150 Hz
+   line into ambiguous/female range.
+
+**Verdict: ADOPT, but gated and at low exaggeration.** It is not a drop-in.
+It needs the same register gate Qwen3 has, and elderly casting stays on the
+premium tier until proven otherwise by ear.
+
+**Three integration variables were tested before this verdict** (a wrong verdict
+on a candidate is more expensive than no verdict): reference length (our 24–28 s
+seeds badly hurt it — trimming to 10 s cut liu-xiao's drift from 64 Hz to 16 Hz),
+reference *window* selection, and the exaggeration setting. **A finding for our
+own pipeline fell out of it:** the first 10 s of a seed clip is often
+unrepresentative — liu-xiao's opening reads 160 Hz against a 143 Hz clip median.
+Pick the clone window whose median F0 is closest to the whole clip's, don't just
+take the head.
+
+Other caveats: English-only on Turbo; the ElevenLabs-beating numbers are
+vendor-run; a PerTh watermark is on by default (removable under MIT — make that
+a deliberate decision, not a drift). Install notes: needs `setuptools<81`
+(the `perth` watermarker still imports the removed `pkg_resources`, and without
+it Chatterbox fails at load with a bare `TypeError: 'NoneType' object is not
+callable`), and its own venv — it pins torch 2.6.
 
 ---
 
@@ -204,16 +244,40 @@ standard practice and inaudible on stochastic textures.
 
 ### Retrieval upgrades considered (surveyed 2026-07-20)
 
-**Verdict: our checkpoint is the oldest, weakest tier of the LAION line.**
-`laion/clap-htsat-unfused` is the 2022 non-fusion model; LAION has shipped
-nothing since its 2023 trio. The 2026 pick is **GLAP** (Xiaomi, Apache-2.0,
-`mispeech/GLAP`): AudioCaps T2A R@1 **41.7 vs 34.2** for LAION's *best*
-checkpoint, and — decisive for us — **FSD50K zero-shot 40.9 vs 21.5**, on the
-very dataset our corpus is drawn from. Near drop-in (`encode_text`/
-`encode_audio`), trivial VRAM, multilingual as a bonus. Expected gain ~20–40%
-relative R@1. Migration bites: resample 48k→16k, **recalibrate both similarity
-thresholds** (GLAP is sigmoid-trained, so our 0.25/0.35 are meaningless on its
-scale), and pin the `trust_remote_code` revision.
+**Verdict after measuring: KEEP the incumbent. GLAP lost badly on our corpus.**
+
+The paper tables argued for switching — GLAP (Xiaomi, Apache-2.0) publishes
+AudioCaps T2A R@1 41.7 vs 34.2 for LAION's best, and FSD50K zero-shot 40.9 vs
+21.5. On that basis this document previously recommended the upgrade. Then we
+built the battery (`scripts/retrieval-bench.py`, scored against FSD50K's own
+per-clip labels over our shipped 2,399-clip index, 60 classes with ≥3 positives):
+
+| Model | R@1 | R@3 | R@10 | MRR |
+|---|---|---|---|---|
+| **`laion/clap-htsat-unfused`** (incumbent) | **73.3%** | **88.3%** | **96.7%** | **0.825** |
+| `mispeech/GLAP`, 10 s padded windows | 21.7% | 43.3% | 58.3% | 0.361 |
+| `mispeech/GLAP`, native-length audio | 28.3% | 45.0% | 70.0% | 0.418 |
+
+Two integration variables were tested before drawing the conclusion (padding
+cost GLAP ~7 points — FSD50K clips are often ~1 s, so a fixed 10 s window is
+mostly silence) and the ordering never came close to reversing.
+
+**Why the paper and our bench disagree, and why ours governs:** the published
+"FSD50K zero-shot" number is multi-label *classification* — given a clip, assign
+labels from 200 classes. Ours is *retrieval* — given a text cue, rank 2,399
+clips. That second task is the one DRAMATIS actually performs. Random R@1 on our
+setup is under 1%, so the incumbent's 73.3% is a genuinely strong result, not a
+low bar.
+
+**Also found: GLAP's text encoding is broken on GPU out of the box.**
+`encode_text()` builds its token tensors with a hardcoded `device="cpu"` and
+feeds them to a text encoder the caller has moved to CUDA, moving only the
+*output* across — too late. Workaround if anyone revisits it: keep
+`model.text_encoder` on CPU.
+
+Standing battery: `python scripts/retrieval-bench.py clap|glap`, results to
+`out/retrieval-bench-*.json`. Re-run it before adopting ANY retrieval model —
+this is exactly the swap that would have shipped a silent regression.
 
 Rejected on licence: WavCaps (academic-only), M2D-CLAP (custom NTT terms),
 ImageBind (CC-BY-NC), MuQ-MuLan (CC-BY-NC). ONE-PEACE is Apache-2.0 and beats
@@ -242,8 +306,17 @@ verified bit-identical across runs (max diff 0.0).
 | OpenSFX | CC-BY-SA 3.0 | ✅ | ⚠ share-alike viral | ❌ |
 | ESC-50 / UrbanSound8K | CC-BY-NC | ❌ | ❌ | ❌ |
 
-The immediate free win: we index 2,400 of ~19,900 available CC0 FSD50K clips —
-an **8× corpus expansion at zero licensing cost**, before any new source.
+**Corpus expansion — done, 2,399 → 4,096 clips (+71%), zero download.**
+`clap-index.py` now classifies licences explicitly and takes `INCLUDE_CC_BY=1`
+to admit the CC-BY clips already sitting on disk unindexed, emitting a
+`CREDITS.md` beside the index so the attribution obligation can never drift from
+the corpus. CC-BY-NC and Sampling+ are refused by name — a non-commercial clip
+in a corpus that scores a book someone might sell is a licence violation waiting
+to happen, and "we only used it for retrieval" is not a defence. Measured on the
+eval split: 2,399 CC0 + 1,697 CC-BY admitted, 1,828 refused, 4,307 listed in
+metadata but not on disk. Reaching the full ~19,900 CC0 clips needs the FSD50K
+dev split (~24 GB) — the next free win, and the reason a corpus fetch script is
+the most useful contribution available.
 
 **Ranking upgrades worth doing** (from DCASE 2024/2025 winning systems):
 1. An offline enrichment pass — PANNs CNN14 (MIT) AudioSet tags per clip to make

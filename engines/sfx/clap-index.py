@@ -48,19 +48,49 @@ def chunks_of(wav):
     return out
 
 
+def classify_license(lic):
+    """CC0 ships freely; CC-BY ships WITH CREDIT; everything else is refused.
+
+    CC-BY-NC and Sampling+ are excluded on purpose — a non-commercial clip in a
+    corpus that scores a book someone might sell is a licence violation waiting
+    to happen, and 'we only used it for retrieval' is not a defence.
+    """
+    lic = (lic or "").lower()
+    if "zero" in lic or "publicdomain" in lic:
+        return "cc0"
+    if "by-nc" in lic or "nc/" in lic:
+        return None
+    if "sampling" in lic:
+        return None
+    if "/by/" in lic or "by-sa" in lic:
+        return "cc-by"
+    return None
+
+
 def main(corpus_dir, metadata_json, out_dir):
     corpus = pathlib.Path(corpus_dir)
     info = json.loads(pathlib.Path(metadata_json).read_text(encoding="utf-8"))
+    # INCLUDE_CC_BY=1 roughly doubles the usable corpus at the cost of shipping
+    # an attribution file. Off by default so a plain build stays credit-free.
+    allow_by = os.environ.get("INCLUDE_CC_BY") == "1"
     rows = []
+    counts = {"cc0": 0, "cc-by": 0, "refused": 0, "missing": 0}
     for fname, meta in info.items():
-        lic = (meta.get("license") or "").lower()
-        if "zero" not in lic and "publicdomain" not in lic:
+        kind = classify_license(meta.get("license"))
+        if kind is None or (kind == "cc-by" and not allow_by):
+            counts["refused"] += 1
             continue
         wav = corpus / f"{fname}.wav"
-        if wav.exists():
-            caption = f'{meta.get("title", "")} — {meta.get("description", "")} ({", ".join(meta.get("tags", []))})'
-            rows.append({"file": str(wav), "caption": caption, "license": meta.get("license", "")})
-    print(f"[index] {len(rows)} CC0 clips to embed", flush=True)
+        if not wav.exists():
+            counts["missing"] += 1
+            continue
+        caption = f'{meta.get("title", "")} — {meta.get("description", "")} ({", ".join(meta.get("tags", []))})'
+        rows.append({"file": str(wav), "caption": caption, "license": meta.get("license", ""),
+                     "licence_kind": kind, "uploader": meta.get("uploader", ""), "fsd_id": fname})
+        counts[kind] += 1
+    print(f"[index] {len(rows)} clips to embed "
+          f"(CC0 {counts['cc0']}, CC-BY {counts['cc-by']}, refused {counts['refused']}, "
+          f"not-on-disk {counts['missing']})", flush=True)
     if not rows:
         sys.exit("no clips found — check corpus dir and license column")
 
@@ -98,6 +128,19 @@ def main(corpus_dir, metadata_json, out_dir):
     out.mkdir(parents=True, exist_ok=True)
     np.save(out / "embeddings.npy", emb)
     (out / "manifest.json").write_text(json.dumps(rows), encoding="utf-8")
+
+    # CC-BY is not free — it is free WITH CREDIT. Generate the credits file
+    # alongside the index so the obligation can never drift from the corpus.
+    by = [r for r in rows if r.get("licence_kind") == "cc-by"]
+    if by:
+        lines = ["# Sound-effect credits", "",
+                 "Clips in this corpus licensed CC-BY require attribution. Each line is",
+                 "the Freesound id, its uploader, and the licence it is used under.",
+                 "Source dataset: FSD50K (Fonseca et al.), built from Freesound.", ""]
+        for r in sorted(by, key=lambda x: x["fsd_id"]):
+            lines.append(f"- freesound #{r['fsd_id']} by {r['uploader'] or 'unknown'} — {r['license']}")
+        (out / "CREDITS.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        print(f"[index] wrote CREDITS.md for {len(by)} CC-BY clips", flush=True)
     print(f"[index] wrote {len(rows)} vectors -> {out}", flush=True)
 
 
