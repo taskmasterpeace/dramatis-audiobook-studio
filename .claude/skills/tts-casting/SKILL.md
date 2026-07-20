@@ -122,6 +122,27 @@ Two more prompt rules, each traceable to a documented failure:
   (`PROHIBITED_CONTENT`) or make the model read the notes aloud. Always open with an
   explicit synthesis imperative.
 
+**THE LENGTH GATE — and the phrasing law it uncovered (2026-07-20).** Removing the
+tags was not enough: Google's *other* documented failure is reading the style
+direction **aloud**, and prose direction can trigger it. There is no ASR here, so
+the machine gate is **duration** — a spoken direction adds seconds of speech that
+is not in the script. Measured on a 33-char line (8 emotions × 2 prompt shapes ×
+3 reps): legitimate delivery lands **0.9–2.1×** the neutral duration; the fault
+reproduced at **3.8–6.2×**. `synthJobGated()` budgets `max(3× expected, expected+3 s)`
+at 14 chars/sec, **re-rolls twice** (generation is non-deterministic) and then
+**throws with the line id, entity and prompt tail** — same discipline as the Qwen3
+register gate: measure the output, retry, refuse. A `+8 s` floor was tried first
+and let a 4.1× render through on a short line; +3 s catches it.
+
+**PHRASING LAW: every emotion direction must read `This line is <adjective> —
+<delivery detail>.`** The one entry that deviated (`This line lands as a shock — …`)
+rendered **3.83× over length, reproducibly, on every single pass**. Swapping ONLY
+the opener to `This line is shocked` — identical trailing clause — measured
+**0.99×**. It was the unusual phrasing, not the content, the length, or the
+em-dash. Also never instruct an unbounded non-speech sound ("a caught breath
+before it") — describe the speech and let delivery imply it. Verified clean run:
+all 8 emotions 1.05–1.43×. Clips: `out/eartest-gemini/`.
+
 **`language_code` is free accent leverage** (87 values; `en-GB` / `en-IN` / `en-AU`
 are stronger than prompt wording alone) — now set from the detected accent. Trap:
 our accent directions all end "…speaking English", so a naive `/english/` test sent

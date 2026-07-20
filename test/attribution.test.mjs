@@ -2,8 +2,10 @@
 // least-tested code in the repo (~70 lines of interacting heuristics, revised
 // repeatedly, each revision verified by a HAND line-by-line audit).
 //
-//   node --test test/            run the suite
-//   UPDATE_SNAPSHOTS=1 node --test test/    accept intentional changes
+//   node --test                  run the suite (default discovery finds test/*)
+//   UPDATE_SNAPSHOTS=1 node --test          accept intentional changes
+// (the `node --test test/` directory form no longer works on Node 25 — it tries
+//  to run the directory itself as a test file and reports one failure)
 //
 // Every shipped book is compiled and its {lineId -> entity} map diffed against a
 // committed snapshot, so a said-verb tweak that fixes two lines and breaks five
