@@ -729,7 +729,26 @@ function viewCasting() {
         perfect voice, use them forever — that's the whole trick.
         Their <b>notes</b> travel with them to every production; their <b>portrait</b> is pasted by you.
       </div>`;
-    body = explainer + (actors.length ? `<div class="cast-grid">${actors.map((a) => `
+    // upload a voice -> a company member. The uploaded clip becomes the actor's
+    // seed (24 kHz mono, capped 60 s server-side), so every company mechanic —
+    // Qwen3 cloning, Chatterbox battery, Seed Audio anchoring — applies to it.
+    const uploadCard = `
+      <div class="card" style="padding:14px 16px;margin-bottom:14px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <div><div class="f-label">🎤 Upload a voice</div>
+            <input id="up-name" placeholder="name this actor…" style="width:160px"></div>
+          <div><div class="f-label">audio file (8–15 s of clean speech is ideal)</div>
+            <input id="up-file" type="file" accept="audio/*" style="font-size:11px"></div>
+          <div style="flex:1;min-width:180px"><div class="f-label">what they say in the clip (optional — raises clone similarity)</div>
+            <input id="up-transcript" placeholder="transcript of the clip…" style="width:100%"></div>
+          <button class="go" id="up-save">Add to company →</button>
+        </div>
+        <div style="font-size:10.5px;color:var(--dim);margin-top:8px">
+          Only upload voices you have the right to use — yours, a synthetic one, or someone who gave you
+          explicit permission. Cloning a real person without consent may be illegal where you live.
+        </div>
+      </div>`;
+    body = explainer + uploadCard + (actors.length ? `<div class="cast-grid">${actors.map((a) => `
       <div class="actor card" data-actor="${esc(a.name)}">
         <div class="actor-h"><span class="nm">${esc(a.name.replace(/-/g, ' ').toUpperCase())}</span>
           <span class="roleeng chip cy">${esc(a.origin.seed_engine || 'seeded')}</span></div>
@@ -828,13 +847,14 @@ function viewModels() {
     const [scls, slabel] = STATUS_CHIP[m.status] || ['', m.status];
     const open = S.modelOpen === m.id;
     const detail = !open ? '' : `
-      <tr class="mdetail"><td colspan="7" style="padding:14px 18px;background:var(--panel2)">
+      <tr class="mdetail"><td colspan="8" style="padding:14px 18px;background:var(--panel2)">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:12px;line-height:1.6">
           <div>
             <div class="f-label">Why this grade</div><div>${esc(m.gradeWhy)}</div>
             <div class="f-label" style="margin-top:9px">Role</div><div>${esc(m.role)}</div>
             <div class="f-label" style="margin-top:9px">Licence</div><div>${esc(m.licence)}</div>
             <div class="f-label" style="margin-top:9px">Limits</div><div>${esc(m.caps)}</div>
+            <div class="f-label" style="margin-top:9px">Voice input</div><div>${esc(m.voiceIn || 'none — cannot take a voice or reference audio')}</div>
             ${m.earRuling ? `<div class="f-label" style="margin-top:9px">Ear ruling</div><div>“${esc(m.earRuling)}”</div>` : ''}
           </div>
           <div>
@@ -851,6 +871,7 @@ function viewModels() {
         <td style="white-space:nowrap">${KIND_LABEL[m.kind] || esc(m.kind)}</td>
         <td style="font-size:11px">${esc(m.tier)}</td>
         <td>${gradeChip(m.grade)}</td>
+        <td title="${esc(m.voiceIn || 'no voice/reference-audio input')}" style="text-align:center">${m.voiceIn ? '<span class="chip ok">✓</span>' : '<span style="color:var(--dim)">—</span>'}</td>
         <td>${speedCell(m)}</td>
         <td style="font-size:11px">${esc(m.cost)}</td>
         <td><span class="chip ${scls}">${slabel}</span></td>
@@ -869,7 +890,7 @@ function viewModels() {
     <div class="card" style="padding:0;overflow-x:auto">
       <table class="mtable" style="width:100%;border-collapse:collapse">
         <thead><tr style="text-align:left;font-size:11px;color:var(--muted)">
-          ${th('name', 'Model')}${th('kind', 'Kind')}${th('tier', 'Tier')}${th('gradeRank', 'Grade')}<th>Speed</th><th>Cost</th>${th('status', 'Status')}
+          ${th('name', 'Model')}${th('kind', 'Kind')}${th('tier', 'Tier')}${th('gradeRank', 'Grade')}<th title="can it take a voice / reference audio as INPUT?">Voice in</th><th>Speed</th><th>Cost</th>${th('status', 'Status')}
         </tr></thead>
         <tbody>${body}</tbody>
       </table>
@@ -1274,6 +1295,30 @@ function bind(m) {
   $('#cf-gender', m)?.addEventListener('change', (e) => setFilter('gender', e.target.value));
   $('#cf-age', m)?.addEventListener('change', (e) => setFilter('age', e.target.value));
   $('#cf-accent', m)?.addEventListener('change', (e) => setFilter('accent', e.target.value));
+
+  // upload a voice into the company
+  $('#up-save', m)?.addEventListener('click', async () => {
+    const btn = $('#up-save', m);
+    const name = $('#up-name', m).value.trim();
+    const file = $('#up-file', m).files[0];
+    if (!name) return toast('name the actor first', true);
+    if (!file) return toast('choose an audio file', true);
+    btn.disabled = true; btn.textContent = 'Uploading…';
+    try {
+      const dataUrl = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result); r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+      const out = await api('/api/actors/upload', {
+        method: 'POST',
+        body: { name, dataUrl, transcript: $('#up-transcript', m).value.trim() },
+      });
+      S.actors = (await api('/api/actors')).actors;
+      toast(`${out.name} joined the company (${out.seconds}s seed) — audition before casting`);
+      render();
+    } catch (e) { toast(e.message, true); btn.disabled = false; btn.textContent = 'Add to company →'; }
+  });
 
   // actor notes — global craft knowledge, saved to actors/<name>/notes.md
   m.querySelectorAll('[data-actornote]').forEach((ta) => {

@@ -32,3 +32,6 @@ installer/Output/
 installer/staging/
 runtime/
 .bootstrap-done
+
+# business/platform strategy - private, never published
+docs/private/

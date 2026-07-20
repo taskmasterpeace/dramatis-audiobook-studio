@@ -9,7 +9,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   readFileSync, writeFileSync, renameSync, existsSync, readdirSync, statSync,
-  createReadStream, mkdirSync, unlinkSync,
+  createReadStream, mkdirSync, unlinkSync, rmSync,
 } from 'node:fs';
 import { compile, chapterConfigHash } from '../src/compile.mjs';
 import { loadKeys } from '../src/keys.mjs';
@@ -31,7 +31,9 @@ const json = (res, code, obj) => {
   res.end(body);
 };
 const readBody = (req) => new Promise((resolve, reject) => {
-  let b = ''; req.on('data', (c) => { b += c; if (b.length > 5e6) reject(new Error('body too large')); });
+  // 25 MB: voice uploads arrive as base64 JSON, and 30 s of 44.1 kHz stereo wav
+  // is ~7 MB of base64. Localhost-only cockpit, so the generous cap is safe.
+  let b = ''; req.on('data', (c) => { b += c; if (b.length > 25e6) reject(new Error('body too large')); });
   req.on('end', () => { try { resolve(b ? JSON.parse(b) : {}); } catch (e) { reject(e); } });
 });
 function atomicWriteJson(file, obj) {
@@ -612,6 +614,46 @@ const server = http.createServer(async (req, res) => {
       });
       return json(res, 200, { actors });
     }
+    // ---- upload a voice -> a company actor (Robert: "upload a voice into the
+    // interface and get whatever I want out of it, and save it if I want") ----
+    if (req.method === 'POST' && p === '/api/actors/upload') {
+      const { name, dataUrl, transcript, character } = await readBody(req);
+      const slug = String(name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      if (!slug) return json(res, 422, { error: 'give the voice a name first' });
+      const dir = path.join(root, 'actors', slug);
+      if (existsSync(dir)) return json(res, 409, { error: `"${slug}" already exists in the company — pick another name` });
+      const m = /^data:audio\/(wav|x-wav|mpeg|mp3|ogg|webm|mp4|m4a|x-m4a|flac);base64,(.+)$/s.exec(dataUrl || '');
+      if (!m) return json(res, 422, { error: 'need an audio file (wav/mp3/ogg/m4a/flac)' });
+      const { ffmpeg, ffprobeDuration } = await import('../src/util.mjs');
+      mkdirSync(dir, { recursive: true });
+      const rawFile = path.join(dir, `upload-raw.${m[1] === 'mpeg' ? 'mp3' : m[1].replace('x-', '')}`);
+      writeFileSync(rawFile, Buffer.from(m[2], 'base64'));
+      try {
+        // seed spec: 24 kHz mono wav, capped at 60 s (clone sweet spot is 8–15 s,
+        // but keep more so a representative window can be chosen later — the
+        // Chatterbox battery proved the HEAD of a clip is often the wrong slice)
+        await ffmpeg(['-y', '-i', rawFile, '-ar', '24000', '-ac', '1', '-t', '60', path.join(dir, 'seed.wav')]);
+        const dur = await ffprobeDuration(path.join(dir, 'seed.wav'));
+        if (!(dur >= 3)) throw new Error(`clip is ${dur?.toFixed(1) ?? '?'}s — need at least ~3 s of clean speech (8–15 s is the sweet spot)`);
+        writeFileSync(path.join(dir, 'transcript.txt'), String(transcript || '').trim());
+        writeFileSync(path.join(dir, 'origin.json'), JSON.stringify({
+          seed_engine: 'upload', seed_voice: 'user-provided recording',
+          character: character || '', created: new Date().toISOString(),
+          consent: 'uploader affirmed the right to use this voice (see clone-from-audio.py consent policy)',
+          gate: 'none yet — audition before casting',
+        }, null, 2));
+        writeFileSync(path.join(dir, 'notes.md'), transcript
+          ? '' : 'No transcript provided — adding one raises Qwen3 clone similarity ~0.75→0.89.');
+        unlinkSync(rawFile);
+        const secs = +dur.toFixed(1);
+        return json(res, 200, { ok: true, name: slug, seconds: secs });
+      } catch (e) {
+        // clean up the half-made actor rather than leaving a broken company member
+        try { rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
+        return json(res, 422, { error: `could not read that audio: ${String(e.message).slice(0, 140)}` });
+      }
+    }
+
     const notesMatch = p.match(/^\/api\/actors\/([a-z0-9-]+)\/notes$/);
     if (req.method === 'POST' && notesMatch) {
       const dir = path.join(root, 'actors', notesMatch[1]);
