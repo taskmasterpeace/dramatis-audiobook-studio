@@ -54,6 +54,32 @@ async function resolveVoice(candidates) {
   throw new Error(`no ElevenLabs voice found among: ${candidates.join(', ')}`);
 }
 
+// Per-request caps, measured 2026-07-20: the enforced wall is exactly 1.1x the
+// documented cap, but we budget against the DOCUMENTED number — the extra 10%
+// is undocumented slack nobody should build on.
+const MODEL_CAP = { eleven_v3: 5000, eleven_multilingual_v2: 10000, eleven_flash_v2_5: 40000 };
+const capFor = (model) => MODEL_CAP[model] ?? 5000;
+
+// Split long text so a whole story can become one file. Sentence-first so the
+// joins land at natural pauses.
+function splitChunks(text, limit) {
+  if (text.length <= limit) return [text];
+  const out = [];
+  let buf = '';
+  for (const s of text.split(/(?<=[.!?…])\s+/)) {
+    if (buf && buf.length + s.length + 1 > limit) { out.push(buf); buf = s; }
+    else buf = buf ? `${buf} ${s}` : s;
+    while (buf.length > limit) {                     // one giant sentence
+      let cut = buf.lastIndexOf(' ', limit);
+      if (cut <= 0) cut = limit;
+      out.push(buf.slice(0, cut));
+      buf = buf.slice(cut).trim();
+    }
+  }
+  if (buf) out.push(buf);
+  return out;
+}
+
 async function synthOne(job, key) {
   for (let attempt = 0; attempt < 4; attempt++) {
     const res = await fetch(`${API}/text-to-speech/${job.voiceId}?output_format=mp3_44100_128`, {
@@ -61,6 +87,14 @@ async function synthOne(job, key) {
       headers: { 'xi-api-key': key, 'content-type': 'application/json' },
       body: JSON.stringify({
         text: job.text,
+        // Prosody continuity across chunk joins. NOT billed (verified: a 52-char
+        // text with 36 chars of previous_text cost 52). v3 rejects these fields
+        // outright, so they only ride on the v2 family — which is the honest
+        // trade: v3 gives you audio tags, v2 gives you continuity.
+        ...(job.isV3 ? {} : {
+          ...(job.previousText ? { previous_text: job.previousText } : {}),
+          ...(job.nextText ? { next_text: job.nextText } : {}),
+        }),
         model_id: job.model || MODEL,
         // `style` is SILENTLY IGNORED on v3 — /v1/models reports
         // can_use_style:false, yet the API happily returns 200 for any value, so
@@ -86,6 +120,30 @@ async function synthOne(job, key) {
   throw new Error('elevenlabs tts: retries exhausted');
 }
 
+// One logical line = 1..N chunks, stitched. Each chunk is told what came before
+// and after so the delivery carries across the seam.
+async function synthJob(job, key) {
+  if (job.chunks.length === 1) return synthOne({ ...job, text: job.chunks[0] }, key);
+  log('render:tts', `elevenlabs: long text -> ${job.chunks.length} chunks`);
+  const parts = [];
+  for (let i = 0; i < job.chunks.length; i++) {
+    const partFile = job.out.replace(/\.wav$/, `.part${i}.wav`);
+    await synthOne({
+      ...job,
+      text: job.chunks[i],
+      out: partFile,
+      previousText: job.chunks[i - 1]?.slice(-300),
+      nextText: job.chunks[i + 1]?.slice(0, 300),
+    }, key);
+    parts.push(partFile);
+  }
+  const list = job.out.replace(/\.wav$/, '.concat.txt');
+  writeFileSync(list, parts.map((p) => `file '${p.replace(/\\/g, '/').replace(/'/g, "'\\''")}'`).join('\n'));
+  await ffmpeg(['-f', 'concat', '-safe', '0', '-i', list, '-ar', '48000', '-ac', '1', job.out]);
+  for (const p of parts) { try { unlinkSync(p); } catch { /* fine */ } }
+  try { unlinkSync(list); } catch { /* fine */ }
+}
+
 export async function renderLines(lines, voices, cacheRoot) {
   const jobs = [];
   const results = {};
@@ -107,7 +165,10 @@ export async function renderLines(lines, voices, cacheRoot) {
     const key = contentKey([ENGINE, name, model, String(stability), String(style), text]);
     const { path: out, hit } = cached(cacheRoot, key);
     results[line.id] = out;
-    if (!hit) jobs.push({ text, voiceId, stability, style, out, model, isV3 });
+    // Chunk rather than refuse. A whole story pasted into Quick Narrate used to
+    // hit a hard 400 at the model's cap; now it splits, renders each part with
+    // the neighbouring text as prosody context, and ffmpeg-concats to one file.
+    if (!hit) jobs.push({ text, voiceId, stability, style, out, model, isV3, chunks: splitChunks(text, capFor(model)) });
   }
   const chars = jobs.reduce((a, j) => a + j.text.length, 0);
   const modelsUsed = [...new Set(jobs.map((j) => j.model))].join('+') || MODEL;
@@ -118,7 +179,7 @@ export async function renderLines(lines, voices, cacheRoot) {
   await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
     while (i < jobs.length) {
       const job = jobs[i++];
-      await synthOne(job, key);
+      await synthJob(job, key);
       if (++done % 20 === 0) log('render:tts', `elevenlabs ${done}/${jobs.length}`);
     }
   }));
