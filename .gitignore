@@ -26,3 +26,9 @@ books/liu-xiao/
 
 # internal engineering skills - kept private
 .claude/skills/
+
+# installer build artifacts
+installer/Output/
+installer/staging/
+runtime/
+.bootstrap-done
