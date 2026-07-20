@@ -52,17 +52,26 @@ function accentDirection(text) {
   return null;
 }
 
+// numeric age (from the casting sheet form) -> band; NaN falls through to regex
+function bandFromAge(age) {
+  const n = parseInt(String(age ?? '').replace(/\D+/g, ''), 10);
+  if (Number.isNaN(n) || n <= 0 || n > 120) return null;
+  return n < 13 ? 'child' : n < 18 ? 'teen' : n < 30 ? 'young-adult' : n < 60 ? 'adult' : 'elderly';
+}
+
 export function determine(char) {
   // Alias lists carry possessives that belong to OTHER characters ("his wife",
   // "his mother") — those made every wife read as male and cancel to unknown.
   // Strip pronouns from names before they reach gender inference.
   const nameText = (char.names || []).join(' ').replace(/\b(his|her|hers|him|he|she|their|them|my|your)\b/gi, ' ');
   const desc = [char.visual, char.description, nameText, char.gender, char.age, char.ethnicity, char.accent].filter(Boolean).join(' ');
+  // explicit casting-sheet fields ALWAYS beat inference — the sheet is Robert's
+  // "pop in there and fill it out" form; the regex is only the fallback
   const gender = char.gender
     || (FEMALE.test(desc) && !MALE.test(desc) ? 'female'
       : MALE.test(desc) && !FEMALE.test(desc) ? 'male' : 'unknown');
-  const ageBand = char.ageBand || AGE_BANDS.find((b) => b.re.test(desc)).band;
-  const accent = char.accent || accentDirection(desc);
+  const ageBand = char.ageBand || bandFromAge(char.age) || AGE_BANDS.find((b) => b.re.test(desc)).band;
+  const accent = char.accent || accentDirection([char.ethnicity, desc].filter(Boolean).join(' '));
   return { gender, ageBand, accent, desc };
 }
 

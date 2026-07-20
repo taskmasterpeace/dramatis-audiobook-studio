@@ -277,6 +277,15 @@ const server = http.createServer(async (req, res) => {
   try {
     // media + static
     if (p.startsWith('/media/')) return serveMedia(req, res, p);
+    if (p.startsWith('/bookart/')) { // per-character portraits: /bookart/<book>/<file>
+      const rel = decodeURIComponent(p.replace(/^\/bookart\//, ''));
+      const m2 = /^([a-z0-9-]+)\/([a-z0-9_.-]+)$/.exec(rel);
+      const file = m2 ? path.resolve(BOOKS, m2[1], 'art', m2[2]) : '';
+      if (!m2 || !file.startsWith(BOOKS) || !existsSync(file)) return json(res, 404, { error: 'not found' });
+      const types = { '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp' };
+      res.writeHead(200, { 'Content-Type': types[path.extname(file)] || 'application/octet-stream', 'Content-Length': statSync(file).size });
+      return createReadStream(file).pipe(res);
+    }
     if (p.startsWith('/actors/')) { // company seeds + portraits
       const rel = decodeURIComponent(p.replace(/^\/actors\//, ''));
       const file = path.resolve(root, 'actors', rel);
@@ -353,6 +362,25 @@ const server = http.createServer(async (req, res) => {
       // other productions (actor-level craft notes live in actors/<name>/notes.md)
       if (typeof body.notes === 'string') { if (body.notes.trim()) ent.notes = body.notes; else delete ent.notes; }
       if (typeof body.actor === 'string') { if (body.actor) ent.actor = body.actor; else delete ent.actor; }
+      // the casting sheet: explicit fields Robert fills out — they OVERRIDE all
+      // description inference in castingRecipe (gender/age/ethnicity/accent)
+      for (const f of ['gender', 'age', 'ethnicity', 'accent']) {
+        if (typeof body[f] === 'string') { if (body[f].trim()) ent[f] = body[f].trim(); else delete ent[f]; }
+      }
+      // per-character portrait (pasted image -> books/<id>/art/<eid>.png)
+      if (typeof body.portraitDataUrl === 'string') {
+        const pm = /^data:image\/(png|jpe?g|webp);base64,(.+)$/s.exec(body.portraitDataUrl);
+        if (!pm) return json(res, 422, { error: 'portrait must be a pasted PNG/JPG/WEBP' });
+        const artDir = path.join(BOOKS, id, 'art');
+        mkdirSync(artDir, { recursive: true });
+        const ext = pm[1] === 'jpeg' ? 'jpg' : pm[1];
+        for (const old of ['png', 'jpg', 'webp']) {
+          const f = path.join(artDir, `${eid}.${old}`);
+          if (existsSync(f)) unlinkSync(f);
+        }
+        writeFileSync(path.join(artDir, `${eid}.${ext}`), Buffer.from(pm[2], 'base64'));
+        ent.portrait = `art/${eid}.${ext}`;
+      }
       if (body.voices) for (const [eng, v] of Object.entries(body.voices)) {
         if (typeof b.voices[eng] === 'string') continue; // never clobber an @ref
         if (!b.voices[eng]) { // first edit on a new engine (e.g. gemini) creates its map
@@ -433,19 +461,50 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // ---- quick narrate: free text -> mp3, no book needed ----
+    // ---- quick narrate: text -> mp3, ANY engine, with a persisted history so
+    // we learn how long various lengths take per engine (Robert's ask) ----
+    const SAY_HISTORY = path.join(OUT, 'say', 'history.jsonl');
+    if (req.method === 'GET' && p === '/api/say/history') {
+      const rows = existsSync(SAY_HISTORY)
+        ? readFileSync(SAY_HISTORY, 'utf8').trim().split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean)
+        : [];
+      // rolling chars/sec per engine -> the UI predicts render time before you click
+      const rates = {};
+      for (const r of rows.slice(-60)) {
+        if (!r.ms || !r.chars) continue;
+        (rates[r.engine] ??= []).push(r.chars / (r.ms / 1000));
+      }
+      const speed = Object.fromEntries(Object.entries(rates).map(([e, v]) => [e, +(v.reduce((a, b) => a + b, 0) / v.length).toFixed(1)]));
+      return json(res, 200, { history: rows.slice(-40).reverse(), speed });
+    }
     if (req.method === 'POST' && p === '/api/say') {
-      const { text, engine = 'kokoro', voice = 'bm_george', design } = await readBody(req);
+      const { text, engine = 'kokoro', voice, design, prompt } = await readBody(req);
       if (!text || !text.trim()) return json(res, 422, { error: 'text required' });
-      if (!FREE_ENGINE_IDS.includes(engine)) return json(res, 422, { error: `engine must be one of: ${FREE_ENGINE_IDS.join(', ')} (the free ones)` });
+      if (!ENGINE_IDS.includes(engine)) return json(res, 422, { error: `engine must be one of: ${ENGINE_IDS.join(', ')}` });
       const renderLines = await loadRenderer(engine);
-      const voices = engine === 'qwen3'
-        ? { narrator: { design: design || 'Clear natural narrator voice.' } }
-        : { narrator: { voice, speed: 1 } };
+      const voices = {
+        kokoro: { narrator: { voice: voice || 'bm_george', speed: 1 } },
+        qwen3: { narrator: { design: design || 'Clear natural narrator voice.' } },
+        elevenlabs: { narrator: { candidates: [voice || 'Battlerap Algorithm', 'George'], stability: 0.5, style: 0.25 } },
+        gemini: { narrator: { voice: voice || 'Charon', prompt: prompt || 'A natural, engaging narrator reading aloud.' } },
+      }[engine];
       const t0 = Date.now();
       const wavs = await renderLines([{ id: 'say', kind: 'narration', entity: 'narrator', text: text.trim() }], voices, OUT);
+      const ms = Date.now() - t0;
       const rel = path.relative(OUT, wavs.say).split(path.sep).join('/');
-      return json(res, 200, { media: `/media/${rel}`, ms: Date.now() - t0, chars: text.trim().length });
+      let audioSec = null;
+      try {
+        const { ffprobeDuration } = await import('../src/util.mjs');
+        audioSec = +(await ffprobeDuration(wavs.say)).toFixed(1);
+      } catch { /* non-fatal */ }
+      const entry = {
+        ts: new Date().toISOString(), engine, voice: voice || design?.slice(0, 40) || null,
+        chars: text.trim().length, ms, audioSec,
+        preview: text.trim().slice(0, 80), media: `/media/${rel}`,
+      };
+      mkdirSync(path.dirname(SAY_HISTORY), { recursive: true });
+      writeFileSync(SAY_HISTORY, (existsSync(SAY_HISTORY) ? readFileSync(SAY_HISTORY, 'utf8') : '') + JSON.stringify(entry) + '\n');
+      return json(res, 200, entry);
     }
 
     // ---- audition ----

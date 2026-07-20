@@ -52,7 +52,9 @@
         "sergeant-major",
         "the soldier"
       ],
-      "visual": "Tall burly sergeant-major, beady of eye and rubicund of visage, whisky glass in hand, campaign-weathered."
+      "visual": "Tall burly sergeant-major, beady of eye and rubicund of visage, whisky glass in hand, campaign-weathered.",
+      "gender": "male",
+      "age": "55"
     },
     {
       "id": "company_man",

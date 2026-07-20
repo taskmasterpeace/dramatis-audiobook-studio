@@ -95,6 +95,68 @@ setInterval(async () => {
   }
 }, 3000);
 
+// ── persistent transport + script playhead ─────────────────────────────────
+// The player lives OUTSIDE #main, which render() replaces wholesale — so
+// clicking a line, opening a cue, or saving a hint never cuts the audio.
+let transport = null;
+function ensureTransport() {
+  if (transport) return transport;
+  const el = document.createElement('div');
+  el.className = 'transport';
+  el.innerHTML = `<span class="tp-label"></span><audio controls preload="auto"></audio>
+    <label class="mini tp-follow"><input type="checkbox" checked> follow</label>
+    <button class="tp-x" title="close">✕</button>`;
+  document.body.appendChild(el);
+  const audio = el.querySelector('audio');
+  audio.addEventListener('timeupdate', paintPlayhead);
+  el.querySelector('.tp-x').addEventListener('click', () => { audio.pause(); el.classList.remove('on'); clearPlayhead(); });
+  transport = { el, audio, timing: [], cues: [], book: null, chapter: null };
+  return transport;
+}
+async function playChapter(bookId, n, seekTo) {
+  const t = ensureTransport();
+  const pad = String(n).padStart(2, '0');
+  if (t.book !== bookId || t.chapter !== n) {
+    try { t.timing = await (await fetch(`/media/${bookId}/ch-${pad}/timing.json`)).json(); } catch { t.timing = []; }
+    t.cues = (S.book?.chapters?.[n - 1]?.cues) || [];
+    t.audio.src = `/media/${bookId}/ch-${pad}/immersive.m4a`;
+    t.book = bookId; t.chapter = n;
+    t.el.querySelector('.tp-label').textContent = `${bookId} · ch ${n}`;
+  }
+  t.el.classList.add('on');
+  if (seekTo != null) t.audio.currentTime = Math.max(0, seekTo);
+  t.audio.play().catch(() => toast('click the player once to allow audio', true));
+}
+const timingLines = () => (Array.isArray(transport?.timing) ? transport.timing : (transport?.timing?.lines || []));
+function clearPlayhead() {
+  document.querySelectorAll('.sline.playing').forEach((e) => e.classList.remove('playing'));
+  document.querySelectorAll('.cue-pin.firing').forEach((e) => e.classList.remove('firing'));
+}
+function paintPlayhead() {
+  const t = transport;
+  if (!t || !t.el.classList.contains('on')) return;
+  const now = t.audio.currentTime;
+  const cur = timingLines().find((l) => now >= l.start && now < l.start + l.dur);
+  const prev = document.querySelector('.sline.playing');
+  if (prev && prev.dataset.line !== cur?.id) prev.classList.remove('playing');
+  if (cur) {
+    const el = document.querySelector(`.sline[data-line="${cur.id}"]`);
+    if (el && !el.classList.contains('playing')) {
+      el.classList.add('playing');
+      if (t.el.querySelector('.tp-follow input').checked) {
+        const r = el.getBoundingClientRect();
+        if (r.top < 80 || r.bottom > window.innerHeight - 140) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+    }
+  }
+  // a cue "fires" for ~1.2s around its placed time
+  for (const c of t.cues) {
+    const pin = document.querySelector(`.cue-pin[data-cue="${c.id}"]`);
+    if (!pin) continue;
+    pin.classList.toggle('firing', c.at != null && now >= c.at && now < c.at + 1.2);
+  }
+}
+
 // ── the wrap report: a production wrap card when a render lands ─────────────
 async function showWrap(bookId) {
   let d;
@@ -141,12 +203,56 @@ async function refresh() {
   render();
 }
 
+// ── cue queue helpers ───────────────────────────────────────────────────────
+function currentCues() { return (S.book?.book?.chapters?.[S.chapterN - 1]?.cues) || []; }
+async function loadCue(i) {
+  const cue = currentCues()[i];
+  if (!cue) return;
+  S.cuePanel = { cueId: cue.id, data: null };
+  try {
+    S.cuePanel.data = await api('/api/cue-preview', { method: 'POST', body: { book: S.bookId, cueId: cue.id } });
+    if (S.scriptMode === 'cues') render();
+    // prefetch the next one so the CLAP round-trip is hidden
+    const next = currentCues()[i + 1];
+    if (next) api('/api/cue-preview', { method: 'POST', body: { book: S.bookId, cueId: next.id } }).catch(() => {});
+  } catch (e) { toast(e.message, true); }
+}
+async function setCueApproval(approval) {
+  const cue = currentCues()[S.cueIdx ?? 0];
+  if (!cue) return;
+  try {
+    await api(`/api/books/${S.bookId}/cues/${cue.id}`, { method: 'POST', body: { approval } });
+    await loadBook(S.bookId);
+    // advance to the next still-pending cue — triage should flow
+    const cues = currentCues();
+    const nextPending = cues.findIndex((c, idx) => idx > (S.cueIdx ?? 0) && !c.approval);
+    S.cueIdx = nextPending >= 0 ? nextPending : Math.min((S.cueIdx ?? 0) + 1, cues.length - 1);
+    S.cuePanel = null;
+    render();
+    loadCue(S.cueIdx);
+  } catch (e) { toast(e.message, true); }
+}
+// keyboard triage — bound once, active only in the cue queue
+document.addEventListener('keydown', (e) => {
+  if (S.view !== 'book' || S.tab !== 'script' || S.scriptMode !== 'cues') return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')) return;
+  const cues = currentCues();
+  const move = (d) => { S.cueIdx = Math.max(0, Math.min(cues.length - 1, (S.cueIdx ?? 0) + d)); S.cuePanel = null; render(); loadCue(S.cueIdx); };
+  if (e.key === 'j') { e.preventDefault(); move(1); }
+  else if (e.key === 'k') { e.preventDefault(); move(-1); }
+  else if (e.key === 'a') { e.preventDefault(); setCueApproval('approved'); }
+  else if (e.key === 'r') { e.preventDefault(); setCueApproval('rejected'); }
+  else if (e.key === 'u') { e.preventDefault(); setCueApproval(null); }
+  else if (e.key === ' ') { e.preventDefault(); $('#cq-player audio')?.play(); }
+});
+
 // ── navigation ──────────────────────────────────────────────────────────────
 async function go(view, bookId, tab) {
   S.view = view;
   if (view === 'shelf') await loadShelf();
   if ((view === 'casting' || view === 'say') && !S.roster) { try { S.roster = await api('/api/casting/roster'); } catch (e) { toast(e.message, true); } }
   if (view === 'casting') { try { S.actors = (await api('/api/actors')).actors; } catch { S.actors = []; } }
+  if (view === 'say') { try { S.sayStats = await api('/api/say/history'); } catch { /* first run */ } }
   if (view === 'book') {
     await loadBook(bookId || S.bookId);
     S.tab = tab || 'board';
@@ -358,6 +464,23 @@ function viewCast() {
           ${['kokoro', 'qwen3', 'elevenlabs', 'gemini'].map((e) => `<option ${casting?.engine === e ? 'selected' : ''}>${e}</option>`).join('')}
         </select></span></div>
       ${ent.names?.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px">${ent.names.map((n) => `<span class="chip">${esc(n)}</span>`).join('')}</div>` : ''}
+      <div class="sheet">
+        <div class="f-label" style="margin:0 0 5px">Casting sheet — what YOU say overrides everything inferred</div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
+          <label class="mini">Gender <select data-sheet="gender">
+            <option value="" ${!ent.gender ? 'selected' : ''}>infer</option>
+            <option ${ent.gender === 'female' ? 'selected' : ''}>female</option>
+            <option ${ent.gender === 'male' ? 'selected' : ''}>male</option>
+          </select></label>
+          <label class="mini">Age <input class="tiny" data-sheet="age" value="${esc(ent.age || '')}" placeholder="72"></label>
+          <label class="mini">Race/ethnicity <input data-sheet="ethnicity" value="${esc(ent.ethnicity || '')}" placeholder="Black, from New Orleans" style="width:150px"></label>
+          <label class="mini">Accent <input data-sheet="accent" value="${esc(ent.accent || '')}" placeholder="auto from ethnicity" style="width:130px"></label>
+        </div>
+      </div>
+      <div class="portrait-zone book-portrait" data-ent-portrait tabindex="0" title="Click, then paste an image (Ctrl+V) — how this character looks">
+        ${ent.portrait ? `<img src="/bookart/${S.bookId}/${esc(ent.portrait.split('/').pop())}?t=${Date.now()}" alt="${esc(ent.id)}">`
+          : `<div class="portrait-empty">🖼 click + paste this character's image</div>`}
+      </div>
       ${sugStrip}
       <div class="screentest">
         <button class="btn ghost sm" data-screentest="${ent.id}">🎧 Screen Test — hear every engine on the same line</button>
@@ -378,6 +501,16 @@ function viewCast() {
 function viewScript() {
   const { book } = S.book;
   const chapters = book.chapters.map((c, i) => `<option value="${i + 1}" ${S.chapterN === i + 1 ? 'selected' : ''}>${esc(c.heading)}</option>`).join('');
+  const bookCues = (book.chapters[S.chapterN - 1]?.cues) || [];
+  const pending = bookCues.filter((c) => !c.approval).length;
+  const modeBar = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+    <select id="sc-ch">${chapters}</select>
+    <button class="btn ghost sm" id="sc-play">▶ Play chapter</button>
+    <span style="flex:1"></span>
+    <button class="btn ${S.scriptMode !== 'cues' ? '' : 'ghost'} sm" data-scriptmode="script">¶ Script</button>
+    <button class="btn ${S.scriptMode === 'cues' ? '' : 'ghost'} sm" data-scriptmode="cues">⟟ Cues ${pending ? `(${pending} pending)` : '✓'}</button>
+  </div>`;
+  if (S.scriptMode === 'cues') return modeBar + viewCueQueue(bookCues);
   let body;
   if (!S.script) body = `<div class="empty">Chapter not compiled yet — render it once from the Production tab.</div>`;
   else {
@@ -399,13 +532,66 @@ function viewScript() {
         return `<div class="sline ${isNarr ? 'narr' : ''} ${S.selLine === l.id ? 'sel' : ''}" data-line="${l.id}">
           <div class="who" style="color:${isNarr ? '#7E8CA0' : entColor(l.entity, entIdx[l.entity] ?? 0)}">${isNarr ? 'NARRATION' : esc((l.entity || '?').replace(/_/g, ' ').toUpperCase())}
             ${emo ? `<span class="badge">${emo[0]} ${emo[1]} → 11L</span>` : ''}</div>
-          <div class="txt">${pins}${esc(l.text)}</div>
+          <div class="txt"><button class="sline-play" title="play from here">▶</button>${pins}${esc(l.text)}</div>
         </div>${S.selLine === l.id ? linePopover(l) : ''}${S.cuePanel && (cuesByLine[l.id] || []).some((c) => c.id === S.cuePanel.cueId) ? cuePopover() : ''}`;
       }).join('');
       return head + lines;
     }).join('');
   }
-  return `<div style="margin-bottom:10px"><select id="sc-ch">${chapters}</select></div>${body}`;
+  return modeBar + body;
+}
+
+// Cue triage queue — the analyzer over-cues by design, and approving them one
+// pin at a time in a scrolling script was the biggest manual grind in the app.
+function viewCueQueue(bookCues) {
+  if (!bookCues.length) return `<div class="empty">This chapter has no SFX cues.</div>`;
+  const qa = Object.fromEntries(((S.book.chapters[S.chapterN - 1]?.cues) || []).map((c) => [c.id, c]));
+  const sel = S.cueIdx ?? 0;
+  const state = (c) => (c.approval === 'rejected' ? 'rejected'
+    : c.approval === 'approved' ? 'approved'
+    : (c.approval && c.approval.swap) ? 'swapped' : 'pending');
+  const rows = bookCues.map((c, i) => {
+    const q = qa[c.id] || {};
+    const st = state(c);
+    return `<div class="cq-row ${i === sel ? 'sel' : ''} st-${st}" data-cueidx="${i}" data-cueid="${c.id}">
+      <span class="cq-state">${st === 'approved' ? '✓' : st === 'rejected' ? '✕' : st === 'swapped' ? '⇄' : '•'}</span>
+      <span class="cq-spec">${esc(c.sfx)}</span>
+      <span class="cq-cap">${esc((q.caption || '').slice(0, 58))}</span>
+      <span class="cq-meta num">${q.sim != null ? `sim ${q.sim}` : ''} ${q.at != null ? `@${Math.floor(q.at / 60)}:${String(Math.floor(q.at % 60)).padStart(2, '0')}` : ''}</span>
+    </div>`;
+  }).join('');
+  const cur = bookCues[sel];
+  const curQa = qa[cur?.id] || {};
+  return `
+    <p style="font-size:11.5px;color:var(--muted);margin:0 0 8px">
+      <b>j</b>/<b>k</b> move · <b>space</b> play · <b>a</b> approve · <b>r</b> reject · <b>u</b> auto — decisions save instantly.
+    </p>
+    <div class="cq-wrap">
+      <div class="cq-list">${rows}</div>
+      <div class="cq-detail card">
+        <div class="f-label">Cue ${sel + 1} of ${bookCues.length}</div>
+        <div style="font-family:var(--mono);font-size:13px;margin-bottom:4px">${esc(cur?.sfx || '')}</div>
+        <div style="font-size:11.5px;color:var(--muted);margin-bottom:8px">
+          anchor: “${esc((cur?.anchor || '').slice(0, 70))}”<br>
+          ${curQa.caption ? `source: ${esc(curQa.caption.slice(0, 70))}` : 'not rendered yet'}
+          ${curQa.confidence != null ? ` · conf ${curQa.confidence}` : ''}
+        </div>
+        <div id="cq-player">${S.cuePanel?.data?.current
+          ? `<audio controls autoplay src="${S.cuePanel.data.current}" style="width:100%"></audio>`
+          : '<span style="font-size:11.5px;color:var(--dim)">press space to hear it</span>'}</div>
+        <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+          <button class="btn sm" data-cq="approved">✓ Approve</button>
+          <button class="btn ghost sm" data-cq="null">Auto</button>
+          <button class="btn danger sm" data-cq="rejected">✕ Reject</button>
+        </div>
+        ${S.cuePanel?.data?.alternatives?.length ? `
+          <div class="f-label" style="margin-top:12px">Swap for a library alternative</div>
+          ${S.cuePanel.data.alternatives.map((a) => `<div class="alt">
+            <audio controls preload="none" src="${a.media}"></audio>
+            <span class="cap">${esc(a.caption)} <span class="num">(${a.score})</span></span>
+            <button class="btn ghost sm" data-cq-swap="${esc(a.file)}">Use</button></div>`).join('')}` : ''}
+      </div>
+    </div>`;
 }
 
 function linePopover(l) {
@@ -452,7 +638,16 @@ function viewCasting() {
   let body;
   if (S.castTab === 'company') {
     const actors = S.actors || [];
-    body = actors.length ? `<div class="cast-grid">${actors.map((a) => `
+    const explainer = `
+      <div class="card" style="padding:13px 16px;margin-bottom:14px;border-color:var(--cy-dim);font-size:12.5px;color:var(--muted);line-height:1.6">
+        <b style="color:var(--text)">What is the Company?</b> Your permanent stable of voice actors — like a
+        repertory theater troupe. When a voice comes out perfect (usually seeded on Gemini or ElevenLabs),
+        we save it here: a <b>seed clip</b>, its transcript, and the recipe that made it. From then on that
+        actor can be <b>re-hired in any book for free</b> (cloned locally into Qwen3) or used as the voice of a
+        Seed Audio trailer. Pay once for the perfect voice, use them forever — that's the whole trick.
+        Their <b>notes</b> travel with them to every production; their <b>portrait</b> is pasted by you.
+      </div>`;
+    body = explainer + (actors.length ? `<div class="cast-grid">${actors.map((a) => `
       <div class="actor card" data-actor="${esc(a.name)}">
         <div class="actor-h"><span class="nm">${esc(a.name.replace(/-/g, ' ').toUpperCase())}</span>
           <span class="roleeng chip cy">${esc(a.origin.seed_engine || 'seeded')}</span></div>
@@ -470,7 +665,7 @@ function viewCasting() {
           <em>${esc((a.transcript || '').slice(0, 90))}${(a.transcript || '').length > 90 ? '…' : ''}</em>
         </div>
       </div>`).join('')}</div>`
-      : `<div class="empty">No company members yet. Seed a voice you love (Gemini/ElevenLabs), then save it to <code>actors/</code>.</div>`;
+      : `<div class="empty">No company members yet. Seed a voice you love (Gemini/ElevenLabs), then save it to <code>actors/</code>.</div>`);
   } else {
     const voices = S.roster[S.castTab] || [];
     body = `<div style="display:flex;flex-wrap:wrap;gap:7px">
@@ -489,18 +684,47 @@ function viewCasting() {
 }
 
 function viewSay() {
+  S.sayEngine = S.sayEngine || 'kokoro';
+  const eng = S.sayEngine;
   const kok = (S.roster?.kokoro || []).map((v) => v.voice);
-  const opts = (kok.length ? kok : ['bm_george', 'af_sarah', 'am_onyx', 'af_nicole', 'am_michael']).map((v) => `<option ${v === 'bm_george' ? 'selected' : ''}>${esc(v)}</option>`).join('');
+  const gem = (S.roster?.gemini || []).map((v) => v.voice);
+  const el11 = (S.roster?.elevenlabs || []).map((v) => v.voice);
+  const opt = (list, sel) => list.map((v) => `<option ${v === sel ? 'selected' : ''}>${esc(v)}</option>`).join('');
+  const ENGINE_META = {
+    kokoro: { label: 'Kokoro — free local', cost: () => '$0.00' },
+    qwen3: { label: 'Qwen3 — free local (designed voice)', cost: () => '$0.00' },
+    elevenlabs: { label: 'ElevenLabs — premium', cost: (c) => `≈ $${(c * 0.00022).toFixed(2)}` },
+    gemini: { label: 'Gemini — directed', cost: (c) => `≈ $${Math.max(0.001, c * 0.000012).toFixed(3)}` },
+  };
+  const voiceField =
+    eng === 'kokoro' ? `<label class="mini">Voice <select id="say-voice">${opt(kok.length ? kok : ['bm_george', 'af_sarah', 'am_onyx'], 'bm_george')}</select></label>`
+    : eng === 'elevenlabs' ? `<label class="mini">Voice <select id="say-voice">${opt(el11.length ? el11 : ['Battlerap Algorithm', 'George'], 'Battlerap Algorithm')}</select></label>`
+    : eng === 'gemini' ? `<label class="mini">Voice <select id="say-voice">${opt(gem.length ? gem : ['Charon'], 'Charon')}</select></label>
+        <input id="say-prompt" class="wide" style="min-width:260px" placeholder="optional director's note — who's speaking, accent, pace">`
+    : `<input id="say-design" class="wide" style="min-width:300px" placeholder="describe the voice — age, gender, accent, texture">`;
+  const speed = S.sayStats?.speed?.[eng];
+  const hist = (S.sayStats?.history || []).slice(0, 12);
+  const histRows = hist.map((h) => `
+    <tr><td>${esc((h.ts || '').slice(5, 16).replace('T', ' '))}</td><td>${esc(h.engine)}</td>
+    <td class="num">${h.chars}</td><td class="num">${h.ms ? (h.ms / 1000).toFixed(1) + 's' : '—'}</td>
+    <td class="num">${h.audioSec ? h.audioSec + 's' : '—'}</td>
+    <td style="color:var(--dim)">${esc(h.preview || '')}</td>
+    <td>${h.media ? `<audio controls preload="none" src="${h.media}" style="width:130px;height:24px"></audio>` : ''}</td></tr>`).join('');
   return `
-    <p class="crumb">Free tool</p><h1>⚡ Quick Narrate</h1>
-    <p class="sub">Drop any text, pick a free local voice, get an mp3. No API, no cost, with a timer.</p>
-    <div class="field"><label>Text</label><textarea id="say-text" placeholder="Paste anything you want read aloud…" style="min-height:180px"></textarea></div>
-    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-      <label class="mini">Voice <select id="say-voice">${opts}</select></label>
-      <button class="btn" id="say-go">🎙 Narrate — free</button>
+    <p class="crumb">Tool</p><h1>⚡ Quick Narrate</h1>
+    <p class="sub">Drop text, pick any engine, get an mp3. Every run is logged below so the time estimates keep getting smarter.</p>
+    <div class="field"><label>Text</label><textarea id="say-text" placeholder="Paste anything you want read aloud…" style="min-height:160px">${esc(S.sayText || '')}</textarea></div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+      <label class="mini">Engine <select id="say-engine">${['kokoro', 'qwen3', 'elevenlabs', 'gemini'].map((e) => `<option value="${e}" ${e === eng ? 'selected' : ''}>${ENGINE_META[e].label}</option>`).join('')}</select></label>
+      ${voiceField}
+      <button class="btn" id="say-go">🎙 Narrate</button>
       <span id="say-status" style="font-size:12.5px;color:var(--muted)"></span>
     </div>
-    <div id="say-result"></div>`;
+    <div id="say-estimate" style="font-size:11.5px;color:var(--dim);margin-bottom:12px">${speed ? `this engine averages ${speed} chars/sec — estimate updates as you type` : 'no history for this engine yet — first run measures it'}</div>
+    <div id="say-result"></div>
+    ${hist.length ? `<p class="panel-h" style="margin-top:22px">History — length vs time (last ${hist.length})</p>
+    <div class="card" style="padding:8px 12px;overflow-x:auto"><table class="say-hist">
+      <tr><th>when</th><th>engine</th><th>chars</th><th>render</th><th>audio</th><th>text</th><th></th></tr>${histRows}</table></div>` : ''}`;
 }
 
 function viewNew() {
@@ -589,6 +813,34 @@ function bind(m) {
     card.querySelector('[data-visual]')?.addEventListener('change', async (e) => {
       try { await api(`/api/books/${S.bookId}/entity/${eid}`, { method: 'PUT', body: { visual: e.target.value } }); saved(); } catch (err) { toast(err.message, true); }
     });
+    // casting sheet — explicit fields beat inference; saving refreshes the suggestion
+    card.querySelectorAll('[data-sheet]').forEach((inp) => inp.addEventListener('change', async () => {
+      const body = {};
+      card.querySelectorAll('[data-sheet]').forEach((i) => { body[i.dataset.sheet] = i.value; });
+      try {
+        await api(`/api/books/${S.bookId}/entity/${eid}`, { method: 'PUT', body });
+        saved();
+        await loadBook(S.bookId); render();
+      } catch (err) { toast(err.message, true); }
+    }));
+    // per-character portrait: click + paste
+    const pz = card.querySelector('[data-ent-portrait]');
+    if (pz) {
+      pz.addEventListener('click', () => { pz.classList.add('armed'); pz.focus(); toast(`paste an image for ${eid} (Ctrl+V)`); });
+      pz.addEventListener('paste', async (ev) => {
+        const item = [...(ev.clipboardData?.items || [])].find((i) => i.type.startsWith('image/'));
+        if (!item) { toast('no image in the clipboard', true); return; }
+        ev.preventDefault();
+        const blob = item.getAsFile();
+        const dataUrl = await new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
+        try {
+          await api(`/api/books/${S.bookId}/entity/${eid}`, { method: 'PUT', body: { portraitDataUrl: dataUrl } });
+          toast(`portrait saved for ${eid}`);
+          await loadBook(S.bookId); render();
+        } catch (e2) { toast(e2.message, true); }
+      });
+    }
+
     // role notes — this book only
     card.querySelector('[data-rolenote]')?.addEventListener('change', async (e) => {
       try { await api(`/api/books/${S.bookId}/entity/${eid}`, { method: 'PUT', body: { notes: e.target.value } }); saved(); }
@@ -677,12 +929,38 @@ function bind(m) {
 
   // script interactions
   $('#sc-ch', m)?.addEventListener('change', async (e) => { await loadScript(+e.target.value); render(); });
-  m.querySelectorAll('.sline').forEach((el) => el.addEventListener('click', (ev) => {
-    if (ev.target.closest('.cue-pin')) return;
-    S.selLine = S.selLine === el.dataset.line ? null : el.dataset.line;
-    S.cuePanel = null;
+  $('#sc-play', m)?.addEventListener('click', () => playChapter(S.bookId, S.chapterN));
+  m.querySelectorAll('[data-scriptmode]').forEach((b) => b.addEventListener('click', async () => {
+    S.scriptMode = b.dataset.scriptmode;
+    S.cueIdx = S.cueIdx ?? 0; S.cuePanel = null;
     render();
+    if (S.scriptMode === 'cues') loadCue(S.cueIdx);
   }));
+  m.querySelectorAll('[data-cueidx]').forEach((r) => r.addEventListener('click', () => {
+    S.cueIdx = +r.dataset.cueidx; S.cuePanel = null; render(); loadCue(S.cueIdx);
+  }));
+  m.querySelectorAll('[data-cq]').forEach((b) => b.addEventListener('click', () => {
+    const v = b.dataset.cq === 'null' ? null : b.dataset.cq;
+    setCueApproval(v);
+  }));
+  m.querySelectorAll('[data-cq-swap]').forEach((b) => b.addEventListener('click', () => setCueApproval({ swap: b.dataset.cqSwap })));
+  m.querySelectorAll('.sline').forEach((el) => {
+    el.addEventListener('click', (ev) => {
+      if (ev.target.closest('.cue-pin') || ev.target.closest('.sline-play')) return;
+      S.selLine = S.selLine === el.dataset.line ? null : el.dataset.line;
+      S.cuePanel = null;
+      render();
+    });
+    // ▶ on a line seeks the transport straight to it
+    el.querySelector('.sline-play')?.addEventListener('click', async (ev) => {
+      ev.stopPropagation();
+      const id = el.dataset.line;
+      if (!transport || transport.book !== S.bookId || transport.chapter !== S.chapterN) await playChapter(S.bookId, S.chapterN);
+      const l = timingLines().find((x) => x.id === id);
+      if (l) { transport.audio.currentTime = l.start; transport.audio.play(); }
+      else toast('this chapter has no timing yet — render it first', true);
+    });
+  });
   m.querySelectorAll('.cue-pin').forEach((el) => el.addEventListener('click', async (ev) => {
     ev.stopPropagation();
     const cueId = el.dataset.cue;
@@ -731,19 +1009,36 @@ function bind(m) {
     cpop.querySelectorAll('[data-cue-swap]').forEach((b) => b.addEventListener('click', () => setApproval({ swap: b.dataset.cueSwap })));
   }
 
-  // quick narrate (free tool)
+  // quick narrate — any engine, live estimate, persisted history
+  $('#say-engine', m)?.addEventListener('change', (e) => { S.sayEngine = e.target.value; S.sayText = $('#say-text')?.value || ''; render(); });
+  const sayEst = () => {
+    const el = $('#say-estimate'); if (!el) return;
+    const speed = S.sayStats?.speed?.[S.sayEngine];
+    const chars = ($('#say-text')?.value || '').trim().length;
+    if (speed && chars) el.textContent = `~${Math.max(1, Math.round(chars / speed))}s estimated for ${chars} chars (engine averages ${speed} chars/sec)`;
+    else if (speed) el.textContent = `this engine averages ${speed} chars/sec — estimate updates as you type`;
+  };
+  $('#say-text', m)?.addEventListener('input', sayEst);
+  sayEst();
   $('#say-go', m)?.addEventListener('click', async () => {
     const text = $('#say-text').value.trim();
     if (!text) { toast('type or paste some text first', true); return; }
     const btn = $('#say-go'); const st = $('#say-status');
     btn.disabled = true; st.textContent = '⏱ rendering…';
-    const t0 = Date.now();
     try {
-      const r = await api('/api/say', { method: 'POST', body: { text, engine: 'kokoro', voice: $('#say-voice').value } });
+      const r = await api('/api/say', {
+        method: 'POST',
+        body: {
+          text, engine: S.sayEngine,
+          voice: $('#say-voice')?.value, design: $('#say-design')?.value, prompt: $('#say-prompt')?.value,
+        },
+      });
       $('#say-result').innerHTML = `<audio controls autoplay src="${r.media}" style="width:100%;max-width:520px"></audio>
-        <div style="font-size:12px;color:var(--muted);margin-top:6px">⏱ ${(r.ms / 1000).toFixed(1)}s · ${r.chars} chars · 💵 $0.00 free ·
+        <div style="font-size:12px;color:var(--muted);margin-top:6px">⏱ ${(r.ms / 1000).toFixed(1)}s render · 🔊 ${r.audioSec ?? '?'}s audio · ${r.chars} chars ·
         <a href="${r.media}" download style="color:var(--cy)">download mp3</a></div>`;
-      st.textContent = `done in ${((Date.now() - t0) / 1000).toFixed(1)}s`;
+      st.textContent = `done in ${(r.ms / 1000).toFixed(1)}s`;
+      S.sayText = text;
+      try { S.sayStats = await api('/api/say/history'); } catch { /* keep old */ }
     } catch (e) { toast(e.message, true); st.textContent = 'failed'; }
     btn.disabled = false;
   });

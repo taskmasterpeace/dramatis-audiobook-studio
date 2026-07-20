@@ -131,7 +131,8 @@ function mergeAnalysis(book, analysis, chapterIdx, samplePath) {
 function houseTemplate(characters) {
   const kokoro = { narrator: { voice: 'bm_george', speed: 1.0 } };
   const qwen3 = { narrator: { design: 'Calm, measured middle-aged male storyteller; low, warm register; unhurried delivery.' } };
-  const elevenlabs = { narrator: { candidates: ['George', 'Brian', 'Daniel'], stability: 0.6, style: 0.15 } };
+  // Robert's canon: Battlerap Algorithm is the house ElevenLabs narrator default
+  const elevenlabs = { narrator: { candidates: ['Battlerap Algorithm', 'George', 'Brian'], model: 'eleven_v3', stability: 0.5, style: 0.25 } };
   characters.forEach((e, i) => {
     kokoro[e.id] = { voice: KOKORO_ROTATION[i % KOKORO_ROTATION.length], speed: 1.0 };
     qwen3[e.id] = { design: e.visual ? `Voice matching: ${e.visual}` : 'Distinct adult voice; natural delivery.' };
