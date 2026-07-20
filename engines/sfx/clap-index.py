@@ -18,6 +18,14 @@ from transformers import ClapModel, ClapProcessor
 MODEL_ID = "laion/clap-htsat-unfused"
 SR = 48000
 MAX_SEC = 20
+# This checkpoint's processor is configured truncation="rand_trunc" with
+# max_length_s=10. Feeding it a 20 s clip therefore embedded a RANDOM 10 s crop:
+# the index was nondeterministic, two builds of the same corpus disagreed, and a
+# long clip was represented by whatever slice it happened to draw — the likely
+# cause of a city-night bed that retrieved as "a helicopter". We now cut clips
+# into fixed CHUNK_SEC windows ourselves and mean-pool the embeddings, so the
+# whole clip is represented and the same audio always yields the same vector.
+CHUNK_SEC = 10
 
 
 def load_mono_48k(path):
@@ -27,6 +35,17 @@ def load_mono_48k(path):
         import librosa
         wav = librosa.resample(wav, orig_sr=sr, target_sr=SR)
     return wav[: SR * MAX_SEC]
+
+
+def chunks_of(wav):
+    """Deterministic CHUNK_SEC windows covering the clip (last one padded)."""
+    n = SR * CHUNK_SEC
+    if len(wav) <= n:
+        return [np.pad(wav, (0, n - len(wav)))] if len(wav) < n else [wav]
+    out = [wav[i:i + n] for i in range(0, len(wav), n)]
+    if len(out[-1]) < n:
+        out[-1] = np.pad(out[-1], (0, n - len(out[-1])))
+    return out
 
 
 def main(corpus_dir, metadata_json, out_dir):
@@ -49,21 +68,28 @@ def main(corpus_dir, metadata_json, out_dir):
     model = ClapModel.from_pretrained(MODEL_ID).to(device).eval()
     proc = ClapProcessor.from_pretrained(MODEL_ID)
 
+    # One row -> possibly several chunks; embed all chunks flat, then mean-pool
+    # back per row so every clip yields exactly one deterministic vector.
     B = 16
     embeds = []
     for i in range(0, len(rows), B):
         batch = rows[i:i + B]
-        wavs = []
+        wavs, spans = [], []
         for r in batch:
             try:
-                wavs.append(load_mono_48k(r["file"]))
+                cs = chunks_of(load_mono_48k(r["file"]))
             except Exception as e:
                 print(f"[index] skip unreadable {r['file']}: {e}", flush=True)
-                wavs.append(np.zeros(SR, dtype=np.float32))
+                cs = [np.zeros(SR * CHUNK_SEC, dtype=np.float32)]
+            spans.append(len(cs))
+            wavs.extend(cs)
         inputs = proc(audios=wavs, sampling_rate=SR, return_tensors="pt", padding=True)
         with torch.no_grad():
-            e = model.get_audio_features(**{k: v.to(device) for k, v in inputs.items()})
-        embeds.append(e.cpu().numpy())
+            e = model.get_audio_features(**{k: v.to(device) for k, v in inputs.items()}).cpu().numpy()
+        at = 0
+        for n in spans:
+            embeds.append(e[at:at + n].mean(axis=0, keepdims=True))
+            at += n
         print(f"[index] embedded {min(i + B, len(rows))}/{len(rows)}", flush=True)
     emb = np.vstack(embeds).astype(np.float32)
     emb /= np.linalg.norm(emb, axis=1, keepdims=True) + 1e-8

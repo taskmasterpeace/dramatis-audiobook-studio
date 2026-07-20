@@ -47,6 +47,11 @@ LAION-CLAP
   https://github.com/LAION-AI/CLAP
   Apache License 2.0. Used for text-to-audio retrieval of sound effects.
 
+ACE-Step 1.5 (optional)
+  https://github.com/ACE-Step/ACE-Step-1.5
+  MIT License (code and model weights). Optional free/local music engine; the
+  user installs it separately and DRAMATIS talks to its local API.
+
 kokoro-onnx
   Installed from PyPI. NOTE: this package depends on phonemizer-fork, which is
   licensed GPL-3.0 and calls espeak-ng. Nothing GPL is vendored or distributed

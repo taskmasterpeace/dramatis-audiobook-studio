@@ -37,3 +37,7 @@ if ($LASTEXITCODE -ne 0) { throw 'ISCC failed' }
 $exe = Get-ChildItem (Join-Path $here 'Output') -Filter *.exe | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 Write-Host ""
 Write-Host ("built {0}  ({1:N1} MB)" -f $exe.FullName, ($exe.Length / 1MB))
+
+# a leftover staging tree is a full copy of the repo — node --test would discover
+# its tests twice, and stale files would ship in the NEXT build
+Remove-Item -Recurse -Force $staging

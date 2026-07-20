@@ -86,8 +86,10 @@ If that gap matters to you, a corpus fetcher is the single most useful contribut
 available.
 
 See **[docs/SYSTEM-REQUIREMENTS.md](docs/SYSTEM-REQUIREMENTS.md)** for the two honest
-tiers (what runs on any laptop vs. what needs an NVIDIA GPU) and
-**[docs/HOW-DRAMATIS-WORKS.md](docs/HOW-DRAMATIS-WORKS.md)** for the pipeline in depth.
+tiers (what runs on any laptop vs. what needs an NVIDIA GPU),
+**[docs/HOW-DRAMATIS-WORKS.md](docs/HOW-DRAMATIS-WORKS.md)** for the pipeline in depth,
+and **[docs/MODELS.md](docs/MODELS.md)** for every model we run — licences verified,
+measured behaviour, and the alternatives we evaluated and why.
 
 ## Engines — bring your own, or use none
 
@@ -101,7 +103,7 @@ and local.
 | Word timing | **Qwen3-ForcedAligner-0.6B** — Apache-2.0 | — |
 | Sound effects | **CLAP retrieval** over a CC0 corpus | — |
 | Ambience | procedural beds + retrieval | — |
-| Score | — | ElevenLabs Music |
+| Score | **ACE-Step 1.5** — MIT (code *and* weights), runs on your GPU | ElevenLabs Music |
 | Scene analysis | local LLM via Ollama | OpenRouter |
 
 The premium engines are for the handful of lines where a performance really matters.

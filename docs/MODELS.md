@@ -1,0 +1,320 @@
+# The Models — what DRAMATIS runs, why, and what else was considered
+
+Every model in the pipeline, with its licence (code and weights verified
+separately — they often differ), hardware footprint, measured behaviour, and the
+alternatives we evaluated. Dates are when the claim was last verified against a
+primary source. Hardware baseline for "fits locally": a single 24 GB NVIDIA GPU;
+CPU-only machines run the narration path.
+
+---
+
+## Voices
+
+### Kokoro-82M — narration (free, CPU)
+- **What**: 82M-parameter TTS, ONNX runtime, no GPU needed. The tireless
+  narrator lane.
+- **Licence**: Apache-2.0 (model and weights). ⚠ The `kokoro-onnx` Python
+  package pulls `phonemizer-fork` (GPL-3.0) and the espeak-ng chain — fine to
+  USE, not fine to REDISTRIBUTE in a bundled binary; see NOTICE.
+- **Footprint**: ~340 MB weights, CPU-only, faster than realtime on a laptop.
+- **The fact that matters**: upstream publishes a QUALITY GRADE per voice and
+  almost nothing else. 54 voices installed; the audiobook-grade shortlist is
+  `af_heart` (A), `af_bella` (A-), `af_nicole` (B-), `bf_emma` (B-),
+  `ff_siwis` (B-). `am_adam` is an F+ — never cast it. Full table:
+  `src/voice-tables.mjs`.
+- **Gotchas we hit**: 510-phoneme hard cap per call (we chunk at ~280 chars and
+  concat with breath gaps); language must come from the voice-id prefix
+  (`fr-fr` and `cmn` are the valid codes — bare `fr`/`zh` are rejected).
+- **Design lever**: voice BLENDING — pass a weighted sum of style vectors
+  instead of a preset id. Verified deterministic (self-blend is bit-exact), so
+  blends cache correctly. There is no pitch control; the ONNX graph takes
+  tokens/style/speed and nothing else.
+
+### Qwen3-TTS-1.7B — character voices + cloning (free, GPU)
+- **What**: Alibaba's TTS family (VoiceDesign / CustomVoice / Base checkpoints).
+  Our free character lane and the clone target for the voice company.
+- **Licence**: Apache-2.0, code and weights both — verified on HF; none of the
+  Tongyi-Qianwen extra terms (2026-07-20).
+- **Footprint**: ~5–8 GB VRAM. 24 kHz mono output.
+- **Measured behaviour**: cloning beats designing for age/accent — a reference
+  clip carries what adjectives don't. Ref sweet spot **8–15 s** (quality
+  degrades past ~15 s, measured); providing the transcript raises speaker
+  similarity ~0.75→0.89. `instruct` (per-line emotion) works on Design and
+  CustomVoice, NOT on clones. VoiceDesign is weak on AGE — "elderly" came back
+  young until we stacked physiology cues and specific years, and hero
+  age/accent roles route to the paid tier instead (the routing law).
+- **The register gate**: every designed voice is pitch-verified (librosa pyin;
+  female >170 Hz, male <150 Hz) at design, on cache load, and on clone output,
+  with corrective retry then hard refusal. Born from a real incident: an
+  elderly-woman design shipped sounding unmistakably male. Standing battery:
+  `node scripts/voice-regiment.mjs` (8/8 pass on install).
+
+### ElevenLabs (API, paid) — hero lines, user's own roster
+- **Licence/terms**: subscription; commercial use per plan. ⚠ Their policy
+  forbids redistributing OUTPUT under terms more permissive than their own —
+  which is why no ElevenLabs audio is tracked in this repo and the seed clips
+  in `actors/` must never be ElevenLabs renders.
+- **Caps** (verified live 2026-07-20): eleven_v3 ≈ 5k chars/request;
+  multilingual_v2 10k; flash_v2_5 40k. Concurrency over-cap queues (~50 ms),
+  it doesn't error. **Voice slots are the scarce resource** — the roster cap
+  cannot be raised on the plan we tested; design previews cost no slot, saving
+  a voice does. DRAMATIS therefore saves designed voices as LOCAL seed clips,
+  never into the account.
+- **Voice design API**: 3 previews per call, cost = 1 credit per character of
+  preview text charged once. `eleven_ttv_v3` is the only model taking
+  reference audio.
+
+### Gemini 3.1 Flash TTS (API via Replicate, paid) — directed character voices
+- **What**: 30 fixed voices + a free-text style prompt — the only engine that
+  takes a director's note as a first-class input. Our #1 for characterful
+  voices by ear.
+- **Caps** (schema-verified): `text` ≤ 4,000 bytes, `prompt` ≤ 4,000 bytes,
+  combined ≤ 8,000 bytes, output ≈ 655 s max per call. We chunk at 3,200 bytes
+  and ffmpeg-concat.
+- **Custom voices: impossible.** The voice field is a closed enum; cloning
+  lives on a different, allow-listed Google product. A Gemini character IS
+  `(voice, prompt, language_code)` — which is why seed-then-clone-into-Qwen3
+  is the only way to make one permanent.
+- **The two failure modes we measured**:
+  1. *Vocalized tags* — adjective/adverb bracket tags get SPOKEN ALOUD
+     (documented by Google, reproduced by us). Emotion rides in the prompt now;
+     a test pins the allowlist.
+  2. *Direction read aloud* — one prompt phrasing rendered 3.8× over length,
+     reproducibly; the fix was the phrasing law ("This line is <adjective> —
+     <delivery>") plus a duration gate that re-rolls and then refuses.
+- Only 4 of the 30 voices carry any age/texture signal in Google's own words:
+  Leda (Youthful), Gacrux (Mature), Algenib (Gravelly), Enceladus (Breathy).
+  `language_code` (en-GB/en-IN/en-AU…) is free accent leverage.
+
+### TTS alternatives considered (surveyed 2026-07-20)
+
+The headline finding: **in 2026 the moat in open TTS is licensing, not quality.**
+The top of the open-weight quality field — Fish S2 Pro (#1 on TTS-Arena-V2),
+IndexTTS-2, Voxtral TTS, Higgs TTS 3 — is uniformly blocked for a commercial
+product. Nothing free beats Kokoro for CPU narration (hexgrad has shipped no
+English successor since Apr 2025), and Qwen3-TTS-1.7B is the largest open
+checkpoint in its family; the Flash tier stays API-only.
+
+| Model | Code | Weights | Commercial | VRAM | Clone | Verdict |
+|---|---|---|---|---|---|---|
+| **Chatterbox / Turbo** (Resemble) | MIT | **MIT** | ✅ clean | ~4 GB | 10 s zero-shot | **Top adopt-candidate** |
+| **VoxCPM2 2B** (OpenBMB) | Apache-2.0 | Apache-2.0 | ✅ | ~8 GB | clone + design, 48 kHz | **Adopt-candidate — audition first** |
+| Fun-CosyVoice3-0.5B | Apache-2.0 | Apache-2.0 | ✅ | ~4 GB | clone + **instruct-on-clone** | Narrow candidate |
+| Maya1 3B | Apache-2.0 | Apache-2.0 | ✅ | 16 GB | design-only (age/accent!) | Watch — possible free seed-factory |
+| Higgs Audio v2 | Apache-2.0 | Boson Community: 100k-AAU cap | ⚠ conditional | 8–24 GB | yes | Watch |
+| NeuTTS Air | Apache-2.0 | Apache-2.0 | ✅ | CPU | 3 s **on CPU** | Watch — only CPU-cloning option |
+| VibeVoice (MSFT) | MIT | research-only; **AI disclaimer baked into output** | ❌ | ~7 GB | conditioned | Skip for product |
+| IndexTTS-2 | Apache-2.0 | needs bilibili written authorization | ❌ | ~12 GB | best-in-class | Skip — licence |
+| Fish S2 Pro / OpenAudio S1 | Apache-2.0 | research NC / CC-BY-NC-SA | ❌ | 4–12 GB | yes | Skip — licence |
+| F5-TTS | MIT | **CC-BY-NC** (NC survives finetuning) | ❌ | ~8 GB | yes | Skip — licence |
+| Spark-TTS | Apache-2.0 | **CC-BY-NC-SA** | ❌ | ~4 GB | yes | Skip (secondary sources claiming Apache are wrong) |
+| MegaTTS3 | Apache-2.0 | Apache but **encoder withheld** | cloning gated | ~6 GB | gated | Skip |
+| Voxtral TTS 4B | — | CC-BY-NC (dataset-inherited) | ❌ | ~8 GB | 3 s | Skip — licence |
+| Dia / Dia2 | Apache-2.0 | Apache-2.0 | ✅ | ~8–10 GB | audio-prompt | Skip for books — voice drifts run-to-run |
+| Kitten 15M / Supertonic | Apache / MIT | Apache / OpenRAIL-M | ✅ | CPU | no | Skip — below Kokoro |
+
+**If we add one engine: Chatterbox.** MIT on code *and* weights (the only
+quality-tier model with zero commercial strings), clones from ~10 s references —
+exactly the spec our `actors/` seeds are already normalised to — and it gives
+cloned voices a **per-line emotion dial**, which is precisely what Qwen3 clone
+mode cannot do (`instruct` is ignored on clones) and what currently forces hero
+lines onto paid engines. ~4 GB, so it runs beside Qwen3 on one card. Caveats:
+English-only on Turbo, its ElevenLabs-beating numbers are vendor-run, and a
+PerTh watermark is on by default (removable under MIT — a deliberate decision,
+not a default to drift into).
+
+---
+
+## Word timing
+
+### Qwen3-ForcedAligner-0.6B — word onsets (free, GPU or CPU)
+- **What**: forced alignment of rendered speech to its text; gives the word
+  timestamps that let sound effects land on the triggering word and that a
+  future read-along/karaoke export would use.
+- **Licence**: Apache-2.0.
+- **Footprint**: ~1.5 GB VRAM on GPU; runs on CPU since 2026-07-20 (the
+  hardcoded `cuda:0` was the single string that made the whole SFX layer
+  GPU-only). float32 on CPU, bfloat16 on GPU.
+- **Behaviour**: alignment is an ENHANCEMENT — a failure warns and degrades cue
+  placement to line-start offsets instead of killing the render. Cached per
+  line like everything else.
+
+---
+
+## Sound effects
+
+### LAION-CLAP + FSD50K CC0 corpus — retrieval (free, local)
+- **What**: text-to-audio similarity search. The cue "door slams" embeds as
+  text; 2,409 corpus clips are pre-embedded; cosine similarity proposes, a
+  human disposes (per-cue approve/swap/reject in the Studio).
+- **Licence**: CLAP is Apache-2.0. The corpus is the CC0 subset of FSD50K
+  (2,399 clips) + 10 house clips we generated. ⚠ FSD50K *as a dataset* is
+  CC-BY — the citation lives in NOTICE regardless of per-clip CC0.
+- **Measured quality reality**: retrieval works, RANKING decides everything.
+  Real incidents: wild-recording footsteps that read as "barefoot on cement",
+  a city-night bed that read as "a helicopter". Mitigations that are now law:
+  a vocal-caption guard (the cast are the only voices in the mix), noun-overlap
+  re-rank, a +0.08 bonus for curated house clips, and per-cue human approval.
+- **Corpus is not in the repo** (~7 GB built locally; no fetch script yet — the
+  top wanted contribution).
+
+### SFX generation — the missing local lane (surveyed 2026-07-20)
+
+Retrieval stays primary. Generation is for cues a 2,400-clip corpus can't serve
+("sword unsheathed slowly", "body dragged across gravel"). The open field here
+is overwhelmingly **non-commercial** — nearly every well-known text-to-SFX model
+is CC-BY-NC and disqualified outright.
+
+| Model | Code | Weights | Commercial | Size | Max dur | Text-only | Verdict |
+|---|---|---|---|---|---|---|---|
+| **Stable Audio 3 Small SFX** (May 2026) | `stable-audio-tools` MIT | Stability Community | ✅ under $1M revenue, attribution required, **you own outputs** | 0.6B | **120 s** | ✅ | **Local pick** |
+| Stable Audio 3 Medium | same | same | ✅ same terms | 2B | ~380 s | ✅ | Long-bed sibling |
+| Stable Audio Open 1.0 / Small | MIT | Stability Community | ✅ | 1.2B / 341M | 47 s / 11 s | ✅ | Superseded |
+| TangoFlux | unverified | **"non-commercial research use only"** | ❌ | — | 30 s | ✅ | Disqualified |
+| AudioLDM 2 | unverified | CC-BY-NC-SA | ❌ | 1.1–1.5B | ~10 s | ✅ | Disqualified + stale |
+| Meta AudioGen | MIT | **CC-BY-NC** | ❌ | 1.5B | ~5 s | ✅ | Disqualified |
+| MMAudio | MIT | **CC-BY-NC** | ❌ | 6 GB | 8 s | ✅ | Disqualified |
+| HunyuanVideo-Foley | — | Tencent Community: **excludes EU/UK/KR**, MAU cap | ❌ | XL | — | ❌ needs video | Disqualified twice |
+| ThinkSound | HF tag says Apache; **README says commercial NOT permitted** | contradictory | ❌ | — | — | video-first | Disqualified |
+| AudioX | — | CC-BY-NC, watermarked | ❌ | — | — | ✅ | Disqualified |
+| **ElevenLabs SFX v2 via fal** | n/a | service — you retain output rights | ✅ paid | n/a | 30 s + **native seamless `loop`** | ✅ | **API pick** |
+
+**Local pick: `stable-audio-3-small-sfx`** — purpose-built for effects, trained
+on a licensed corpus, and the only commercially-clean local model that reaches
+bed length (120 s) in one shot. Conditions to honour: never bundle the weights
+(the user accepts the HF gate), show the "Powered by Stability AI" attribution
+when the lane is active, and document the $1M revenue threshold.
+**API pick: ElevenLabs SFX v2 through fal** at $0.002/s — cheaper than any
+ElevenLabs subscription tier, no separate account, and it's already our house
+foley sound. `fal-ai/stable-audio-3/medium` covers long beds at ~$0.038/clip.
+
+**Architecture decision — corpus-first, confirmed.** Generation should write
+INTO the corpus (generate 3–5 seeds → audition by ear → CLAP-index the keeper →
+retrieval serves it forever), not run per-render. That keeps renders
+deterministic and auditable, makes the cost one-time, and matches how film and
+game audio actually work: curated libraries at edit time. Generated clips must
+carry their true licence tag (`stability-community-output`,
+`elevenlabs-paid-output`) — they are owned outputs, **not** CC0, and must never
+be mixed into the CC0 pool silently.
+
+**Beds:** prompt them event-free ("steady, no distinct events, room tone") and
+scatter corpus one-shots on top — bed plus spot-effects, which plays straight
+into our retrieval strength. Generate-short + equal-power crossfade loop is
+standard practice and inaudible on stochastic textures.
+
+### Retrieval upgrades considered (surveyed 2026-07-20)
+
+**Verdict: our checkpoint is the oldest, weakest tier of the LAION line.**
+`laion/clap-htsat-unfused` is the 2022 non-fusion model; LAION has shipped
+nothing since its 2023 trio. The 2026 pick is **GLAP** (Xiaomi, Apache-2.0,
+`mispeech/GLAP`): AudioCaps T2A R@1 **41.7 vs 34.2** for LAION's *best*
+checkpoint, and — decisive for us — **FSD50K zero-shot 40.9 vs 21.5**, on the
+very dataset our corpus is drawn from. Near drop-in (`encode_text`/
+`encode_audio`), trivial VRAM, multilingual as a bonus. Expected gain ~20–40%
+relative R@1. Migration bites: resample 48k→16k, **recalibrate both similarity
+thresholds** (GLAP is sigmoid-trained, so our 0.25/0.35 are meaningless on its
+scale), and pin the `trust_remote_code` revision.
+
+Rejected on licence: WavCaps (academic-only), M2D-CLAP (custom NTT terms),
+ImageBind (CC-BY-NC), MuQ-MuLan (CC-BY-NC). ONE-PEACE is Apache-2.0 and beats
+GLAP on Clotho but is a 4B unmaintained custom stack. There is **no Microsoft
+CLAP 2025** — that was a phantom.
+
+**A real bug this survey found, now fixed:** the processor is configured
+`truncation="rand_trunc"` with `max_length_s=10`, while we fed it 20 s clips —
+so every clip over 10 s was embedded from a **random crop**. 1,469 of our 5,011
+corpus clips are over 10 s, meaning ~30% of the index was nondeterministic, and
+it is a plausible cause of the logged "city night bed retrieved as a helicopter"
+incident. `clap-index.py` now cuts fixed 10 s windows and mean-pools them;
+verified bit-identical across runs (max diff 0.0).
+
+**Corpus sources, by whether we may actually ship them:**
+
+| Source | Licence | In repo | In product | Long-form |
+|---|---|---|---|---|
+| FSD50K CC0 subset | CC0 per clip | ✅ | ✅ | ≤30 s — **19,873 CC0 clips exist; we index 2.4k** |
+| FSD50K CC-BY subset | CC-BY per clip | ✅ + credits | ✅ + credits | +23,506 clips |
+| **EigenScape** | **CC-BY 4.0** | ✅ | ✅ | **✅ 64 × 10-min scenes, 48 kHz** |
+| NPS / US-gov nature libraries | public domain | ✅ | ✅ | ✅ |
+| Freesound CC0 bulk | clips CC0; **API ToS restricts bulk harvest** | clips ✅, harvest grey | same | ✅ |
+| Sonniss GDC bundles | royalty-free sync, **no redistribution, no AI training** | ❌ | use-only | ✅ |
+| BBC Sound Effects | RemArc = non-commercial | ❌ | ❌ | ✅ (moot) |
+| OpenSFX | CC-BY-SA 3.0 | ✅ | ⚠ share-alike viral | ❌ |
+| ESC-50 / UrbanSound8K | CC-BY-NC | ❌ | ❌ | ❌ |
+
+The immediate free win: we index 2,400 of ~19,900 available CC0 FSD50K clips —
+an **8× corpus expansion at zero licensing cost**, before any new source.
+
+**Ranking upgrades worth doing** (from DCASE 2024/2025 winning systems):
+1. An offline enrichment pass — PANNs CNN14 (MIT) AudioSet tags per clip to make
+   the vocal guard classifier-based and add negative guards (a `Helicopter`-tagged
+   clip can never serve a "city night" cue), plus machine captions from
+   Qwen2-Audio-7B (Apache-2.0, fits the card) replacing noisy FSD50K metadata.
+   One cached pass over the corpus; it kills both logged incidents.
+2. LLM query expansion — rewrite each cue into 2–3 "the sound of…" paraphrases
+   and average the text embeddings. Pure prompt plumbing with an LLM already in
+   the pipeline; it is the zero-shot form of the caption-augmentation trick every
+   DCASE winner uses.
+
+---
+
+## Music
+
+### ACE-Step 1.5 — underscore (free, local GPU)
+- **What**: StepFun/ACE's open music foundation model; the free lane for score
+  beds and stings. 10 s–600 s in a single generation, seconds-fast on a 24 GB
+  card, local REST API (`uv run acestep-api`, :8001).
+- **Licence**: **MIT, code AND weights** — both LICENSE files read 2026-07-20.
+  The VAE is ACE-Step's own MIT-tagged Oobleck — checked separately, because
+  inheriting a Stability-licensed VAE is exactly what disqualified DiffRhythm.
+- **Instrumental law**: caption appends "instrumental only…" AND lyrics are
+  pinned to `[Instrumental]` — sung words under narration break the
+  cast-are-the-only-voices rule. CoT caption rewriting is off so the cached
+  caption is the rendered caption; seeds derive from the content key so cues
+  reproduce.
+- **Tiers**: 2B turbo fits 4–8 GB; XL (4B) wants 12–24 GB. The server
+  auto-picks per GPU. First launch downloads several GB of weights — the
+  engine's deadlines account for it.
+- **Quality consensus**: "between Suno 4.5 and 5", occasionally "samey" — which
+  is close to a feature for low-key underscore that must sit beneath narration.
+
+### ElevenLabs Music (API, paid) — premium underscore
+- Commercial use from Starter+; audiobooks are not in the self-serve exclusion
+  list (verified 2026-07-20). ~$0.15/min via API. Same instrumental prompting
+  law as ACE-Step, for the same reason.
+
+### Music alternatives considered (verified 2026-07-20)
+| Model | Code | Weights | Commercial | Verdict |
+|---|---|---|---|---|
+| **ACE-Step 1.5** | MIT | MIT | ✅ | **Adopted — free lane** |
+| ACE-Step v1 (3.5B) | Apache-2.0 | Apache-2.0 | ✅ | Superseded by 1.5 |
+| Stable Audio Open 1.0/Small | Stability Community | same | ⚠ <$1M revenue + attribution | Pass for music (47 s cap; own card says better at SFX) |
+| MusicGen / AudioCraft | MIT | **CC-BY-NC** | ❌ | Disqualified — non-commercial weights |
+| YuE | Apache-2.0 | Apache-2.0 | ✅ | Pass — ~360 s per 30 s of audio on a 24 GB card |
+| DiffRhythm | Apache-2.0 | **VAE inherits Stability licence** | ⚠ tainted | Pass — the VAE trap |
+| InspireMusic | Apache-2.0 | no licence tag (unverified) | ? | Pass — slow, English-only |
+| Suno (via relays) | n/a | n/a | **unverifiable** | Deleted from the codebase — the licence could not be verified |
+
+---
+
+## Scene analysis
+
+### Local LLM via Ollama (default) / OpenRouter (fallback)
+- The analyzer that proposes scenes, cues, emotions and casting-sheet fields.
+  Everything it writes is a PROPOSAL — deterministic compilation happens
+  without it, and every LLM call is cached and cost-ledgered
+  (`out/<book>/llm-ledger.jsonl`).
+
+---
+
+## The standing laws that came out of all this
+1. **Verify code and weights licences separately** — they differ (MusicGen: MIT
+   code, non-commercial weights) and composite pipelines inherit their worst
+   part (DiffRhythm's VAE).
+2. **"Unverifiable" equals "no"** — the Suno relay died for it.
+3. **Machine gates first, human ear last** — register gate, duration gate,
+   validation before render; the ear is the final check, never the first.
+4. **Nothing under narration may sing or speak except the cast** — instrumental
+   laws on both music engines, vocal-caption guard on SFX retrieval.
+5. **Premium seeds, local volume** — pay once for a great voice, clone it free;
+   never park designed voices in a vendor account we don't control.
