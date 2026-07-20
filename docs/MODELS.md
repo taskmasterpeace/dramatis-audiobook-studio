@@ -404,6 +404,8 @@ the most useful contribution available.
 | DiffRhythm | Apache-2.0 | **VAE inherits Stability licence** | ⚠ tainted | Pass — the VAE trap |
 | InspireMusic | Apache-2.0 | no licence tag (unverified) | ? | Pass — slow, English-only |
 | Suno (via relays) | n/a | n/a | **unverifiable** | Deleted from the codebase — the licence could not be verified |
+| **Lyria 3 / Pro** (Google, via Replicate/fal) | n/a | preview terms carve Lyria out for commercial use; no indemnity; SynthID baked in | ⚠ likely, pass-through undocumented | **Rejected for underscore** (2026-07-20): user consensus = top fidelity, "corporate/soulless" composition 1–3 gens behind Suno; **no duration parameter**; auto-adds vocals (breaks the cast-only law); $0.04/30 s. Possible hand-picked stinger source, never an automated lane |
+| MiniMax Music 1.5/2.5 | n/a | **no affirmative commercial grant in MiniMax's own terms** + mandatory AI-labeling/watermark duties | ❌ unclear = no | Rejected — the Suno rule: unverifiable means no |
 
 ---
 
