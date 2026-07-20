@@ -52,7 +52,10 @@ export function listChapters(manuscriptPath) {
 export function chapterConfigHash(bookCfg, chapterCfg) {
   const relevant = {
     chapter: chapterCfg,
-    entities: bookCfg.entities,
+    // only what affects the rendered audio: names drive attribution; casting-
+    // sheet metadata (gender/age/ethnicity/portrait/notes) drives SUGGESTIONS
+    // only — filling out a sheet must not mark every chapter stale
+    entities: (bookCfg.entities || []).map((e) => ({ id: e.id, kind: e.kind, names: e.names })),
     voices: bookCfg.voices,
     casting: bookCfg.casting || null,
     hints: bookCfg.hints || [],
