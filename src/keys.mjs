@@ -13,8 +13,12 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+// Not all of these are secrets — ACESTEP_* are local paths/URLs — but they all
+// belong to the same "how is this machine configured" question, so they load
+// from the same chain rather than needing a second mechanism.
 export const KEY_NAMES = [
   'ELEVENLABS_API_KEY', 'OPENROUTER_API_KEY', 'REPLICATE_API_TOKEN', 'GEMINI_API_KEY',
+  'ACESTEP_DIR', 'ACESTEP_URL', 'DRAMATIS_MUSIC',
 ];
 
 export function loadKeys() {

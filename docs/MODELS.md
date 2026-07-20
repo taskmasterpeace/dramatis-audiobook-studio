@@ -143,9 +143,32 @@ and pitch-gates the output exactly like the Qwen3 register gate;
    characters. A consistent upward drift pushes a 136 Hz male across the 150 Hz
    line into ambiguous/female range.
 
-**Verdict: ADOPT, but gated and at low exaggeration.** It is not a drop-in.
-It needs the same register gate Qwen3 has, and elderly casting stays on the
-premium tier until proven otherwise by ear.
+**EAR RULING (Robert, 2026-07-20) — and it corrects the machine.** On the
+`liu-xiao` clone the gate called a register failure. His verdict: *"doesn't
+sound elderly anymore, but it sounds like the same person for sure."*
+
+That splits the finding in two, and only one half was what the gate claimed:
+- **Speaker identity survives cloning.** Chatterbox is a faithful cloner; the
+  machine never doubted that and the ear confirms it.
+- **AGE does not survive.** The +31 Hz rise isn't the voice becoming a different
+  person or a different gender — it is the voice becoming *younger*. Rising
+  pitch reads as youth.
+
+So the pitch gate is measuring something real and reporting it under the wrong
+name. It is a **register-and-age** gate: on a designed voice, drift out of band
+usually means the wrong gender; on a *cloned* voice, where identity is anchored
+by the reference, the same drift means lost age. The failure message should say
+so, because "register failure" sent us looking for the wrong defect.
+
+On the emotion dial, the ruling went the other way: `nola-elder` at
+exaggeration **1.0 was preferred over 0.5**, despite a +71 Hz rise. So the dial
+is usable and worth having — the pitch cost is acceptable on a character whose
+age isn't the point.
+
+**Verdict: ADOPT, gated.** Not a drop-in — it needs the register-and-age gate.
+Use it freely for character identity and emotion; **keep elderly characters on
+the premium tier**, because age is precisely what it loses and elderly voices
+are our most valuable roles.
 
 **Three integration variables were tested before this verdict** (a wrong verdict
 on a candidate is more expensive than no verdict): reference length (our 24–28 s
@@ -350,6 +373,10 @@ the most useful contribution available.
   engine's deadlines account for it.
 - **Quality consensus**: "between Suno 4.5 and 5", occasionally "samey" — which
   is close to a feature for low-key underscore that must sit beneath narration.
+- **EAR RULING (Robert, 2026-07-20): "worth keeping."** The generated beds
+  passed the ear, so ACE-Step is now the **default** music lane and ElevenLabs
+  Music is opt-in (`DRAMATIS_MUSIC=elevenlabs`). Score no longer costs money by
+  default — the same free-tier-first law the voice routing follows.
 - **Measured here (RTX 4090, 2026-07-20)**, two 30 s beds through our own
   `renderTrack()`: first render **845 s** — almost entirely one-time model load
   into VRAM — second render **8.3 s**, cache re-hit **0 ms**. So steady state is

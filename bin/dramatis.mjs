@@ -87,8 +87,8 @@ if (cmd === 'doctor') {
     ok(`engine:${id}`, ready, ready ? 'ready' : 'no key — optional');
   }
 
-  const musicLane = process.env.ELEVENLABS_API_KEY ? 'ElevenLabs Music (paid)'
-    : (process.env.ACESTEP_DIR || process.env.ACESTEP_URL) ? 'ACE-Step 1.5 (free, local)'
+  const musicLane = (process.env.ACESTEP_DIR || process.env.ACESTEP_URL) ? 'ACE-Step 1.5 (free, local)'
+    : process.env.ELEVENLABS_API_KEY ? 'ElevenLabs Music (paid)'
       : null;
   ok('music', !!musicLane, musicLane
     || 'none — set ELEVENLABS_API_KEY or install ACE-Step 1.5 and set ACESTEP_DIR (optional)');

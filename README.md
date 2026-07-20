@@ -103,7 +103,7 @@ and local.
 | Word timing | **Qwen3-ForcedAligner-0.6B** — Apache-2.0 | — |
 | Sound effects | **CLAP retrieval** over a CC0 corpus | — |
 | Ambience | procedural beds + retrieval | — |
-| Score | **ACE-Step 1.5** — MIT (code *and* weights), runs on your GPU | ElevenLabs Music |
+| Score | **ACE-Step 1.5** — MIT (code *and* weights), runs on your GPU, the default | ElevenLabs Music |
 | Scene analysis | local LLM via Ollama | OpenRouter |
 
 The premium engines are for the handful of lines where a performance really matters.
