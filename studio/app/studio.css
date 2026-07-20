@@ -240,3 +240,11 @@ label.mini{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:v
 .toast{position:fixed;bottom:18px;right:18px;background:var(--raised);border:1px solid var(--cy-dim);border-radius:8px;padding:10px 16px;font-size:12.5px;box-shadow:0 10px 30px -10px rgba(0,0,0,.8);z-index:50}
 .toast.err{border-color:var(--crit);color:var(--crit)}
 .empty{color:var(--dim);font-size:13px;padding:30px 0;text-align:center}
+
+/* models report card */
+.mtable th{padding:9px 12px;border-bottom:1px solid var(--line);user-select:none}
+.mtable th:hover{color:var(--cy)}
+.mtable td{padding:9px 12px;border-bottom:1px solid var(--line);font-size:12.5px;vertical-align:middle}
+.mtable tbody tr:not(.mdetail):hover td{background:var(--panel2)}
+.mtable tr.mdetail td{border-bottom:1px solid var(--cy-dim)}
+.mtable .f-label{margin-top:0}

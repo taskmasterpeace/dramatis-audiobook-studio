@@ -253,6 +253,7 @@ async function go(view, bookId, tab) {
   if ((view === 'casting' || view === 'say') && !S.roster) { try { S.roster = await api('/api/casting/roster'); } catch (e) { toast(e.message, true); } }
   if (view === 'casting') { try { S.actors = (await api('/api/actors')).actors; } catch { S.actors = []; } }
   if (view === 'say') { try { S.sayStats = await api('/api/say/history'); } catch { /* first run */ } }
+  if (view === 'models') { try { S.models = (await api('/api/models')).models; } catch (e) { toast(e.message, true); } }
   if (view === 'book') {
     await loadBook(bookId || S.bookId);
     S.tab = tab || 'board';
@@ -270,6 +271,7 @@ function render() {
   else if (S.view === 'new') m.innerHTML = viewNew();
   else if (S.view === 'casting') m.innerHTML = viewCasting();
   else if (S.view === 'say') m.innerHTML = viewSay();
+  else if (S.view === 'models') m.innerHTML = viewModels();
   else if (S.view === 'book') m.innerHTML = viewBook();
   bind(m);
   paintJob();
@@ -282,6 +284,7 @@ function paintNav() {
     navBtn('new', '＋ New Book', S.view === 'new'),
     navBtn('casting', '🎭 Casting Room', S.view === 'casting'),
     navBtn('say', '⚡ Quick Narrate', S.view === 'say'),
+    navBtn('models', '⚖ Models', S.view === 'models'),
   ];
   if (S.book) {
     items.push(`<div class="nav-label">${esc(S.book.book.title)}</div>`);
@@ -782,6 +785,99 @@ function viewCasting() {
     ${tabBar}${body}`;
 }
 
+// ── Models: the interactive report card ─────────────────────────────────────
+// Every model we run, tested, or rejected — grade, measured speed, capabilities,
+// and the evidence. Sortable columns, kind filters, click a row for the full
+// dossier. Data: /api/models = src/model-facts.mjs + live Quick Narrate speeds
+// + benchmark artifacts.
+const KIND_LABEL = { voice: '🎙 Voice', music: '♪ Music', 'sfx-retrieval': '⚡ SFX', alignment: '⏱ Align', 'set-piece': '🎬 Set-piece' };
+const STATUS_CHIP = { active: ['ok', 'active'], gated: ['warn', 'gated'], rejected: ['crit', 'rejected'], research: ['cy', 'researching'] };
+
+function viewModels() {
+  if (!S.models) return `<p class="crumb">Reference</p><h1>Models</h1><div class="empty">loading…</div>`;
+  const f = S.modelFilter || {};
+  const sort = S.modelSort || { key: 'gradeRank', dir: -1 };
+  let rows = S.models.slice();
+  if (f.kind) rows = rows.filter((m) => m.kind === f.kind);
+  if (f.q) {
+    const q = f.q.toLowerCase();
+    rows = rows.filter((m) => JSON.stringify(m).toLowerCase().includes(q));
+  }
+  rows.sort((a, b) => {
+    const av = a[sort.key], bv = b[sort.key];
+    const r = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av ?? '').localeCompare(String(bv ?? ''));
+    return r * sort.dir;
+  });
+
+  const kinds = [...new Set(S.models.map((m) => m.kind))];
+  const chips = [`<button class="chip ${!f.kind ? 'cy' : ''}" data-mf-kind="">all ${S.models.length}</button>`]
+    .concat(kinds.map((k) => `<button class="chip ${f.kind === k ? 'cy' : ''}" data-mf-kind="${k}">${KIND_LABEL[k] || k} ${S.models.filter((m) => m.kind === k).length}</button>`)).join(' ');
+
+  const th = (key, label) => `<th data-msort="${key}" style="cursor:pointer;white-space:nowrap">${label}${sort.key === key ? (sort.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+  const gradeChip = (g) => {
+    const cls = /^A/.test(g) ? 'ok' : /^B/.test(g) ? 'cy' : g === 'F' ? 'crit' : g === '—' ? '' : 'warn';
+    return `<span class="chip ${cls}" style="font-weight:700;min-width:30px;text-align:center">${g}</span>`;
+  };
+  const speedCell = (m) => m.live
+    ? `<b class="num">${m.live.charsPerSec}</b> chars/s <span style="color:var(--dim);font-size:10px">measured ×${m.live.samples}</span>`
+    : m.bench
+      ? `<b class="num">${m.bench['R@1']}%</b> R@1 <span style="color:var(--dim);font-size:10px">bench</span>`
+      : `<span style="font-size:11px">${esc(m.speedStatic || '—')}</span>`;
+
+  const body = rows.map((m) => {
+    const [scls, slabel] = STATUS_CHIP[m.status] || ['', m.status];
+    const open = S.modelOpen === m.id;
+    const detail = !open ? '' : `
+      <tr class="mdetail"><td colspan="7" style="padding:14px 18px;background:var(--panel2)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:12px;line-height:1.6">
+          <div>
+            <div class="f-label">Why this grade</div><div>${esc(m.gradeWhy)}</div>
+            <div class="f-label" style="margin-top:9px">Role</div><div>${esc(m.role)}</div>
+            <div class="f-label" style="margin-top:9px">Licence</div><div>${esc(m.licence)}</div>
+            <div class="f-label" style="margin-top:9px">Limits</div><div>${esc(m.caps)}</div>
+            ${m.earRuling ? `<div class="f-label" style="margin-top:9px">Ear ruling</div><div>“${esc(m.earRuling)}”</div>` : ''}
+          </div>
+          <div>
+            ${m.capabilities?.length ? `<div class="f-label">Can do</div><ul style="margin:2px 0 0 16px">${m.capabilities.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
+            ${m.limitations?.length ? `<div class="f-label" style="margin-top:9px">Can't / won't</div><ul style="margin:2px 0 0 16px">${m.limitations.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
+            ${m.measured?.length ? `<div class="f-label" style="margin-top:9px">Measured here</div><ul style="margin:2px 0 0 16px">${m.measured.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
+            ${m.bench ? `<div class="f-label" style="margin-top:9px">Benchmark</div><div>R@1 ${m.bench['R@1']}% · R@3 ${m.bench['R@3']}% · R@10 ${m.bench['R@10']}% · MRR ${m.bench.MRR} (${m.bench.classes} classes, our corpus)</div>` : ''}
+          </div>
+        </div>
+      </td></tr>`;
+    return `
+      <tr data-mrow="${m.id}" style="cursor:pointer${m.status === 'rejected' ? ';opacity:.55' : ''}">
+        <td style="font-weight:600;white-space:nowrap">${esc(m.name)}</td>
+        <td style="white-space:nowrap">${KIND_LABEL[m.kind] || esc(m.kind)}</td>
+        <td style="font-size:11px">${esc(m.tier)}</td>
+        <td>${gradeChip(m.grade)}</td>
+        <td>${speedCell(m)}</td>
+        <td style="font-size:11px">${esc(m.cost)}</td>
+        <td><span class="chip ${scls}">${slabel}</span></td>
+      </tr>${detail}`;
+  }).join('');
+
+  return `
+    <p class="crumb">Reference</p><h1>Models</h1>
+    <p class="sub">Every model we run, tested, or rejected — and the evidence. Grades trace to a measurement,
+    a licence file that was read, or one of Robert's ear rulings. Click a row for the dossier; click a column to sort.
+    Speeds marked <b>measured</b> come live from this machine's Quick Narrate history.</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      ${chips}
+      <input id="mf-q" placeholder="search anything…" value="${esc(f.q || '')}" style="width:170px;margin-left:auto">
+    </div>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table class="mtable" style="width:100%;border-collapse:collapse">
+        <thead><tr style="text-align:left;font-size:11px;color:var(--muted)">
+          ${th('name', 'Model')}${th('kind', 'Kind')}${th('tier', 'Tier')}${th('gradeRank', 'Grade')}<th>Speed</th><th>Cost</th>${th('status', 'Status')}
+        </tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>
+    <p style="font-size:11px;color:var(--dim);margin-top:8px">Full dossiers with sources: <code>docs/MODELS.md</code> ·
+    re-run the batteries with <code>scripts/retrieval-bench.py</code> and <code>scripts/candidate-tts-battery.py</code></p>`;
+}
+
 function viewSay() {
   S.sayEngine = S.sayEngine || 'kokoro';
   const eng = S.sayEngine;
@@ -1150,6 +1246,26 @@ function bind(m) {
     } catch (e) { toast(e.message, true); st.textContent = 'failed'; }
     btn.disabled = false;
   });
+
+  // models report card: sort, filter, expand
+  m.querySelectorAll('[data-msort]').forEach((h) => h.addEventListener('click', () => {
+    const key = h.dataset.msort;
+    const cur = S.modelSort || { key: 'gradeRank', dir: -1 };
+    S.modelSort = cur.key === key ? { key, dir: -cur.dir } : { key, dir: key === 'name' || key === 'kind' ? 1 : -1 };
+    render();
+  }));
+  m.querySelectorAll('[data-mf-kind]').forEach((b) => b.addEventListener('click', () => {
+    S.modelFilter = { ...(S.modelFilter || {}), kind: b.dataset.mfKind || null };
+    render();
+  }));
+  $('#mf-q', m)?.addEventListener('input', (e) => {
+    S.modelFilter = { ...(S.modelFilter || {}), q: e.target.value };
+    clearTimeout(S._mfT); S._mfT = setTimeout(render, 250);
+  });
+  m.querySelectorAll('[data-mrow]').forEach((tr) => tr.addEventListener('click', () => {
+    S.modelOpen = S.modelOpen === tr.dataset.mrow ? null : tr.dataset.mrow;
+    render();
+  }));
 
   // casting room tabs + attribute filters
   m.querySelectorAll('[data-casttab]').forEach((b) => b.addEventListener('click', () => { S.castTab = b.dataset.casttab; S.castFilter = {}; render(); }));

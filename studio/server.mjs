@@ -461,6 +461,47 @@ const server = http.createServer(async (req, res) => {
 
     // ---- quick narrate: text -> mp3, ANY engine, with a persisted history so
     // we learn how long various lengths take per engine (Robert's ask) ----
+    // ---- the model report card: static facts + live measurements ----
+    if (req.method === 'GET' && p === '/api/models') {
+      const { MODEL_FACTS, GRADE_RANK } = await import('../src/model-facts.mjs');
+      // live speed from Quick Narrate history (chars/sec per engine, rolling)
+      const histFile = path.join(OUT, 'say', 'history.jsonl');
+      const live = {};
+      if (existsSync(histFile)) {
+        const rows = readFileSync(histFile, 'utf8').trim().split('\n').filter(Boolean)
+          .map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean).slice(-80);
+        const acc = {};
+        for (const r of rows) {
+          if (!r.ms || !r.chars) continue;
+          (acc[r.engine] ??= []).push({ rate: r.chars / (r.ms / 1000), audioSec: r.audioSec, ms: r.ms });
+        }
+        for (const [eng, v] of Object.entries(acc)) {
+          live[eng] = {
+            samples: v.length,
+            charsPerSec: +(v.reduce((a, b) => a + b.rate, 0) / v.length).toFixed(1),
+          };
+        }
+      }
+      // benchmark artifacts, when the standing batteries have been run
+      const bench = {};
+      for (const [id, file] of [['clap', 'retrieval-bench-clap.json'], ['glap', 'retrieval-bench-glap.json']]) {
+        const f = path.join(OUT, file);
+        if (existsSync(f)) {
+          try {
+            const b = JSON.parse(readFileSync(f, 'utf8'));
+            bench[id] = { 'R@1': b['R@1'], 'R@3': b['R@3'], 'R@10': b['R@10'], MRR: b.MRR, classes: b.classes };
+          } catch { /* mid-write */ }
+        }
+      }
+      const models = MODEL_FACTS.map((m) => ({
+        ...m,
+        gradeRank: GRADE_RANK[m.grade] ?? 0,
+        live: live[m.id] || null,
+        bench: bench[m.id] || null,
+      }));
+      return json(res, 200, { models, generated: new Date().toISOString() });
+    }
+
     const SAY_HISTORY = path.join(OUT, 'say', 'history.jsonl');
     if (req.method === 'GET' && p === '/api/say/history') {
       const rows = existsSync(SAY_HISTORY)
