@@ -408,8 +408,7 @@ function viewBoard() {
 
 function viewCast() {
   const { book } = S.book;
-  // only the four real voice engines — legacy maps (sapi) stay in book.json but
-  // never render (Robert: no Windows voices, and "undefined" rows are noise)
+  // the four voice engines, in the order they appear on the Cast screen
   const ENGINES = ['kokoro', 'qwen3', 'elevenlabs', 'gemini'];
   const ELEVEN_MODELS = ['eleven_v3', 'eleven_multilingual_v2', 'eleven_turbo_v2', 'eleven_turbo_v2_5', 'eleven_flash_v2_5'];
   const roster11 = (S.roster?.elevenlabs || []).map((r) => r.voice);
@@ -720,8 +719,8 @@ function viewCasting() {
         <b style="color:var(--text)">What is the Company?</b> Your permanent stable of voice actors — like a
         repertory theater troupe. When a voice comes out perfect (usually seeded on Gemini or ElevenLabs),
         we save it here: a <b>seed clip</b>, its transcript, and the recipe that made it. From then on that
-        actor can be <b>re-hired in any book for free</b> (cloned locally into Qwen3) or used as the voice of a
-        Seed Audio trailer. Pay once for the perfect voice, use them forever — that's the whole trick.
+        actor can be <b>re-hired in any book for free</b>, cloned locally into Qwen3. Pay once for the
+        perfect voice, use them forever — that's the whole trick.
         Their <b>notes</b> travel with them to every production; their <b>portrait</b> is pasted by you.
       </div>`;
     body = explainer + (actors.length ? `<div class="cast-grid">${actors.map((a) => `
@@ -755,7 +754,7 @@ function viewCasting() {
     if (f.age) voices = voices.filter((v) => v.age === f.age);
     if (f.accent) voices = voices.filter((v) => v.accent === f.accent);
     if (f.q) voices = voices.filter((v) => (v.voice + ' ' + (v.note || '')).toLowerCase().includes(f.q.toLowerCase()));
-    const filterBar = S.castTab === 'qwen3' ? '' : `
+    const filterBar = `
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
         <input id="cf-q" placeholder="search name…" value="${esc(f.q || '')}" style="width:150px">
         <select id="cf-gender"><option value="">any gender</option>
@@ -770,7 +769,7 @@ function viewCasting() {
         <div class="card" style="padding:8px 11px;display:flex;align-items:center;gap:8px" data-cast-voice="${esc(v.voice)}" data-cast-eng="${S.castTab}">
           <span style="font-size:12.5px;font-weight:600">${esc(v.label || v.voice)}</span>
           <span style="font-size:10.5px;color:var(--dim)">${esc(v.note)}</span>
-          ${S.castTab === 'qwen3' ? '' : `<button class="aud" data-cast-play title="hear this voice">▶</button>`}
+          <button class="aud" data-cast-play title="hear this voice">▶</button>
           <span data-cast-slot></span>
         </div>`).join('')}</div>`;
   }

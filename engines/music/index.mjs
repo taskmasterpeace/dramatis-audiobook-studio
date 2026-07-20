@@ -1,19 +1,13 @@
-// Music engine resolver: ElevenLabs Music by default (clean commercial license),
-// Suno/muapi only by explicit opt-in (DRAMATIS_MUSIC=suno) — its relay license
-// is unverified for commercial use.
+// Music engine resolver: ElevenLabs Music, the one engine whose commercial
+// licence we have actually verified. There is deliberately no fallback — a
+// silent route to some other relay could put a book on sale scored by audio
+// nobody checked the licence on, and the user would never be told.
 import { renderTrack as eleven } from './elevenlabs.mjs';
-import { renderTrack as suno } from './suno.mjs';
 
 export async function renderTrack(spec, durSec, cacheRoot) {
-  // No silent fallback to Suno. Without a key this used to quietly route to a
-  // relay whose commercial licence we have never verified — a user could ship a
-  // book scored by it without ever being told. Opting in must be deliberate.
-  const engine = process.env.DRAMATIS_MUSIC
-    || (process.env.ELEVENLABS_API_KEY ? 'elevenlabs' : null);
-  if (!engine) {
-    throw new Error('music: no music engine available. Set ELEVENLABS_API_KEY, or '
-      + 'set DRAMATIS_MUSIC=suno to opt into the Suno/muapi relay — note its licence '
-      + 'is UNVERIFIED for commercial use, so do not ship what it produces.');
+  if (!process.env.ELEVENLABS_API_KEY) {
+    throw new Error('music: no music engine available. Set ELEVENLABS_API_KEY to score with '
+      + 'ElevenLabs Music, or drop the music cue from the chapter.');
   }
-  return engine === 'suno' ? suno(spec, durSec, cacheRoot) : eleven(spec, durSec, cacheRoot);
+  return eleven(spec, durSec, cacheRoot);
 }

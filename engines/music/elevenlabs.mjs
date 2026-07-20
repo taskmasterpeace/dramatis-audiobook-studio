@@ -1,7 +1,6 @@
-// ElevenLabs Music (Eleven Music) — the clean-license underscore engine.
-// Same subscription as the voice work, commercial use included: replaces the
-// muapi/Suno relay (whose commercial rights were unverifiable) as the default.
-// Same contract as suno.mjs: renderTrack(spec, durSec, cacheRoot).
+// ElevenLabs Music (Eleven Music) — the underscore engine, and the only one whose
+// commercial licence we have verified. Same subscription as the voice work.
+// Contract: renderTrack(spec, durSec, cacheRoot).
 import { writeFileSync } from 'node:fs';
 import { contentKey, cached, ffmpeg, log } from '../../src/util.mjs';
 

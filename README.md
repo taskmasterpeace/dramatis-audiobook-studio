@@ -17,7 +17,7 @@ Ingest → Compile → [Analyze] → Cast → Render → Align → Mix → Maste
 
 ## What actually works today
 
-This is a working system, not a roadmap. Five sample books ship in the repo, produced
+This is a working system, not a roadmap. Four sample books ship in the repo, produced
 end to end. The pipeline has also taken a full 8-chapter novel through to a
 102-minute chaptered M4B with zero QA flags — that manuscript is the author's own
 unpublished work, so it isn't included here.
@@ -42,33 +42,40 @@ unpublished work, so it isn't included here.
 
 ## Quickstart
 
-The free path — no keys, no network after setup, and no GPU:
+The free path — no keys, no network after setup, and no GPU. DRAMATIS has zero runtime
+npm dependencies; you need Node 20+, `ffmpeg` and `ffprobe` on your PATH, and a Python
+venv for the local voice models.
 
 ```bash
-# no npm install — DRAMATIS has zero runtime dependencies. Node 20+, ffmpeg, and
-# a Python venv for the local voice models is the whole story.
-uv venv --python 3.12 .venv
-uv pip install --python .venv/Scripts/python.exe kokoro-onnx soundfile onnxruntime
+npm run setup                    # fetches the Kokoro model (~340 MB)
 
+uv venv --python 3.12 .venv
+# Windows:
+uv pip install --python .venv/Scripts/python.exe kokoro-onnx soundfile onnxruntime
+# macOS / Linux:
+uv pip install --python .venv/bin/python kokoro-onnx soundfile onnxruntime
+
+npm run doctor                   # tells you what's ready and what's missing
 node bin/dramatis.mjs produce books/open-window/book.json --tts kokoro
 ```
-
-That produces a narrated book on CPU alone. **The sound-effects layer needs more:** an
-NVIDIA GPU (the forced aligner has no CPU fallback yet) and a built corpus. The corpus
-is ~7 GB of CC0 audio that you assemble locally — it is not in the repo and there is
-no one-command fetch script yet, so a fresh clone can render voices but not SFX. If
-that matters to you, it's the most useful thing to contribute.
 
 Or open the Studio and work visually:
 
 ```bash
-node studio/server.mjs           # → http://localhost:4600
+npm start                        # → http://localhost:4600
 ```
 
 The Studio is the whole app: a bookshelf, a casting room with every hireable voice,
 a voice designer, per-chapter render with a live console, and a listening room.
 It is plain `node:http` and vanilla JavaScript — no build step, no framework, no
-bundler. `ffmpeg` and `ffprobe` must be on your PATH.
+bundler.
+
+**One gap to know about up front:** the sound-effects layer needs a CLAP corpus —
+~7 GB of CC0 audio you assemble locally. It isn't in the repo and there's no
+one-command fetch for it yet, so a fresh clone renders voices and ambience but not
+retrieved effects. Everything else, including word-level alignment, now runs on CPU.
+If that gap matters to you, a corpus fetcher is the single most useful contribution
+available.
 
 See **[docs/SYSTEM-REQUIREMENTS.md](docs/SYSTEM-REQUIREMENTS.md)** for the two honest
 tiers (what runs on any laptop vs. what needs an NVIDIA GPU) and

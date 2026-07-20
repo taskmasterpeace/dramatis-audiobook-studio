@@ -32,8 +32,17 @@ def norm_result(r):
 
 def main(manifest_path, out_path):
     items = json.loads(pathlib.Path(manifest_path).read_text(encoding="utf-8"))
+    # device_map was hard-coded to "cuda:0", which made the whole sound-effect
+    # layer GPU-only and crashed CPU-only machines AFTER the expensive TTS pass
+    # had already finished. The correct probe was already in this repo — see
+    # engines/sfx/clap-index.py — it just was never applied here. bfloat16 is a
+    # GPU format; CPU needs float32.
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"[align] device={device}", flush=True)
     model = Qwen3ForcedAligner.from_pretrained(
-        "Qwen/Qwen3-ForcedAligner-0.6B", device_map="cuda:0", dtype=torch.bfloat16)
+        "Qwen/Qwen3-ForcedAligner-0.6B",
+        device_map=device if device == "cpu" else "cuda:0",
+        dtype=torch.bfloat16 if device == "cuda" else torch.float32)
     result = {}
     for it in items:
         r = model.align(audio=it["wav"], text=it["text"], language="English")

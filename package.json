@@ -10,7 +10,12 @@
   "keywords": ["audiobook", "tts", "text-to-speech", "voice-cloning", "audio", "ffmpeg", "kokoro", "local-first"],
   "bin": { "dramatis": "bin/dramatis.mjs" },
   "scripts": {
-    "produce": "node bin/dramatis.mjs produce"
+    "setup": "node scripts/setup-models.mjs",
+    "start": "node studio/server.mjs",
+    "studio": "node studio/server.mjs",
+    "produce": "node bin/dramatis.mjs produce",
+    "doctor": "node bin/dramatis.mjs doctor",
+    "test": "node --test"
   },
   "engines": { "node": ">=20" }
 }

@@ -31,12 +31,6 @@ export function chapterParagraphs(manuscriptPath, heading) {
   return { chapterTitle, paragraphs };
 }
 
-// heading matches either the raw heading prefix ("Chapter One") or a
-// 1-based index ("1" -> first chapter)
-function startsWithHeading(chapterSrc, heading) {
-  return chapterSrc.startsWith(heading);
-}
-
 export function listChapters(manuscriptPath) {
   const raw = readFileSync(manuscriptPath, 'utf8');
   return raw.split(/^## /m)

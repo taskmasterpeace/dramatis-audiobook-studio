@@ -88,12 +88,19 @@ export function castingRecipe(char) {
   const ageSpec = AGE_BANDS.find((b) => b.band === ageBand);
   const needsCharacterTier = !!accent || ageBand === 'child' || ageBand === 'elderly' || ageBand === 'teen';
 
-  // build a stacked, directed prompt (the Qwen-research recipe: specifics beat labels)
+  // Build the directed prompt in the shape Google's docs and our own duration
+  // gate agree on. This used to emit "DIRECTOR'S NOTES: ..." with no synthesis
+  // imperative — the exact string measured rendering 3.8x over length because
+  // the model READ THE DIRECTION ALOUD, and the shape gemini.mjs's gate now
+  // refuses. The Cast screen's one-click Apply writes this prompt straight into
+  // book.voices.gemini, so a stale shape here ships to real renders.
+  // Keep in step with directedPrompt() in voicedesign.mjs.
   const genderWord = gender === 'unknown' ? 'a person' : `a ${gender === 'female' ? 'woman' : 'man'}`;
   const promptParts = [
-    `AUDIO PROFILE: ${char.id || 'character'}. ${genderWord}, ${ageSpec.years}.`,
-    char.visual ? `WHO: ${char.visual}` : '',
-    `DIRECTOR'S NOTES: Style: ${ageSpec.design}.`,
+    'Synthesize this performance as speech.',
+    `\nVOICE\n${genderWord}, ${ageSpec.years}.`,
+    char.visual ? `${char.visual}.` : '',
+    `\nPERFORMANCE\nStyle: ${ageSpec.design}.`,
     accent ? `Accent: ${accent}.` : '',
     'Pace: natural, in character.',
   ].filter(Boolean);

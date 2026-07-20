@@ -5,7 +5,7 @@ a different voice per character, sound effects, room ambience, and music —
 mixed and mastered. This is the map: every model, what it's for, and how the
 app uses it.
 
-## The five departments (every sound belongs to one)
+## The four departments (every sound belongs to one)
 
 | Department | What it makes | Models we use | Cost |
 |---|---|---|---|
@@ -13,7 +13,6 @@ app uses it.
 | **FOLEY** | sound effects (a door, a gunshot) | CLAP retrieval + our house library + ElevenLabs generate | free → cheap |
 | **ATMOS** | the room/world under a scene | CLAP retrieval of real recordings + synth | free |
 | **SCORE** | music underscore | ElevenLabs Music (clean license) | cheap |
-| **SET-PIECE** | a whole dense moment in one shot | Seed Audio (on fal) | ~$0.19/min |
 
 ## The voice models — who we use for what
 
@@ -28,9 +27,6 @@ app uses it.
 - **ElevenLabs** (paid, ~$0.22/1k chars): premium **hero moments** and real
   named voices from your roster (including real aged/ethnic voices). Also
   **generates sound effects** into our house library.
-- **Seed Audio** (paid, one pass): a whole **trailer or action beat** — voice +
-  effects + music baked together in a single generation. Can use OUR character
-  voices as a reference.
 
 ## Character actors — the money-saver (proven tonight)
 
@@ -39,8 +35,8 @@ The trick that makes premium quality affordable:
 1. **Seed** a character once on Gemini (paid, perfect — accent, age, feeling).
 2. **Clone** that voice into Qwen3 (`clone-from-audio.py`) → now she speaks
    **unlimited lines for FREE** in the same voice.
-3. **Reuse** her forever: any book, plus Seed Audio trailers (her voice as a
-   reference). She's a saved company member in `actors/<name>/`.
+3. **Reuse** her forever, in any book. She's a saved company member in
+   `actors/<name>/`.
 
 So far the company: **nola-elder** (New Orleans grandmother) and **liu-xiao**
 (elderly Mandarin-accented man). Each folder holds her seed clip + transcript +
@@ -106,7 +102,7 @@ ethnicity/accent — determined two ways (`src/casting.mjs`):
 ## What's verified vs. what's next
 
 Verified by ear tonight: Gemini characters, the clone economy, house Foley, real
-ambience, Seed Audio set-pieces & trailers, three finished books. Next: produce
+ambience, three finished books. Next: produce
 one flagship book with real character voices throughout, and teach the Studio to
 suggest the casting recipe automatically (it's computed in `src/casting.mjs`;
 the UI just needs to show it).

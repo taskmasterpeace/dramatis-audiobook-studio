@@ -4,7 +4,7 @@
 // isn't loaded, and anchors that don't resolve.
 // Called by the CLI before rendering and by the Studio before writing book.json.
 
-const KNOWN_ENGINES = ['kokoro', 'qwen3', 'elevenlabs', 'gemini', 'sapi'];
+const KNOWN_ENGINES = ['kokoro', 'qwen3', 'elevenlabs', 'gemini'];
 const KNOWN_AMBIENCE = ['rain', 'roomtone-morning', 'room-hum', 'crowd', 'city-night', 'lab-cold', 'battle'];
 
 // which engines can actually be reached for this book/route

@@ -1,7 +1,7 @@
 # DRAMATIS — System Requirements
 
 Two honest tiers: what it takes to RUN the app, and what it takes to run the
-LOCAL AI engines. The cloud engines (ElevenLabs, Gemini, Seed Audio) work from
+LOCAL AI engines. The cloud engines (ElevenLabs, Gemini) work from
 any laptop — the GPU is only for the free local tier.
 
 ## Tier 1 — Minimum (app + Kokoro + all cloud engines)
@@ -13,7 +13,7 @@ any laptop — the GPU is only for the free local tier.
 | ffmpeg / ffprobe | on PATH (mixing, mastering, every audio conversion) |
 | Python | 3.12 via `uv venv` (Kokoro needs only `kokoro-onnx soundfile`) |
 | CPU / RAM | any modern 4-core, 8 GB RAM |
-| GPU | **none** — Kokoro is ONNX on CPU; ElevenLabs/Gemini/Seed Audio are APIs |
+| GPU | **none** — Kokoro is ONNX on CPU; ElevenLabs/Gemini are APIs |
 | Disk | ~1 GB app + models (Kokoro ~330 MB) + your `out/` renders |
 | Network | only for the paid engines and corpus downloads |
 

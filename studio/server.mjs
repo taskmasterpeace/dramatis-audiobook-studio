@@ -11,8 +11,9 @@ import {
   readFileSync, writeFileSync, renameSync, existsSync, readdirSync, statSync,
   createReadStream, mkdirSync, unlinkSync,
 } from 'node:fs';
-import { compile, listChapters, chapterConfigHash } from '../src/compile.mjs';
-import { ENGINE_IDS, FREE_ENGINE_IDS, loadRenderer, availableEngines } from '../engines/tts/registry.mjs';
+import { compile, chapterConfigHash } from '../src/compile.mjs';
+import { loadKeys } from '../src/keys.mjs';
+import { ENGINE_IDS, loadRenderer, availableEngines } from '../engines/tts/registry.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const APP = path.join(root, 'studio', 'app');
@@ -20,25 +21,7 @@ const OUT = path.join(root, 'out');
 const BOOKS = path.join(root, 'books');
 const PORT = (() => { const i = process.argv.indexOf('--port'); return i > 0 ? +process.argv[i + 1] : 4600; })();
 
-// ── keys: load from env files at boot (never printed) ───────────────────────
-// Precedence: real environment > .env.local > .env > anything listed in
-// DRAMATIS_ENV_FILES (a path list, so you can point at a key store you already
-// keep elsewhere without hard-coding anyone's directory layout into the source).
-const KEY_NAMES = ['ELEVENLABS_API_KEY', 'OPENROUTER_API_KEY', 'FAL_KEY',
-  'REPLICATE_API_TOKEN', 'GEMINI_API_KEY', 'MUAPI_API_KEY', 'DP_API_KEY'];
-
-function loadKeys() {
-  const extra = (process.env.DRAMATIS_ENV_FILES || '').split(/[;,]/).map((s) => s.trim()).filter(Boolean);
-  for (const file of [path.join(root, '.env.local'), path.join(root, '.env'), ...extra]) {
-    if (!existsSync(file)) continue;
-    const txt = readFileSync(file, 'utf8');
-    for (const n of KEY_NAMES) {
-      if (process.env[n]) continue;
-      const m = txt.match(new RegExp(`^${n}=(.*)$`, 'm'));
-      if (m) process.env[n] = m[1].trim().replace(/\r$/, '');
-    }
-  }
-}
+// keys: shared with the CLI so both entry points read the same .env chain
 loadKeys();
 
 // ── helpers ─────────────────────────────────────────────────────────────────
@@ -344,7 +327,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, {
         book: b, chapters: chapterStatus(b), preflight: preflight(b), spend: spendRollup(b.id),
         bound, suggestions, validation: validateBook(b),
-        keys: { ...availableEngines(), fal: !!process.env.FAL_KEY },
+        keys: availableEngines(),
       });
     }
 

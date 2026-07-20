@@ -10,7 +10,6 @@ import path from 'node:path';
 
 const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : d; };
-const flag = (n) => args.includes(`--${n}`);
 
 const file = opt('file', null);
 let text = file ? readFileSync(path.resolve(file), 'utf8') : args.filter((a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== `--file` && args[args.indexOf(a) - 1] !== '--voice' && args[args.indexOf(a) - 1] !== '-o' && args[args.indexOf(a) - 1] !== '--engine' && args[args.indexOf(a) - 1] !== '--design').join(' ');
