@@ -1,0 +1,21 @@
+# Normalise line endings to LF in the repository, everywhere, for everyone.
+#
+# This is a correctness requirement, not a style preference. src/compile.mjs
+# cites every line by raw character offset into the manuscript, so a CRLF
+# checkout shifts every citation by one byte per preceding line. It also broke
+# the attribution snapshot tests on any fresh Windows clone: the content matched
+# but the bytes didn't, producing a baffling "0 lines changed" failure.
+* text=auto eol=lf
+
+# Binary — never touch these
+*.wav binary
+*.mp3 binary
+*.m4a binary
+*.m4b binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.onnx binary
+*.bin binary
+*.npy binary

@@ -30,14 +30,18 @@ function snapshot(name, actual) {
   const file = path.join(SNAP, `${name}.json`);
   const text = JSON.stringify(actual, null, 2);
   if (UPDATE || !existsSync(file)) { writeFileSync(file, text); return; }
+  // compare line-ending agnostically. A fresh Windows clone checks the snapshot
+  // out as CRLF while JSON.stringify emits LF, which failed the raw string
+  // compare while reporting zero differing lines — a genuinely baffling result.
   const expected = readFileSync(file, 'utf8');
-  if (text === expected) return;
+  const norm = (s) => s.replace(/\r\n/g, '\n');
+  if (norm(text) === norm(expected)) return;
   // report the first few differing lines, not a wall of JSON
   const a = JSON.parse(text), b = JSON.parse(expected);
   const diffs = Object.keys({ ...a, ...b }).filter((k) => a[k] !== b[k])
     .slice(0, 12).map((k) => `  ${k}: ${b[k]} -> ${a[k]}`);
-  assert.fail(`${name} attribution changed (${diffs.length}+ lines):\n${diffs.join('\n')}\n` +
-    `If intended: UPDATE_SNAPSHOTS=1 node --test test/`);
+  assert.fail(`${name} attribution changed (${diffs.length} lines):\n${diffs.join('\n')}\n` +
+    'If intended: UPDATE_SNAPSHOTS=1 npm test');
 }
 
 for (const id of BOOKS) {
