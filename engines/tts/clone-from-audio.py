@@ -1,8 +1,22 @@
-# Clone ANY external voice sample into Qwen3 and speak new text.
-# Turns a premium one-shot voice (Gemini / ElevenLabs / a real recording) into a
-# free, unlimited local voice — the "premium seed, local volume" pattern.
+# Clone a voice sample into Qwen3 and speak new text.
+# Turns a premium one-shot voice into a free, unlimited local voice — the
+# "premium seed, local volume" pattern.
 #   python clone-from-audio.py <ref_wav> <ref_text_file> <new_text_file> <out_wav>
 # ref_wav must be clean mono wav (convert with ffmpeg first).
+#
+# CONSENT — READ THIS BEFORE POINTING IT AT A PERSON.
+# This tool reproduces the voice in whatever reference you give it. It cannot
+# tell whose voice that is, so the responsibility is entirely yours.
+#   * Intended use is synthetic voices you generated yourself (the seeds in
+#     actors/ are model output, not recordings of people) and recordings of
+#     people who have given you explicit, informed permission for this purpose.
+#   * Cloning a real person's voice without consent may be illegal where you
+#     are. Tennessee's ELVIS Act and a growing number of state right-of-
+#     publicity laws cover synthesized voice specifically, and several reach
+#     the distribution of the resulting audio, not just its creation.
+#   * If you clone a real person, record who consented and to what, alongside
+#     the seed clip, and honour any withdrawal of that consent.
+# DRAMATIS ships no celebrity voices and no recordings of real people.
 import os
 import pathlib
 import sys

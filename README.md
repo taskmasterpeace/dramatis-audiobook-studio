@@ -40,7 +40,8 @@ with zero QA flags.
 The free path — no keys, no GPU, no network after setup:
 
 ```bash
-npm install                      # zero runtime dependencies; this is for tooling only
+# no npm install — DRAMATIS has zero runtime dependencies. Node 20+, ffmpeg, and
+# a Python venv for the local voice models is the whole story.
 uv venv --python 3.12 .venv
 uv pip install --python .venv/Scripts/python.exe kokoro-onnx soundfile onnxruntime
 
@@ -134,8 +135,28 @@ DRAMATIS stands on other people's work:
 Sample manuscripts are public domain: *The Monkey's Paw* (W. W. Jacobs, 1902),
 *The Open Window* (Saki, 1914), *The Signal-Man* (Charles Dickens, 1866).
 
+## Voice cloning, responsibly
+
+DRAMATIS can clone a voice from a short reference clip. It ships **no celebrity
+voices and no recordings of real people** — the actors in `actors/` are model output,
+seeded from a text description.
+
+The tool cannot tell whose voice is in a reference clip, so that judgement is yours.
+Clone voices you generated, or voices whose owner gave you explicit permission for
+this use. Cloning a real person without consent may be illegal where you live —
+Tennessee's ELVIS Act and a growing number of right-of-publicity laws cover
+synthesized voice specifically, and some reach distribution of the audio, not just
+its creation. If you clone a real person, record who consented and to what, and
+honour it if they withdraw.
+
 ## Licence
 
 Apache-2.0 — see [LICENSE](LICENSE). Commercial use, forks and derivative products are
 all permitted, today and permanently. No delayed conversion, no field-of-use
 restriction, no separate licence for competing with us.
+
+The grant covers the **code**. Sample manuscripts and the generated voice clips carry
+their own terms — see [NOTICE](NOTICE), which also holds the required attribution for
+FSD50K and the model weights, and one packaging caveat: `kokoro-onnx` pulls in a
+GPL-3.0 phonemizer, which matters if you ever redistribute DRAMATIS as a bundled
+binary.
