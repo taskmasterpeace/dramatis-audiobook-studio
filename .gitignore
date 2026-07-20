@@ -5,4 +5,17 @@ models/
 corpus/
 .venv/
 __pycache__/
+
+# every env variant, not just .env — the key loader reads .env.local first,
+# so a single unignored variant would commit live keys
 .env
+.env.*
+.envrc
+!.env.example
+*.pem
+*.key
+secrets.json
+
+# internal working notes - kept locally, not published
+HANDOFF.md
+docs/TECHNICAL-HANDOVER.md
