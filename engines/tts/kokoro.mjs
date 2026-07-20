@@ -6,7 +6,14 @@ import { fileURLToPath } from 'node:url';
 import { contentKey, cached, pexecFile, pythonExe, log, speakable } from '../../src/util.mjs';
 import { KOKORO_LANG } from '../../src/voice-tables.mjs';
 
-const ENGINE = 'kokoro-onnx@1';
+// @2: chunking moved from a character budget to a phoneme budget (the old one
+// crashed on digit runs — see kokoro-batch.py). Chunk boundaries decide where
+// audio is joined, so this changes output for any line long enough to split.
+// Bumping invalidates cached long lines rather than letting the key keep
+// promising audio it no longer produces — a key that doesn't capture what
+// changes the output is a broken key, and determinism is the whole point.
+// Short lines (one chunk either way) are byte-identical; only long ones re-render.
+const ENGINE = 'kokoro-onnx@2';
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 export async function renderLines(lines, voices, cacheRoot) {

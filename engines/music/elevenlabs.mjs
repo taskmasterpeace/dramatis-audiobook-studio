@@ -26,7 +26,12 @@ export async function renderTrack(spec, durSec, cacheRoot) {
   const res = await fetch('https://api.elevenlabs.io/v1/music', {
     method: 'POST',
     headers: { 'xi-api-key': apiKey(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, music_length_ms: dur * 1000 }),
+    // force_instrumental GUARANTEES no vocals, where the prompt suffix above
+    // only asks nicely. Keep both: the suffix still shapes the arrangement.
+    // music_v2 is also explicit — we were silently getting v1.
+    body: JSON.stringify({
+      prompt, music_length_ms: dur * 1000, force_instrumental: true, model_id: 'music_v2',
+    }),
   });
   if (!res.ok) throw new Error(`eleven music ${res.status}: ${(await res.text()).slice(0, 160)}`);
   const mp3 = out.replace(/\.wav$/, '.src.mp3');

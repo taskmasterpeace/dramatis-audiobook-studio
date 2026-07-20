@@ -62,8 +62,12 @@ async function synthOne(job, key) {
       body: JSON.stringify({
         text: job.text,
         model_id: job.model || MODEL,
-        // style is a v2+ knob; v1 accepts only stability + similarity_boost
-        voice_settings: job.isV3 === false && !/v2/.test(job.model || '')
+        // `style` is SILENTLY IGNORED on v3 — /v1/models reports
+        // can_use_style:false, yet the API happily returns 200 for any value, so
+        // we were sending a setting that did nothing and could never learn it
+        // didn't. (Same for speed and use_speaker_boost on v3.) Send it only
+        // where it actually works: v2-family models.
+        voice_settings: job.isV3
           ? { stability: job.stability, similarity_boost: 0.75 }
           : { stability: job.stability, similarity_boost: 0.75, style: job.style },
       }),
