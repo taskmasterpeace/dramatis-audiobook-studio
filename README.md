@@ -42,9 +42,17 @@ unpublished work, so it isn't included here.
 
 ## Quickstart
 
-The free path — no keys, no network after setup, and no GPU. DRAMATIS has zero runtime
-npm dependencies; you need Node 20+, `ffmpeg` and `ffprobe` on your PATH, and a Python
-venv for the local voice models.
+**Windows — just install it:** grab `DRAMATIS-Setup.exe` from
+[Releases](https://github.com/taskmasterpeace/dramatis-audiobook-studio/releases).
+It installs per-user (no admin), then downloads everything it needs on first run —
+portable Node and ffmpeg only if your machine lacks them, the Python voice stack, and
+the Kokoro model (~700 MB total on a bare machine). The Start Menu shortcut opens the
+Studio in your browser. The installer is unsigned for now, so SmartScreen will warn:
+*More info → Run anyway*.
+
+**Any platform — from source.** The free path: no keys, no network after setup, and
+no GPU. DRAMATIS has zero runtime npm dependencies; you need Node 20+, `ffmpeg` and
+`ffprobe` on your PATH, and a Python venv for the local voice models.
 
 ```bash
 npm run setup                    # fetches the Kokoro model (~340 MB)
