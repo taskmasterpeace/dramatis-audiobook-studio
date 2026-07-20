@@ -4,18 +4,37 @@
   "description": "Local-first full-cast cinematic audiobook studio. Manuscript in, produced audiobook out.",
   "type": "module",
   "license": "Apache-2.0",
-  "repository": { "type": "git", "url": "git+https://github.com/taskmasterpeace/dramatis-audiobook-studio.git" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/taskmasterpeace/dramatis-audiobook-studio.git"
+  },
   "homepage": "https://github.com/taskmasterpeace/dramatis-audiobook-studio#readme",
-  "bugs": { "url": "https://github.com/taskmasterpeace/dramatis-audiobook-studio/issues" },
-  "keywords": ["audiobook", "tts", "text-to-speech", "voice-cloning", "audio", "ffmpeg", "kokoro", "local-first"],
-  "bin": { "dramatis": "bin/dramatis.mjs" },
+  "bugs": {
+    "url": "https://github.com/taskmasterpeace/dramatis-audiobook-studio/issues"
+  },
+  "keywords": [
+    "audiobook",
+    "tts",
+    "text-to-speech",
+    "voice-cloning",
+    "audio",
+    "ffmpeg",
+    "kokoro",
+    "local-first"
+  ],
+  "bin": {
+    "dramatis": "bin/dramatis.mjs"
+  },
   "scripts": {
     "setup": "node scripts/setup-models.mjs",
     "start": "node studio/server.mjs",
     "studio": "node studio/server.mjs",
     "produce": "node bin/dramatis.mjs produce",
     "doctor": "node bin/dramatis.mjs doctor",
-    "test": "node --test \"test/*.test.mjs\""
+    "test": "node --test \"test/*.test.mjs\"",
+    "hub": "node hub/server.mjs"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }

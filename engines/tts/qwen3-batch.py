@@ -104,6 +104,11 @@ def main(manifest_path):
 
     design_ids = [e for e in by_entity if entities.get(e, {}).get("design")]
     custom_ids = [e for e in by_entity if entities.get(e, {}).get("speaker")]
+    # seed entities: a company actor's own seed.wav is the clone reference —
+    # no design step, no paid engine, the voice IS the file. This is what lets
+    # the hub serve a minted character's lines for free.
+    seed_ids = [e for e in by_entity
+                if entities.get(e, {}).get("seed") and not entities.get(e, {}).get("design")]
 
     # phase 1: design reference clips (only for refs not already cached)
     refs = {}
@@ -112,10 +117,22 @@ def main(manifest_path):
         rt = pick_ref_text([ln["text"] for ln in by_entity[e]])
         rp = ref_path(cache_root, ent["design"], rt)
         refs[e] = (rp, rt)
+    for e in seed_ids:
+        ent = entities[e]
+        sp = pathlib.Path(ent["seed"])
+        if not sp.exists():
+            raise RuntimeError(f"seed voice for '{e}' not found: {sp}")
+        # transcript raises clone similarity ~0.75->0.89 (measured); empty is legal
+        refs[e] = (sp, ent.get("transcript", ""))
 
-    # a cached ref made before the gate existed may be poisoned — verify on load
+    # a cached ref made before the gate existed may be poisoned — verify on load.
+    # SEED entities are exempt on principle AND mechanics: their reference is a
+    # company actor's immutable seed.wav — already auditioned by a human ear —
+    # and the unlink below would DESTROY the actor. Never gate-delete a seed.
     for e, (rp, rt) in refs.items():
-        want = expected_register(entities[e]["design"])
+        if e in seed_ids:
+            continue
+        want = expected_register(entities[e].get("design") or "")
         if want is None or not rp.exists():
             continue
         y, sr0 = sf.read(str(rp), dtype="float32", always_2d=True)
@@ -153,12 +170,13 @@ def main(manifest_path):
                 print(f"[qwen3] designed voice for {e} -> {rp.name} (ungated: no gender in design)", flush=True)
         unload(vd)
 
-    # phase 2: clone-render design entities (chunked: progress + partial results
-    # survive a kill; a whole-entity batch is all-or-nothing)
+    # phase 2: clone-render design + seed entities (chunked: progress + partial
+    # results survive a kill; a whole-entity batch is all-or-nothing)
     done = 0
     total = len(m["lines"])
     CHUNK = 8
-    if design_ids:
+    clone_ids = design_ids + seed_ids
+    if clone_ids:
         base = load(BASE)
 
         def clone(texts, langs, prompt):
@@ -173,10 +191,11 @@ def main(manifest_path):
             # baked into the reference clip or routed to another engine.
             return base.generate_voice_clone(text=texts, language=langs, voice_clone_prompt=prompt)
 
-        for e in design_ids:
+        for e in clone_ids:
             rp, rt = refs[e]
-            design = entities[e]["design"]
-            want = expected_register(design)
+            # seed entities have no design text -> want=None -> ungated here;
+            # the actor was auditioned by ear when hired, which outranks pyin
+            want = expected_register(entities[e].get("design") or "")
             prompt = base.create_voice_clone_prompt(ref_audio=str(rp), ref_text=rt)
             lines = [ln for ln in by_entity[e] if not pathlib.Path(ln["out"]).exists()]
             print(f"[qwen3] {e}: {len(lines)} lines to synth", flush=True)

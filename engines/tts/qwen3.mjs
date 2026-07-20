@@ -33,7 +33,10 @@ export async function renderLines(lines, voices, cacheRoot) {
     entities[line.entity] = v;
     const ins = instruct(line.emotion);
     if (ins) emotive++;
-    const voiceKey = v.design || v.speaker;
+    // seed voices key on the seed PATH — legal because seed.wav is immutable by
+    // law (a company actor's identity IS that file; hire/upload never overwrite)
+    const voiceKey = v.design || v.speaker || (v.seed ? `seed:${v.seed}|${v.transcript || ''}` : undefined);
+    if (!voiceKey) throw new Error(`qwen3: entity '${line.entity}' has neither design, speaker, nor seed`);
     const text = speakable(line.text);
     const key = contentKey([ENGINE, voiceKey, ins, text]);
     const { path: out, hit } = cached(cacheRoot, key);
