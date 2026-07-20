@@ -1,0 +1,16 @@
+{
+  "name": "dramatis",
+  "version": "0.1.0",
+  "description": "Local-first full-cast cinematic audiobook studio. Manuscript in, produced audiobook out.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "repository": { "type": "git", "url": "git+https://github.com/taskmasterpeace/dramatis-audiobook-studio.git" },
+  "homepage": "https://github.com/taskmasterpeace/dramatis-audiobook-studio#readme",
+  "bugs": { "url": "https://github.com/taskmasterpeace/dramatis-audiobook-studio/issues" },
+  "keywords": ["audiobook", "tts", "text-to-speech", "voice-cloning", "audio", "ffmpeg", "kokoro", "local-first"],
+  "bin": { "dramatis": "bin/dramatis.mjs" },
+  "scripts": {
+    "produce": "node bin/dramatis.mjs produce"
+  },
+  "engines": { "node": ">=20" }
+}

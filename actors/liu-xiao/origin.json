@@ -1,0 +1,5 @@
+{ "name": "Liu Xiao", "created": "2026-07-19",
+  "seed_engine": "gemini-3.1-flash-tts", "seed_voice": "Enceladus",
+  "character": "Elderly blind Chinese masseur, 70s, thin weathered breathy voice, light Mandarin-accented English",
+  "gate": "male-range 140Hz",
+  "note": "Recast after an earlier take used an American preset for a Mandarin-accented character. Demonstrates accent-via-Gemini-direction plus stacked age cues, then cloning into Qwen3 for unlimited free lines." }

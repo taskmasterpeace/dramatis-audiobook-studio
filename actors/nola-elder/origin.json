@@ -1,0 +1,8 @@
+{
+  "name": "NOLA Elder",
+  "created": "2026-07-19",
+  "seed_engine": "gemini-3.1-flash-tts",
+  "seed_voice": "Gacrux",
+  "seed_prompt": "AUDIO PROFILE: An elderly Black woman in her late seventies from New Orleans, Louisiana. THE SCENE: sitting on a porch by the Mississippi at dusk, telling a story to a young visitor. DIRECTOR'S NOTES: Style: warm, weathered, grandmotherly, a slow knowing drawl with a chuckle underneath. Accent: deep New Orleans Southern Black. Pace: unhurried, musical, lots of breath and age in the voice.",
+  "notes": "Seeded on Gemini, then cloned into Qwen3 for unlimited free lines. Reference clips of 24s and 12s both cloned well; 12s is the spec."
+}

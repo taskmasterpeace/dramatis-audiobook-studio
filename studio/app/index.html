@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DRAMATIS Studio</title>
+<link rel="stylesheet" href="/studio.css">
+<link rel="icon" type="image/png" href="/favicon.png">
+</head>
+<body>
+<div class="app">
+  <nav class="rail">
+    <div class="brand" style="text-align:center">
+      <img src="/logo.png" alt="DRAMATIS STUDIO — Full-Cast Audiobook" style="width:100%;max-width:190px;height:auto;display:block;margin:0 auto 6px">
+      <small><span class="rec" id="rec"></span>PRODUCTION CONSOLE</small>
+    </div>
+    <div class="nav" id="nav"></div>
+    <div class="rail-foot">
+      <div id="gpu"><span class="lamp" id="lamp"></span><span id="gputxt">idle</span></div>
+      <div id="ticker"></div>
+      <div style="font-size:10px;letter-spacing:.14em;color:var(--dim);border:1px dashed var(--line);border-radius:4px;padding:3px 6px;text-align:center">IMAGES &amp; VIDEO: MANUAL ONLY</div>
+    </div>
+  </nav>
+  <main class="main" id="main"></main>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

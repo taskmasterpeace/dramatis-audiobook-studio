@@ -1,0 +1,627 @@
+{
+  "id": "monkeys-paw",
+  "title": "The Monkey's Paw",
+  "author": "W. W. Jacobs",
+  "manuscript": "../../samples/the-monkeys-paw.md",
+  "protagonist": "mr_white",
+  "entities": [
+    {
+      "id": "narrator",
+      "kind": "narrator",
+      "names": []
+    },
+    {
+      "id": "mr_white",
+      "kind": "character",
+      "names": [
+        "Mr. White",
+        "the old man",
+        "her husband",
+        "his father"
+      ],
+      "visual": "Elderly Englishman around seventy, white-whiskered, cardigan and slippers, kind weathered face by the fire."
+    },
+    {
+      "id": "mrs_white",
+      "kind": "character",
+      "names": [
+        "Mrs. White",
+        "his wife",
+        "the old lady",
+        "the old woman",
+        "his mother",
+        "the mother"
+      ],
+      "visual": "White-haired elderly Englishwoman, shawl and knitting, warm face capable of wild grief."
+    },
+    {
+      "id": "herbert",
+      "kind": "character",
+      "names": [
+        "Herbert",
+        "his son",
+        "the son"
+      ],
+      "visual": "Young Englishman in his twenties, bright-eyed and teasing, work clothes of an electrical-works man."
+    },
+    {
+      "id": "morris",
+      "kind": "character",
+      "names": [
+        "Morris",
+        "sergeant-major",
+        "the soldier"
+      ],
+      "visual": "Tall burly sergeant-major, beady of eye and rubicund of visage, whisky glass in hand, campaign-weathered.",
+      "gender": "male",
+      "age": "55"
+    },
+    {
+      "id": "company_man",
+      "kind": "character",
+      "names": [
+        "the visitor",
+        "the stranger"
+      ],
+      "visual": "Well-dressed nervous middle-aged clerk in a silk hat, apologetic and ill at ease."
+    }
+  ],
+  "voices": {
+    "kokoro": {
+      "narrator": {
+        "voice": "bm_george",
+        "speed": 1
+      },
+      "mr_white": {
+        "voice": "am_eric",
+        "speed": 0.93
+      },
+      "mrs_white": {
+        "voice": "af_sarah",
+        "speed": 0.96
+      },
+      "herbert": {
+        "voice": "am_puck",
+        "speed": 1.05
+      },
+      "morris": {
+        "voice": "am_michael",
+        "speed": 0.95
+      },
+      "company_man": {
+        "voice": "am_liam",
+        "speed": 1
+      }
+    },
+    "qwen3": {
+      "narrator": {
+        "design": "Calm, measured middle-aged male storyteller; low, warm register; unhurried fireside delivery."
+      },
+      "mr_white": {
+        "design": "Elderly Englishman around seventy; gruff, warm, weathered voice; slow deliberate speech with a slight tremor."
+      },
+      "mrs_white": {
+        "design": "Elderly Englishwoman; soft motherly voice that can turn sharp, keening and frantic; aged but strong."
+      },
+      "herbert": {
+        "design": "Young Englishman in his twenties; bright, teasing, confident tenor; quick and playful."
+      },
+      "morris": {
+        "design": "Middle-aged British soldier; deep weathered baritone; measured, haunted, formal."
+      },
+      "company_man": {
+        "design": "Middle-aged English clerk; careful, apologetic, nervous formal voice; quiet and precise."
+      }
+    },
+    "elevenlabs": {
+      "narrator": {
+        "candidates": [
+          "George",
+          "Brian",
+          "Daniel"
+        ],
+        "stability": 0.6,
+        "style": 0.15
+      },
+      "mr_white": {
+        "candidates": [
+          "George",
+          "Eric",
+          "Bill"
+        ],
+        "stability": 0.5,
+        "style": 0.4
+      },
+      "mrs_white": {
+        "candidates": [
+          "Alice",
+          "Matilda",
+          "Rachel"
+        ],
+        "stability": 0.4,
+        "style": 0.55
+      },
+      "herbert": {
+        "candidates": [
+          "Chris",
+          "Josh",
+          "Charlie"
+        ],
+        "stability": 0.45,
+        "style": 0.4
+      },
+      "morris": {
+        "candidates": [
+          "Archer",
+          "Arnold",
+          "Paul"
+        ],
+        "stability": 0.5,
+        "style": 0.35
+      },
+      "company_man": {
+        "candidates": [
+          "Eric",
+          "Daniel",
+          "Adam"
+        ],
+        "stability": 0.55,
+        "style": 0.3
+      }
+    },
+    "hybrid": {
+      "kokoro": "@kokoro",
+      "qwen3": "@qwen3",
+      "elevenlabs": "@elevenlabs",
+      "gemini": "@gemini"
+    },
+    "gemini": {
+      "narrator": {
+        "voice": "Charon",
+        "prompt": "AUDIO PROFILE: A fireside storyteller narrating a classic English ghost story. THE SCENE: A quiet study, late at night, reading aloud by lamplight. DIRECTOR NOTES: - Style: measured, warm, with quiet dread underneath. - Accent: neutral British. - Pace: unhurried, letting silences breathe."
+      }
+    }
+  },
+  "hints": [
+    {
+      "match": "I'm listening,",
+      "entity": "herbert"
+    },
+    {
+      "match": "Did you give him anything for it, father",
+      "entity": "mrs_white"
+    },
+    {
+      "match": "A trifle,",
+      "entity": "mr_white"
+    },
+    {
+      "match": "It moved,",
+      "entity": "mr_white"
+    },
+    {
+      "match": "Better let it burn",
+      "entity": "morris",
+      "emotion": {
+        "sadness": 0.5
+      }
+    },
+    {
+      "match": "He was caught in the machinery",
+      "entity": "company_man",
+      "emotion": {
+        "sadness": 0.6
+      }
+    },
+    {
+      "match": "I—was asked to call",
+      "entity": "company_man"
+    },
+    {
+      "match": "Is he hurt?",
+      "entity": "mrs_white",
+      "emotion": {
+        "fear": 0.7
+      }
+    },
+    {
+      "match": "Oh, thank God!",
+      "entity": "mrs_white",
+      "emotion": {
+        "surprise": 0.6
+      }
+    },
+    {
+      "match": "He was the only one left to us",
+      "entity": "mr_white",
+      "emotion": {
+        "sadness": 0.7
+      }
+    },
+    {
+      "match": "Caught in the machinery,",
+      "entity": "mr_white",
+      "emotion": {
+        "sadness": 0.6
+      }
+    },
+    {
+      "match": "The firm wished me to convey",
+      "entity": "company_man"
+    },
+    {
+      "match": "I beg that you will understand",
+      "entity": "company_man"
+    },
+    {
+      "match": "The paw!",
+      "entity": "mrs_white",
+      "emotion": {
+        "surprise": 0.7
+      }
+    },
+    {
+      "match": "The monkey's paw!",
+      "entity": "mrs_white",
+      "emotion": {
+        "surprise": 0.6
+      }
+    },
+    {
+      "match": "I want it",
+      "entity": "mrs_white",
+      "emotion": {
+        "sadness": 0.5
+      }
+    },
+    {
+      "match": "Go and get it and wish",
+      "entity": "mrs_white",
+      "emotion": {
+        "surprise": 0.6
+      }
+    },
+    {
+      "match": "Bring him back",
+      "entity": "mrs_white",
+      "emotion": {
+        "anger": 0.5,
+        "sadness": 0.5
+      }
+    },
+    {
+      "match": "Wish!",
+      "entity": "mrs_white",
+      "emotion": {
+        "anger": 0.7
+      }
+    },
+    {
+      "match": "It is foolish and wicked",
+      "entity": "mr_white",
+      "emotion": {
+        "fear": 0.6
+      }
+    },
+    {
+      "match": "I wish my son alive again",
+      "entity": "mr_white",
+      "emotion": {
+        "fear": 0.5,
+        "sadness": 0.5
+      }
+    },
+    {
+      "match": "What's that?",
+      "entity": "mrs_white",
+      "emotion": {
+        "fear": 0.7
+      }
+    },
+    {
+      "match": "A rat,",
+      "entity": "mr_white",
+      "emotion": {
+        "fear": 0.6
+      }
+    },
+    {
+      "match": "a rat. It passed me",
+      "entity": "mr_white",
+      "emotion": {
+        "fear": 0.6
+      }
+    },
+    {
+      "match": "It's Herbert!",
+      "entity": "mrs_white",
+      "emotion": {
+        "surprise": 0.8
+      }
+    },
+    {
+      "match": "What are you going to do?",
+      "entity": "mr_white",
+      "emotion": {
+        "fear": 0.5
+      }
+    },
+    {
+      "match": "It's my boy; it's Herbert",
+      "entity": "mrs_white",
+      "emotion": {
+        "anger": 0.6
+      }
+    },
+    {
+      "match": "For God's sake don't let it in",
+      "entity": "mr_white",
+      "emotion": {
+        "fear": 0.9
+      }
+    },
+    {
+      "match": "You're afraid of your own son",
+      "entity": "mrs_white",
+      "emotion": {
+        "anger": 0.7
+      }
+    },
+    {
+      "match": "Let me go. I'm coming",
+      "entity": "mrs_white",
+      "emotion": {
+        "sadness": 0.7
+      }
+    },
+    {
+      "match": "The bolt,",
+      "entity": "mrs_white",
+      "emotion": {
+        "fear": 0.7
+      }
+    },
+    {
+      "match": "Come down. I can't reach it",
+      "entity": "mrs_white",
+      "emotion": {
+        "fear": 0.7
+      }
+    }
+  ],
+  "chapters": [
+    {
+      "heading": "Part I",
+      "scenes": [
+        {
+          "id": "p1-parlor",
+          "anchor": "Without, the night was cold and wet",
+          "ambience": {
+            "type": "room-hum",
+            "intensity": 0.3
+          },
+          "characters": [
+            "mr_white",
+            "mrs_white",
+            "herbert"
+          ],
+          "visual": "Small snug English parlour at night, drawn blinds, bright coal fire, father and son at chess, white-haired old lady knitting."
+        },
+        {
+          "id": "p1-visit",
+          "anchor": "The old man rose with hospitable haste",
+          "ambience": {
+            "type": "room-hum",
+            "intensity": 0.35
+          },
+          "characters": [
+            "mr_white",
+            "mrs_white",
+            "herbert",
+            "morris"
+          ],
+          "visual": "The same parlour, a tall burly sergeant-major by the fire with whisky, family leaning in to listen to travel tales."
+        },
+        {
+          "id": "p1-wish",
+          "anchor": "Mr. White took the paw from his pocket and eyed it dubiously",
+          "ambience": {
+            "type": "room-hum",
+            "intensity": 0.28
+          },
+          "characters": [
+            "mr_white",
+            "mrs_white",
+            "herbert"
+          ],
+          "visual": "Fireside late evening, the mummified monkey's paw held up in a trembling right hand, family half-laughing half-afraid."
+        }
+      ],
+      "cues": [
+        {
+          "id": "p1-fire",
+          "sfx": "fireplace fire crackling",
+          "anchor": "the fire burned brightly",
+          "offset": 0.5,
+          "dur": 30,
+          "gain_db": -15
+        },
+        {
+          "id": "p1-wind",
+          "sfx": "wind howling",
+          "anchor": "Hark at the wind",
+          "offset": 0.2,
+          "gain_db": -12
+        },
+        {
+          "id": "p1-gate",
+          "sfx": "wooden gate slam bang",
+          "anchor": "the gate banged to loudly",
+          "offset": 0,
+          "gain_db": -8
+        },
+        {
+          "id": "p1-piano",
+          "sfx": "loud piano chord crash",
+          "anchor": "A fine crash from the piano",
+          "offset": 0,
+          "gain_db": -8
+        }
+      ]
+    },
+    {
+      "heading": "Part II",
+      "scenes": [
+        {
+          "id": "p2-morning",
+          "anchor": "In the brightness of the wintry sun next morning",
+          "ambience": {
+            "type": "roomtone-morning",
+            "intensity": 0.5
+          },
+          "characters": [
+            "mr_white",
+            "mrs_white",
+            "herbert"
+          ],
+          "visual": "Bright wintry breakfast table, sunlight streaming in, the shrivelled paw pitched carelessly on the sideboard."
+        },
+        {
+          "id": "p2-visitor",
+          "anchor": "His wife made no reply",
+          "ambience": {
+            "type": "room-hum",
+            "intensity": 0.25
+          },
+          "characters": [
+            "mr_white",
+            "mrs_white",
+            "company_man"
+          ],
+          "visual": "Parlour in afternoon light, a well-dressed stranger ill at ease, the old couple frozen with dread."
+        }
+      ],
+      "cues": [
+        {
+          "id": "p2-cutlery",
+          "sfx": "breakfast table dishes cutlery",
+          "anchor": "streamed over the breakfast table",
+          "offset": 0.8,
+          "gain_db": -16
+        }
+      ]
+    },
+    {
+      "heading": "Part III",
+      "scenes": [
+        {
+          "id": "p3-grief",
+          "anchor": "In the huge new cemetery, some two miles distant",
+          "ambience": {
+            "type": "room-hum",
+            "intensity": 0.2
+          },
+          "characters": [
+            "mr_white",
+            "mrs_white"
+          ],
+          "visual": "A house steeped in shadow and silence, two old people moving through empty rooms in mourning black."
+        },
+        {
+          "id": "p3-night",
+          "anchor": "It was about a week after that the old man",
+          "ambience": {
+            "type": "city-night",
+            "intensity": 0.35
+          },
+          "characters": [
+            "mr_white",
+            "mrs_white"
+          ],
+          "visual": "Cold dark bedroom at night, an old woman weeping at the window, candlelight."
+        },
+        {
+          "id": "p3-knocking",
+          "anchor": "Neither spoke, but lay silently listening to the ticking of the clock",
+          "ambience": {
+            "type": "city-night",
+            "intensity": 0.5
+          },
+          "characters": [
+            "mr_white",
+            "mrs_white"
+          ],
+          "visual": "Pitch-dark stairway and passage, a guttering match, frantic old hands hunting a talisman as knocking shakes the front door."
+        }
+      ],
+      "cues": [
+        {
+          "id": "p3-clock",
+          "sfx": "clock ticking in quiet room",
+          "anchor": "listening to the ticking of the clock",
+          "offset": 0.3,
+          "dur": 15,
+          "gain_db": -16,
+          "approval": "approved"
+        },
+        {
+          "id": "p3-knock1",
+          "sfx": "soft knock on door",
+          "anchor": "a knock, so quiet and stealthy",
+          "offset": 0.2,
+          "gain_db": -9
+        },
+        {
+          "id": "p3-knock3",
+          "sfx": "knocking on wooden door",
+          "anchor": "A third knock sounded through the house",
+          "offset": 0.1,
+          "gain_db": -6
+        },
+        {
+          "id": "p3-knock-loud",
+          "sfx": "loud knocking on door",
+          "anchor": "A loud knock resounded through the house",
+          "offset": 0.1,
+          "gain_db": -4
+        },
+        {
+          "id": "p3-chain",
+          "sfx": "door chain rattling metal bolt",
+          "anchor": "the chain rattle back",
+          "offset": 0.2,
+          "gain_db": -8
+        },
+        {
+          "id": "p3-fusillade",
+          "sfx": "frantic loud knocking pounding on door",
+          "anchor": "fusillade of knocks reverberated",
+          "offset": 0,
+          "gain_db": -3
+        },
+        {
+          "id": "p3-wind-final",
+          "sfx": "cold wind gust howl",
+          "anchor": "A cold wind rushed up the staircase",
+          "offset": 0.2,
+          "gain_db": -10
+        }
+      ],
+      "music": [
+        {
+          "id": "p3-dread",
+          "anchor": "It was about a week after that the old man",
+          "spec": "dark suspenseful cinematic underscore, creeping low strings, mounting dread, sparse and slow, no drums",
+          "dur": 90,
+          "gain_db": -7
+        }
+      ]
+    }
+  ],
+  "style": {
+    "name": "live-action (period film still)",
+    "phrase": "shot in the style of a photorealistic period-drama film still, moonlit interior, shallow depth of field, 35mm film grain",
+    "anchor": null,
+    "auto_generate": false
+  }
+}

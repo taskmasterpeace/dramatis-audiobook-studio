@@ -1,0 +1,90 @@
+{
+  "id": "sfx-proof",
+  "title": "SFX Proof",
+  "manuscript": "../../samples/sfx-proof.md",
+  "protagonist": null,
+  "entities": [
+    {
+      "id": "narrator",
+      "kind": "narrator",
+      "names": []
+    }
+  ],
+  "voices": {
+    "kokoro": {
+      "narrator": {
+        "voice": "bm_george",
+        "speed": 1
+      }
+    },
+    "hybrid": {
+      "kokoro": "@kokoro",
+      "elevenlabs": "@elevenlabs"
+    },
+    "elevenlabs": {
+      "narrator": {
+        "candidates": [
+          "Battlerap Algorithm",
+          "George"
+        ],
+        "model": "eleven_turbo_v2",
+        "stability": 0.5,
+        "style": 0.3
+      }
+    }
+  },
+  "hints": [],
+  "chapters": [
+    {
+      "heading": "Proof",
+      "scenes": [
+        {
+          "id": "proof-lot",
+          "anchor": "The rain hammered the empty parking lot",
+          "ambience": {
+            "type": "rain",
+            "intensity": 0.7
+          },
+          "characters": []
+        }
+      ],
+      "cues": [
+        {
+          "id": "px-cardoor",
+          "sfx": "car door slamming shut",
+          "anchor": "the car door slammed behind him",
+          "offset": 0,
+          "gain_db": -4
+        },
+        {
+          "id": "px-thunder",
+          "sfx": "thunder rumbling",
+          "anchor": "Thunder rolled somewhere far off",
+          "offset": 0.2,
+          "gain_db": -7
+        },
+        {
+          "id": "px-gunshot",
+          "sfx": "gunshot firing",
+          "anchor": "A gunshot cracked from inside",
+          "offset": 0,
+          "gain_db": -7
+        },
+        {
+          "id": "px-dog",
+          "sfx": "dog barking",
+          "anchor": "a dog began to bark",
+          "offset": 0.3,
+          "gain_db": -10
+        },
+        {
+          "id": "px-creak",
+          "sfx": "door creaking open slowly",
+          "anchor": "The rusted hinges creaked",
+          "offset": 0.1,
+          "gain_db": -6
+        }
+      ]
+    }
+  ]
+}

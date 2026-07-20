@@ -1,0 +1,551 @@
+{
+  "id": "the-signal-man",
+  "title": "The Signal-Man",
+  "author": "Charles Dickens · 1866 · public domain",
+  "manuscript": "../../samples/the-signal-man.md",
+  "protagonist": "signal_man",
+  "entities": [
+    {
+      "id": "narrator",
+      "kind": "narrator",
+      "names": []
+    },
+    {
+      "id": "signal_man",
+      "kind": "character",
+      "names": [
+        "he",
+        "the signal-man",
+        "His",
+        "him",
+        "man",
+        "himself"
+      ],
+      "visual": "A solitary signal-man who experiences strange visions."
+    },
+    {
+      "id": "engine_driver",
+      "kind": "character",
+      "names": [
+        "That man",
+        "Tom",
+        "driver"
+      ],
+      "visual": "The driver of the engine that strikes the signal-man."
+    }
+  ],
+  "voices": {
+    "kokoro": {
+      "narrator": {
+        "voice": "bm_george",
+        "speed": 1
+      },
+      "signal_man": {
+        "voice": "am_michael",
+        "speed": 1
+      },
+      "engine_driver": {
+        "voice": "af_sarah",
+        "speed": 1
+      }
+    },
+    "qwen3": {
+      "narrator": {
+        "design": "Calm, measured middle-aged male storyteller; low, warm register; unhurried delivery."
+      },
+      "signal_man": {
+        "design": "Voice matching: A solitary signal-man who experiences strange visions."
+      },
+      "engine_driver": {
+        "design": "Voice matching: The driver of the engine that strikes the signal-man."
+      }
+    },
+    "elevenlabs": {
+      "narrator": {
+        "candidates": [
+          "George",
+          "Brian",
+          "Daniel"
+        ],
+        "stability": 0.6,
+        "style": 0.15
+      },
+      "signal_man": {
+        "candidates": [
+          "George",
+          "Brian"
+        ],
+        "stability": 0.5,
+        "style": 0.35
+      },
+      "engine_driver": {
+        "candidates": [
+          "Alice",
+          "Matilda"
+        ],
+        "stability": 0.5,
+        "style": 0.35
+      }
+    },
+    "hybrid": {
+      "kokoro": "@kokoro",
+      "qwen3": "@qwen3",
+      "elevenlabs": "@elevenlabs"
+    }
+  },
+  "hints": [],
+  "chapters": [
+    {
+      "heading": "The Signal-Man",
+      "scenes": [
+        {
+          "id": "sc1",
+          "anchor": "\"HALLOA! Below there!\"",
+          "ambience": {
+            "type": "room-hum",
+            "intensity": 0.2
+          }
+        },
+        {
+          "id": "sc2",
+          "anchor": "He looked up at me without replying, and I looked down at hi",
+          "ambience": {
+            "type": "room-hum",
+            "intensity": 0.4
+          }
+        },
+        {
+          "id": "sc3",
+          "anchor": "I resumed my downward way, and stepping out upon the level o",
+          "ambience": {
+            "type": "room-hum",
+            "intensity": 0.6
+          }
+        },
+        {
+          "id": "sc4",
+          "anchor": "This was a lonesome post to occupy (I said), and it had rive",
+          "ambience": {
+            "type": "roomtone-morning",
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "sc5",
+          "anchor": "[Picture: The signal-man]",
+          "ambience": {
+            "type": "roomtone-morning",
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "sc6",
+          "anchor": "He thanked me, and went out at the door with me. \"I'll show ",
+          "ambience": {
+            "type": "room-hum",
+            "intensity": 0.4
+          }
+        },
+        {
+          "id": "sc7",
+          "anchor": "Punctual to my appointment, I placed my foot on the first no",
+          "ambience": {
+            "type": "roomtone-morning",
+            "intensity": 0.2
+          }
+        },
+        {
+          "id": "sc8",
+          "anchor": "\"One moonlight night,\" said the man, \"I was sitting here, wh",
+          "ambience": {
+            "type": "roomtone-morning",
+            "intensity": 0.5
+          }
+        },
+        {
+          "id": "sc9",
+          "anchor": "Resisting the slow touch of a frozen finger tracing out my s",
+          "ambience": {
+            "type": "roomtone-morning",
+            "intensity": 0.4
+          }
+        },
+        {
+          "id": "sc10",
+          "anchor": "\"This,\" he said, again laying his hand upon my arm, and glan",
+          "ambience": {
+            "type": "roomtone-morning",
+            "intensity": 0.6
+          }
+        },
+        {
+          "id": "sc11",
+          "anchor": "\"That very day, as a train came out of the tunnel, I noticed",
+          "ambience": {
+            "type": "roomtone-morning",
+            "intensity": 0.7
+          }
+        },
+        {
+          "id": "sc12",
+          "anchor": "He resumed. \"Now, sir, mark this, and judge how my mind is t",
+          "ambience": {
+            "type": "roomtone-morning",
+            "intensity": 0.8
+          }
+        },
+        {
+          "id": "sc13",
+          "anchor": "He bit his under lip as though he were somewhat unwilling, b",
+          "ambience": {
+            "type": "room-hum",
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "sc14",
+          "anchor": "We went in again, shut the door, and resumed our seats. I wa",
+          "ambience": {
+            "type": "roomtone-morning",
+            "intensity": 0.4
+          }
+        },
+        {
+          "id": "sc15",
+          "anchor": "When I saw him in this state, I saw that for the poor man's ",
+          "ambience": {
+            "type": "roomtone-morning",
+            "intensity": 0.3
+          }
+        },
+        {
+          "id": "sc16",
+          "anchor": "Next evening was a lovely evening, and I walked out early to",
+          "ambience": {
+            "type": "room-hum",
+            "intensity": 0.5
+          }
+        },
+        {
+          "id": "sc17",
+          "anchor": "Before pursuing my stroll, I stepped to the brink, and mecha",
+          "ambience": {
+            "type": "room-hum",
+            "intensity": 0.7
+          }
+        },
+        {
+          "id": "sc18",
+          "anchor": "With an irresistible sense that something was wrong,—with a ",
+          "ambience": {
+            "type": "room-hum",
+            "intensity": 0.8
+          }
+        },
+        {
+          "id": "sc19",
+          "anchor": "\"Signal-man killed this morning, sir.\"",
+          "ambience": {
+            "type": "room-hum",
+            "intensity": 0.9
+          }
+        },
+        {
+          "id": "sc20",
+          "anchor": "\"Coming round the curve in the tunnel, sir,\" he said, \"I saw",
+          "ambience": {
+            "type": "room-hum",
+            "intensity": 0.9
+          }
+        },
+        {
+          "id": "sc21",
+          "anchor": "Without prolonging the narrative to dwell on any one of its ",
+          "ambience": {
+            "type": "room-hum",
+            "intensity": 0.1
+          }
+        }
+      ],
+      "cues": [
+        {
+          "id": "cue_4",
+          "sfx": "low rumble, vibration",
+          "anchor": "He looked up at me without replying, and I l",
+          "gain_db": -15,
+          "dur": 1.5
+        },
+        {
+          "id": "cue_5",
+          "sfx": "heavy vibration, pulsation",
+          "anchor": "He looked up at me without replying, and I l",
+          "gain_db": -12,
+          "dur": 1
+        },
+        {
+          "id": "cue_6",
+          "sfx": "train rushing sound",
+          "anchor": "He looked up at me without replying, and I l",
+          "gain_db": -8,
+          "dur": 3
+        },
+        {
+          "id": "cue_8",
+          "sfx": "electric bell ringing",
+          "anchor": "His manner cleared, like my own. He replied ",
+          "gain_db": -10
+        },
+        {
+          "id": "cue_9",
+          "sfx": "crackling fire",
+          "anchor": "He took me into his box, where there was a f",
+          "gain_db": -18,
+          "dur": 5
+        },
+        {
+          "id": "cue_10",
+          "sfx": "telegraph ticking",
+          "anchor": "He took me into his box, where there was a f",
+          "gain_db": -16,
+          "dur": 3
+        },
+        {
+          "id": "cue_11",
+          "sfx": "small bell ringing",
+          "anchor": "He took me into his box, where there was a f",
+          "gain_db": -12
+        },
+        {
+          "id": "cue_12",
+          "sfx": "small bell ringing",
+          "anchor": "He took me into his box, where there was a f",
+          "gain_db": -12
+        },
+        {
+          "id": "cue_13",
+          "sfx": "train passing sound",
+          "anchor": "from time to time, and especially when he re",
+          "gain_db": -8,
+          "dur": 4
+        },
+        {
+          "id": "cue_14",
+          "sfx": "small bell ringing",
+          "anchor": "He took me into his box, where there was a f",
+          "gain_db": -12
+        },
+        {
+          "id": "cue_15",
+          "sfx": "creaking door opening",
+          "anchor": "In a word, I should have set this man down a",
+          "gain_db": -15
+        },
+        {
+          "id": "cue_16",
+          "sfx": "whistle blowing softly",
+          "anchor": "I'll show my white light, sir,",
+          "gain_db": -18
+        },
+        {
+          "id": "cue_18",
+          "sfx": "distant train approaching",
+          "anchor": "He wished me good-night, and held up his lig",
+          "gain_db": -10
+        },
+        {
+          "id": "cue_19",
+          "sfx": "distant clock chimes",
+          "anchor": "Punctual to my appointment, I placed my foot",
+          "gain_db": -15,
+          "dur": 3
+        },
+        {
+          "id": "cue_20",
+          "sfx": "whistle blowing softly",
+          "anchor": "Punctual to my appointment, I placed my foot",
+          "gain_db": -18
+        },
+        {
+          "id": "cue_21",
+          "sfx": "wooden door closing",
+          "anchor": "With that we walked side by side to his box,",
+          "gain_db": -12
+        },
+        {
+          "id": "cue_22",
+          "sfx": "crackling fire",
+          "anchor": "With that we walked side by side to his box,",
+          "gain_db": -18,
+          "dur": 5
+        },
+        {
+          "id": "cue_25",
+          "sfx": "lamp being handled",
+          "anchor": "I was sitting here, when I heard a voice cry",
+          "gain_db": -20
+        },
+        {
+          "id": "cue_26",
+          "sfx": "water dripping, trickling",
+          "anchor": "No. I ran on into the tunnel, five hundred y",
+          "gain_db": -18,
+          "dur": 4
+        },
+        {
+          "id": "cue_27",
+          "sfx": "wind howling, whistling",
+          "anchor": "do but listen for a moment to the wind in th",
+          "gain_db": -12,
+          "dur": 5
+        },
+        {
+          "id": "cue_28",
+          "sfx": "wind whistling through wires",
+          "anchor": "do but listen for a moment to the wind in th",
+          "gain_db": -14,
+          "dur": 5
+        },
+        {
+          "id": "cue_29",
+          "sfx": "light touch",
+          "anchor": "I asked his pardon, and he slowly added thes",
+          "gain_db": -20
+        },
+        {
+          "id": "cue_32",
+          "sfx": "wind wailing",
+          "anchor": "I could think of nothing to say, to any purp",
+          "gain_db": -10,
+          "dur": 5
+        },
+        {
+          "id": "cue_33",
+          "sfx": "low hum or click",
+          "anchor": "At the Danger-light.",
+          "gain_db": -16
+        },
+        {
+          "id": "cue_36",
+          "sfx": "small bell ringing insistently",
+          "anchor": "I have no peace or rest for it. It calls to ",
+          "gain_db": -10,
+          "dur": 3
+        },
+        {
+          "id": "cue_37",
+          "sfx": "small bell ringing, twice",
+          "anchor": "Twice.",
+          "gain_db": -12,
+          "dur": 2
+        },
+        {
+          "id": "cue_38",
+          "sfx": "unusual bell vibration",
+          "anchor": "I have never made a mistake as to that yet, ",
+          "gain_db": -14,
+          "dur": 1.5
+        },
+        {
+          "id": "cue_39",
+          "sfx": "footsteps on gravel",
+          "anchor": "Will you come to the door with me, and look ",
+          "gain_db": -16
+        },
+        {
+          "id": "cue_40",
+          "sfx": "creaking door opening",
+          "anchor": "In a word, I should have set this man down a",
+          "gain_db": -15
+        },
+        {
+          "id": "cue_41",
+          "sfx": "low hum or click",
+          "anchor": "At the Danger-light.",
+          "gain_db": -16
+        },
+        {
+          "id": "cue_42",
+          "sfx": "fabric rustling",
+          "anchor": "He pulled out his handkerchief, and wiped th",
+          "gain_db": -18
+        },
+        {
+          "id": "cue_43",
+          "sfx": "footsteps ascending path",
+          "anchor": "When I saw him in this state, I saw that for",
+          "gain_db": -16
+        },
+        {
+          "id": "cue_44",
+          "sfx": "gentle evening breeze",
+          "anchor": "Next evening was a lovely evening, and I wal",
+          "gain_db": -18,
+          "dur": 5
+        },
+        {
+          "id": "cue_45",
+          "sfx": "distant train whistle, mournful",
+          "anchor": "Before pursuing my stroll, I stepped to the ",
+          "gain_db": -14
+        },
+        {
+          "id": "cue_46",
+          "sfx": "footsteps on rough path",
+          "anchor": "With an irresistible sense that something wa",
+          "gain_db": -15
+        },
+        {
+          "id": "cue_48",
+          "sfx": "heavy impact, metal on metal",
+          "anchor": "He was cut down by an engine, sir. No man in",
+          "gain_db": -5
+        },
+        {
+          "id": "cue_49",
+          "sfx": "train whistle blowing loudly, then fading",
+          "anchor": "He was cut down by an engine, sir. No man in",
+          "gain_db": -7,
+          "dur": 4
+        },
+        {
+          "id": "cue_50",
+          "sfx": "train rumbling echo",
+          "anchor": "Coming round the curve in the tunnel, sir,",
+          "gain_db": -10,
+          "dur": 4
+        },
+        {
+          "id": "cue_51",
+          "sfx": "train whistle blowing",
+          "anchor": "I saw him at the end, like as if I saw him d",
+          "gain_db": -8
+        },
+        {
+          "id": "cue_52",
+          "sfx": "train whistle cutting off abruptly",
+          "anchor": "I saw him at the end, like as if I saw him d",
+          "gain_db": -10
+        },
+        {
+          "id": "cue_53",
+          "sfx": "train approaching rapidly",
+          "anchor": "I saw him at the end, like as if I saw him d",
+          "gain_db": -6,
+          "dur": 3
+        },
+        {
+          "id": "cue_56",
+          "sfx": "sharp intake of breath",
+          "anchor": "I was sitting here, when I heard a voice cry",
+          "gain_db": -12
+        },
+        {
+          "id": "cue_58",
+          "sfx": "train whistle blowing",
+          "anchor": "Without prolonging the narrative to dwell on",
+          "gain_db": -10
+        }
+      ]
+    }
+  ]
+}

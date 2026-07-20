@@ -1,0 +1,78 @@
+DRAMATIS
+Copyright 2026 Machine King Labs
+
+This product includes software developed by Machine King Labs, licensed under
+the Apache License, Version 2.0 (see LICENSE).
+
+================================================================================
+SCOPE OF THE APACHE-2.0 GRANT
+================================================================================
+
+The Apache-2.0 licence covers the SOURCE CODE in this repository. It does not
+purport to license the following, which are included for demonstration and
+carry their own terms:
+
+  samples/*.md         Manuscripts. The three classics are public domain (see
+                       below). Any other manuscript remains the property of its
+                       author and is NOT licensed for reuse.
+
+  actors/*/seed.wav    Voice reference clips synthesized by a text-to-speech
+                       model. Machine-generated audio with no human authorship
+                       is very likely not copyrightable in the United States
+                       (U.S. Copyright Office, "Copyright and Artificial
+                       Intelligence, Part 2: Copyrightability", January 2025),
+                       so no copyright is asserted over them and the Apache
+                       grant conveys nothing in respect of them. They are
+                       provided as-is so the casting pipeline is reproducible.
+
+  studio/app/logo.png  Project logo. Not licensed for use as a mark.
+
+================================================================================
+THIRD-PARTY COMPONENTS
+================================================================================
+
+DRAMATIS downloads and depends on the following at runtime. None of it is
+vendored into this repository.
+
+Kokoro-82M
+  https://huggingface.co/hexgrad/Kokoro-82M
+  Apache License 2.0. Used for narration.
+
+Qwen3-TTS and Qwen3-ForcedAligner
+  https://github.com/QwenLM
+  Apache License 2.0, Alibaba Cloud. Used for local character voices, voice
+  cloning, and word-level forced alignment.
+
+LAION-CLAP
+  https://github.com/LAION-AI/CLAP
+  Apache License 2.0. Used for text-to-audio retrieval of sound effects.
+
+kokoro-onnx
+  Installed from PyPI. NOTE: this package depends on phonemizer-fork, which is
+  licensed GPL-3.0 and calls espeak-ng. Nothing GPL is vendored or distributed
+  here — it is installed into the user's own Python environment at setup time.
+  Anyone REDISTRIBUTING DRAMATIS as a bundled binary (Docker image, Tauri or
+  Electron app, installer) must satisfy GPL-3.0 for that bundle, or swap the
+  phonemizer backend first.
+
+FSD50K
+  https://zenodo.org/records/4060432
+  Eduardo Fonseca, Xavier Favory, Jordi Pons, Frederic Font, Xavier Serra.
+  "FSD50K: an Open Dataset of Human-Labeled Sound Events."
+  IEEE/ACM Transactions on Audio, Speech, and Language Processing, 2022.
+
+  The DRAMATIS sound-effect corpus is built from the CC0-licensed subset of
+  FSD50K. Note that the FSD50K dataset AS A WHOLE is released under CC-BY 4.0,
+  which requires attribution regardless of the licences of individual clips —
+  hence this citation. FSD50K aggregates community recordings from Freesound
+  (https://freesound.org). If you extend the corpus beyond the CC0 subset, you
+  must honour each clip's own licence and its contributor's attribution terms.
+
+Public-domain manuscripts in samples/
+  "The Monkey's Paw", W. W. Jacobs, 1902.
+  "The Open Window", Saki (H. H. Munro), from the collection
+    "Beasts and Super-Beasts", 1914 (Project Gutenberg #269).
+  "The Signal-Man", Charles Dickens, 1866.
+  All are in the public domain in the United States and in life+70
+  jurisdictions. Project Gutenberg boilerplate has been removed; the texts
+  themselves carry no restrictions.

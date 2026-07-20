@@ -1,0 +1,28 @@
+out/
+node_modules/
+*.log
+models/
+corpus/
+.venv/
+__pycache__/
+
+# every env variant, not just .env — the key loader reads .env.local first,
+# so a single unignored variant would commit live keys
+.env
+.env.*
+.envrc
+!.env.example
+*.pem
+*.key
+secrets.json
+
+# internal working notes - kept locally, not published
+HANDOFF.md
+docs/TECHNICAL-HANDOVER.md
+
+# author's own unpublished novel - stays local
+samples/liu-xiao-protector-of-china.md
+books/liu-xiao/
+
+# internal engineering skills - kept private
+.claude/skills/
