@@ -45,7 +45,9 @@ test('public landing and production studio have separate routes', async (t) => {
 
   const landingCss = await fetch(`${base}/landing/landing.css`);
   assert.equal(landingCss.status, 200);
-  assert.match(await landingCss.text(), /prefers-reduced-motion/);
+  const landingCssText = await landingCss.text();
+  assert.match(landingCssText, /prefers-reduced-motion/);
+  assert.match(landingCssText, /\.site-nav\{[^}]*height:100vh/s, 'mobile menu must translate by a viewport-height box');
 
   for (const asset of ['landing.js', 'hero-scene.js']) {
     const script = await fetch(`${base}/landing/${asset}`);
