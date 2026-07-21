@@ -17,6 +17,8 @@ import { ENGINE_IDS, loadRenderer, availableEngines } from '../engines/tts/regis
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const APP = path.join(root, 'studio', 'app');
+const LANDING = path.join(root, 'studio', 'landing');
+const SHARED = path.join(root, 'studio', 'shared');
 const OUT = path.join(root, 'out');
 const BOOKS = path.join(root, 'books');
 const PORT = (() => { const i = process.argv.indexOf('--port'); return i > 0 ? +process.argv[i + 1] : 4600; })();
@@ -247,10 +249,15 @@ function serveMedia(req, res, urlPath) {
 }
 
 // ── static app ──────────────────────────────────────────────────────────────
-function serveStatic(res, urlPath) {
-  const file = path.resolve(APP, urlPath === '/' ? 'index.html' : '.' + urlPath);
-  if (!file.startsWith(APP) || !existsSync(file)) return json(res, 404, { error: 'not found' });
-  const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css' };
+function serveStatic(res, staticRoot, relativePath) {
+  const file = path.resolve(staticRoot, relativePath);
+  const insideRoot = file === staticRoot || file.startsWith(staticRoot + path.sep);
+  if (!insideRoot || !existsSync(file) || !statSync(file).isFile()) return json(res, 404, { error: 'not found' });
+  const types = {
+    '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png',
+    '.ico': 'image/x-icon', '.webp': 'image/webp', '.jpg': 'image/jpeg',
+  };
   res.writeHead(200, { 'Content-Type': types[path.extname(file)] || 'text/plain' });
   res.end(readFileSync(file));
 }
@@ -286,7 +293,11 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'audio/wav', 'Content-Length': statSync(file).size, 'Accept-Ranges': 'bytes' });
       return createReadStream(file).pipe(res);
     }
-    if (req.method === 'GET' && !p.startsWith('/api/')) return serveStatic(res, p);
+    if (req.method === 'GET' && p === '/') return serveStatic(res, LANDING, 'index.html');
+    if (req.method === 'GET' && p === '/studio') return serveStatic(res, APP, 'studio.html');
+    if (req.method === 'GET' && p.startsWith('/landing/')) return serveStatic(res, LANDING, decodeURIComponent(p.slice('/landing/'.length)));
+    if (req.method === 'GET' && p.startsWith('/shared/')) return serveStatic(res, SHARED, decodeURIComponent(p.slice('/shared/'.length)));
+    if (req.method === 'GET' && !p.startsWith('/api/')) return serveStatic(res, APP, decodeURIComponent(p.slice(1)));
 
     // ---- books ----
     if (req.method === 'GET' && p === '/api/books') {
