@@ -1,6 +1,6 @@
-# CLAUDE.md — working on DRAMATIS
+# CLAUDE.md — working on Audio Movie Studio
 
-DRAMATIS turns a manuscript into a full-cast cinematic audiobook on the user's
+Audio Movie Studio turns a manuscript into a full-cast cinematic audiobook on the user's
 own machine: every character gets a voice, sound effects land on the word that
 triggers them, ambience and score sit under the dialogue, output is a chaptered
 M4B. Public repo, Apache-2.0. This file is the handover: read it and you can

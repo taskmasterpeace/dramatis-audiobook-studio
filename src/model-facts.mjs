@@ -1,4 +1,4 @@
-// The model report card — every model DRAMATIS runs, evaluated, or rejected,
+// The model report card — every model Audio Movie Studio runs, evaluated, or rejected,
 // with the evidence for each grade. This feeds the Studio's Models view.
 //
 // RULES OF THIS FILE:

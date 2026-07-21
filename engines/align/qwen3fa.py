@@ -1,4 +1,4 @@
-# DRAMATIS forced-alignment sidecar (Qwen3-ForcedAligner-0.6B, Apache-2.0).
+# Audio Movie Studio forced-alignment sidecar (Qwen3-ForcedAligner-0.6B, Apache-2.0).
 # Manifest: [{ "id": "...", "wav": "...wav", "text": "..." }]
 # Writes JSON: { "<id>": [{ "word": "...", "start": 0.0, "end": 0.0 }] }
 import json

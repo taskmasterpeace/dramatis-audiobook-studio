@@ -1,4 +1,4 @@
-# DRAMATIS Qwen3-TTS engine — batch renderer.
+# Audio Movie Studio Qwen3-TTS engine — batch renderer.
 # Manifest: {
 #   "cacheRoot": "out",
 #   "entities": { "<id>": { "design": "<persona>" } | { "speaker": "Ryan" } },

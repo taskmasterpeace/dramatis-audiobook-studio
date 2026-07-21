@@ -43,7 +43,7 @@ function download(url, dest, expectBytes) {
 
 const python = process.platform === 'win32' ? '.venv\\Scripts\\python.exe' : '.venv/bin/python';
 
-console.log('DRAMATIS — model setup for the free local path\n');
+console.log('Audio Movie Studio — model setup for the free local path\n');
 mkdirSync(dir, { recursive: true });
 
 for (const [name, size] of FILES) {

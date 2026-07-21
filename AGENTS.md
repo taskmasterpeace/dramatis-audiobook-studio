@@ -2,10 +2,10 @@
 
 Two documents teach you this project — read them in this order:
 
-1. **[CLAUDE.md](CLAUDE.md)** — how to WORK ON DRAMATIS: the nine laws (each
+1. **[CLAUDE.md](CLAUDE.md)** — how to WORK ON Audio Movie Studio: the nine laws (each
    bought with a real incident), architecture, what to run, the pitfalls that
    already cost time.
-2. **[hub/agents.md](hub/agents.md)** — how to USE DRAMATIS from outside: the
+2. **[hub/agents.md](hub/agents.md)** — how to USE Audio Movie Studio from outside: the
    audio hub API (`npm run hub` → http://localhost:4701, which serves that same
    page at `GET /`). Characters, speech, engine truths, the consent law.
 

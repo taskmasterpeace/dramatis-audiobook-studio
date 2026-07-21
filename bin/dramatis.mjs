@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// DRAMATIS CLI:
+// Audio Movie Studio CLI:
 //   node bin/dramatis.mjs produce <book.json> [--chapter N] [--tts kokoro|qwen3|hybrid|elevenlabs]
 //   node bin/dramatis.mjs analyze <manuscript.md> [--book <id>] [--chapter N] [--llm ollama|openrouter]
 // Ingest -> Compile -> Cast -> Render -> Mix per chapter, then bind a
@@ -175,7 +175,7 @@ if (produced.length > 1) {
   for (const master of ['immersive', 'clean']) {
     const listFile = path.join(outRoot, `concat-${master}.txt`);
     writeFileSync(listFile, produced.map((p) => `file '${p.files[master].replace(/\\/g, '/')}'`).join('\n'));
-    const metaLines = [';FFMETADATA1', `title=${book.title} (${master})`, 'album=DRAMATIS render'];
+    const metaLines = [';FFMETADATA1', `title=${book.title} (${master})`, 'album=Audio Movie Studio render'];
     let pos = 0;
     for (const p of produced) {
       const startMs = Math.round(pos * 1000);

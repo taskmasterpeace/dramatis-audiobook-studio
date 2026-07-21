@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// DRAMATIS Audio Hub — the API other apps and AGENTS call. v1: characters + speech.
+// Audio Movie Studio Audio Hub — the API other apps and AGENTS call. v1: characters + speech.
 //   node hub/server.mjs [--port 4701]
 //
 // This is deliberately a THIRD entry point beside the CLI and the Studio: the
@@ -165,5 +165,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`DRAMATIS hub  http://localhost:${PORT}  (GET / is the agent guide)`);
+  console.log(`Audio Movie Studio hub  http://localhost:${PORT}  (GET / is the agent guide)`);
 });

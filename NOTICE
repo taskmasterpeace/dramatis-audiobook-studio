@@ -1,4 +1,4 @@
-DRAMATIS
+Audio Movie Studio
 Copyright 2026 Machine King Labs
 
 This product includes software developed by Machine King Labs, licensed under
@@ -31,7 +31,7 @@ carry their own terms:
 THIRD-PARTY COMPONENTS
 ================================================================================
 
-DRAMATIS downloads and depends on the following at runtime. None of it is
+Audio Movie Studio downloads and depends on the following at runtime. None of it is
 vendored into this repository.
 
 Kokoro-82M
@@ -50,13 +50,13 @@ LAION-CLAP
 ACE-Step 1.5 (optional)
   https://github.com/ACE-Step/ACE-Step-1.5
   MIT License (code and model weights). Optional free/local music engine; the
-  user installs it separately and DRAMATIS talks to its local API.
+  user installs it separately and Audio Movie Studio talks to its local API.
 
 kokoro-onnx
   Installed from PyPI. NOTE: this package depends on phonemizer-fork, which is
   licensed GPL-3.0 and calls espeak-ng. Nothing GPL is vendored or distributed
   here — it is installed into the user's own Python environment at setup time.
-  Anyone REDISTRIBUTING DRAMATIS as a bundled binary (Docker image, Tauri or
+  Anyone REDISTRIBUTING Audio Movie Studio as a bundled binary (Docker image, Tauri or
   Electron app, installer) must satisfy GPL-3.0 for that bundle, or swap the
   phonemizer backend first.
 
@@ -66,7 +66,7 @@ FSD50K
   "FSD50K: an Open Dataset of Human-Labeled Sound Events."
   IEEE/ACM Transactions on Audio, Speech, and Language Processing, 2022.
 
-  The DRAMATIS sound-effect corpus is built from the CC0-licensed subset of
+  The Audio Movie Studio sound-effect corpus is built from the CC0-licensed subset of
   FSD50K. Note that the FSD50K dataset AS A WHOLE is released under CC-BY 4.0,
   which requires attribution regardless of the licences of individual clips —
   hence this citation. FSD50K aggregates community recordings from Freesound

@@ -1,7 +1,7 @@
 {
-  "name": "dramatis",
+  "name": "audiomoviestudio",
   "version": "0.1.0",
-  "description": "Local-first full-cast cinematic audiobook studio. Manuscript in, produced audiobook out.",
+  "description": "Audio Movie Studio — local-first, full-cast cinematic story production.",
   "type": "module",
   "license": "Apache-2.0",
   "repository": {
@@ -23,6 +23,7 @@
     "local-first"
   ],
   "bin": {
+    "audiomoviestudio": "bin/dramatis.mjs",
     "dramatis": "bin/dramatis.mjs"
   },
   "scripts": {

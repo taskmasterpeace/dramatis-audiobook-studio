@@ -1,4 +1,4 @@
-# DRAMATIS — Audio Production Cost Report
+# Audio Movie Studio — Audio Production Cost Report
 
 **Date:** 2026-07-18 · **Scope:** three complete audiobooks produced end-to-end (audio only; motion/visual track deferred per directive)
 

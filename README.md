@@ -1,4 +1,4 @@
-# DRAMATIS
+# Audio Movie Studio
 
 **Turn a manuscript into a full-cast, cinematic audiobook — on your own machine.**
 
@@ -26,7 +26,7 @@ unpublished work, so it isn't included here.
   paragraph structure, A/B alternation, action beats), with golden-file tests so a
   heuristic tweak shows its blast radius in seconds instead of an audiobook listen.
 - **Casting is computed, not typed.** Describe a character in plain English and
-  DRAMATIS infers gender, age band and accent, then picks the best voice on *every*
+  Audio Movie Studio infers gender, age band and accent, then picks the best voice on *every*
   engine and lets you audition them side by side on the same line.
 - **Voices you keep.** Approve an audition and it becomes a company member — a seed
   clip plus the recipe that made it, saved to `actors/`. Pay once for a great voice on
@@ -42,7 +42,7 @@ unpublished work, so it isn't included here.
 
 ## Quickstart
 
-**Windows — just install it:** grab `DRAMATIS-Setup.exe` from
+**Windows — just install it:** grab `Audio-Movie-Studio-Setup.exe` from
 [Releases](https://github.com/taskmasterpeace/dramatis-audiobook-studio/releases).
 It installs per-user (no admin), then downloads everything it needs on first run —
 portable Node and ffmpeg only if your machine lacks them, the Python voice stack, and
@@ -51,7 +51,7 @@ Studio in your browser. The installer is unsigned for now, so SmartScreen will w
 *More info → Run anyway*.
 
 **Any platform — from source.** The free path: no keys, no network after setup, and
-no GPU. DRAMATIS has zero runtime npm dependencies; you need Node 20+, `ffmpeg` and
+no GPU. Audio Movie Studio has zero runtime npm dependencies; you need Node 20+, `ffmpeg` and
 `ffprobe` on your PATH, and a Python venv for the local voice models.
 
 ```bash
@@ -72,6 +72,10 @@ Or open the Studio and work visually:
 ```bash
 npm start                        # → http://localhost:4600
 ```
+
+The preferred installed command is `audiomoviestudio`. The legacy `dramatis` command
+remains a supported alias, and existing `DRAMATIS_*` environment variables continue
+to work unchanged so scripts and render caches do not break during the rebrand.
 
 The Studio is the whole app: a bookshelf, a casting room with every hireable voice,
 a voice designer, per-chapter render with a live console, and a listening room.
@@ -135,12 +139,12 @@ The human ear is the last check, never the first.
 picks. The same discipline applies to sound effects — cues are approved, swapped or
 rejected before they reach a mix.
 
-## Prior art, and where DRAMATIS differs
+## Prior art, and where Audio Movie Studio differs
 
-DRAMATIS was inspired by **[Castwright](https://github.com/dudarenok-maker/Castwright)**,
+Audio Movie Studio was inspired by **[Castwright](https://github.com/dudarenok-maker/Castwright)**,
 which got to multi-voice audiobook generation first and is a genuinely good piece of
 engineering — a local pipeline, a real analyzer, an Android companion app, and a
-release cadence most solo projects never manage. If DRAMATIS doesn't fit you, look at
+release cadence most solo projects never manage. If Audio Movie Studio doesn't fit you, look at
 it. This repository is clean-room with respect to it: no code, no docs, no
 configuration has been copied.
 
@@ -154,20 +158,20 @@ its output. What you may not do is offer it to others as a commercial product or
 service that competes with it. Each release converts to Apache-2.0 on its own second
 anniversary, rolling per release.
 
-DRAMATIS is Apache-2.0 today, for everything, permanently. Build a competing product
+Audio Movie Studio is Apache-2.0 today, for everything, permanently. Build a competing product
 on it if you want to. There is no delayed conversion, no competing-use clause, and no
 future version where the terms tighten. If your business can't sit on a licence that
 might matter in two years, that difference is the whole pitch.
 
 **The soundstage.** Castwright produces voices — as of v1.13.0 (July 2026) it has no
 sound-effects, ambience, or music layer, and none is on its roadmap. That is a
-difference in scope, not a deficiency. DRAMATIS is built around the idea that a
+difference in scope, not a deficiency. Audio Movie Studio is built around the idea that a
 full-cast audiobook is a *mix*: retrieved effects landed on the word that triggers
 them, ambience beds per scene, a score ducked under dialogue, and separate stems so
 any of it can be rebalanced.
 
 Where they're ahead, they're ahead: Castwright imports EPUB, PDF, MOBI and more, where
-DRAMATIS reads Markdown; it runs in five languages to our English; it exports to more
+Audio Movie Studio reads Markdown; it runs in five languages to our English; it exports to more
 formats; and its cast memory across a series is automatic where ours is manual. Both
 projects cache aggressively, both are local-first, both are multi-engine, and both
 make the cloud opt-in — those aren't differentiators in either direction.
@@ -191,7 +195,7 @@ Run the tests with `node --test`.
 
 ## Credits
 
-DRAMATIS stands on other people's work:
+Audio Movie Studio stands on other people's work:
 
 - **[Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M)** (Apache-2.0) — narration.
 - **[Qwen3-TTS](https://github.com/QwenLM)** and Qwen3-ForcedAligner (Apache-2.0,
@@ -207,7 +211,7 @@ Sample manuscripts are public domain: *The Monkey's Paw* (W. W. Jacobs, 1902),
 
 ## Voice cloning, responsibly
 
-DRAMATIS can clone a voice from a short reference clip. It ships **no celebrity
+Audio Movie Studio can clone a voice from a short reference clip. It ships **no celebrity
 voices and no recordings of real people** — the actors in `actors/` are model output,
 seeded from a text description.
 
@@ -228,5 +232,5 @@ restriction, no separate licence for competing with us.
 The grant covers the **code**. Sample manuscripts and the generated voice clips carry
 their own terms — see [NOTICE](NOTICE), which also holds the required attribution for
 FSD50K and the model weights, and one packaging caveat: `kokoro-onnx` pulls in a
-GPL-3.0 phonemizer, which matters if you ever redistribute DRAMATIS as a bundled
+GPL-3.0 phonemizer, which matters if you ever redistribute Audio Movie Studio as a bundled
 binary.

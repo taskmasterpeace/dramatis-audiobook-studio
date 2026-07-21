@@ -1,4 +1,4 @@
-# DRAMATIS Kokoro TTS engine - batch renderer (kokoro-onnx).
+# Audio Movie Studio Kokoro TTS engine - batch renderer (kokoro-onnx).
 # Reads a JSON manifest [{text, voice, speed, out}] and synthesizes each entry
 # to a 24 kHz WAV. Deterministic for identical inputs.
 #

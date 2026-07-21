@@ -31,7 +31,7 @@ async function ensureServer() {
   const dir = process.env.ACESTEP_DIR;
   if (!dir) {
     throw new Error('ACE-Step server not reachable. Start it (`uv run acestep-api` in your '
-      + 'ACE-Step-1.5 checkout) or set ACESTEP_DIR so DRAMATIS can start it for you.');
+      + 'ACE-Step-1.5 checkout) or set ACESTEP_DIR so Audio Movie Studio can start it for you.');
   }
   if (!spawned) {
     spawned = true;

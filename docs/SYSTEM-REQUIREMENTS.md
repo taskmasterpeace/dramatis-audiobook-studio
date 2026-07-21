@@ -1,4 +1,4 @@
-# DRAMATIS — System Requirements
+# Audio Movie Studio — System Requirements
 
 Two honest tiers: what it takes to RUN the app, and what it takes to run the
 LOCAL AI engines. The cloud engines (ElevenLabs, Gemini) work from

@@ -1,11 +1,11 @@
-# DRAMATIS first-run bootstrap — downloads everything the app needs to work.
+# Audio Movie Studio first-run bootstrap — downloads everything the app needs to work.
 # Runs after install (or on first launch if it hasn't completed yet).
 #
 # Nothing here is bundled inside the installer on purpose: the Python TTS stack
 # pulls in GPL-licensed pieces (espeak-ng via kokoro-onnx's phonemizer), which
 # are fine for YOU to install on your own machine but would not be fine for us
 # to redistribute inside an Apache-2.0 installer. So the installer ships only
-# DRAMATIS itself, and this script fetches the rest from each project's own
+# Audio Movie Studio itself, and this script fetches the rest from each project's own
 # official source:
 #   Node.js  (nodejs.org)         - only if your system doesn't have Node 20+
 #   ffmpeg   (gyan.dev)           - only if ffmpeg isn't already on your PATH
@@ -27,8 +27,8 @@ function Get-File($url, $dest) {
 }
 
 Write-Host ""
-Write-Host "DRAMATIS setup - fetching engines and models" -ForegroundColor Yellow
-Write-Host "============================================"
+Write-Host "Audio Movie Studio setup - fetching engines and models" -ForegroundColor Yellow
+Write-Host "========================================================"
 
 # ---- Node.js (>= 20) -------------------------------------------------------
 $nodeExe = 'node'

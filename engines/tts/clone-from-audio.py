@@ -16,7 +16,7 @@
 #     the distribution of the resulting audio, not just its creation.
 #   * If you clone a real person, record who consented and to what, alongside
 #     the seed clip, and honour any withdrawal of that consent.
-# DRAMATIS ships no celebrity voices and no recordings of real people.
+# Audio Movie Studio ships no celebrity voices and no recordings of real people.
 import os
 import pathlib
 import sys

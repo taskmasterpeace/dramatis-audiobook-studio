@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// DRAMATIS — free text → mp3, with a timer. Local Kokoro, $0, no API.
+// Audio Movie Studio — free text → mp3, with a timer. Local Kokoro, $0, no API.
 //   node say.mjs "Your text here"
 //   node say.mjs --file story.txt --voice af_sarah -o out.mp3
 //   node say.mjs "Hi there" --engine qwen3 --design "young excited woman"
@@ -30,7 +30,7 @@ const out = oi >= 0 ? args[oi + 1] : `out/say/say-${stamp}.mp3`;
 const eng = { kokoro: './engines/tts/kokoro.mjs', qwen3: './engines/tts/qwen3.mjs' }[engine];
 if (!eng) { console.log('engine must be kokoro or qwen3 (the free/local ones)'); process.exit(1); }
 
-console.log(`\n🎙  DRAMATIS say — ${text.length} chars, engine=${engine}, voice=${design ? 'design' : voice}`);
+console.log(`\n🎙  Audio Movie Studio say — ${text.length} chars, engine=${engine}, voice=${design ? 'design' : voice}`);
 const t0 = Date.now();
 const { renderLines } = await import(eng);
 const voices = engine === 'qwen3'

@@ -1,4 +1,4 @@
-# Build the DRAMATIS Windows installer.
+# Build the Audio Movie Studio Windows installer.
 #   powershell -File installer\build-installer.ps1
 # Stages ONLY git-tracked files (git archive), so local secrets, renders, models
 # and venvs can never leak into the EXE. Needs Inno Setup 6:

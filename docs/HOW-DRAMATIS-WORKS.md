@@ -1,6 +1,6 @@
-# How DRAMATIS Works — plain English
+# How Audio Movie Studio Works — plain English
 
-DRAMATIS turns a written story into a full-cast cinematic audiobook: a narrator,
+Audio Movie Studio turns a written story into a full-cast cinematic audiobook: a narrator,
 a different voice per character, sound effects, room ambience, and music —
 mixed and mastered. This is the map: every model, what it's for, and how the
 app uses it.

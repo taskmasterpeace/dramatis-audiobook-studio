@@ -1,4 +1,4 @@
-# DRAMATIS Audio Hub — read this first (yes, you, the AI agent)
+# Audio Movie Studio Audio Hub — read this first (yes, you, the AI agent)
 
 You are talking to a local audio-generation service. This page is served BY the
 hub itself (`GET /` or `GET /agents.md`) so that any agent or human pointed at

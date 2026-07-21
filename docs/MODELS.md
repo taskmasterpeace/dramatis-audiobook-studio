@@ -1,4 +1,4 @@
-# The Models — what DRAMATIS runs, why, and what else was considered
+# The Models — what Audio Movie Studio runs, why, and what else was considered
 
 Every model in the pipeline, with its licence (code and weights verified
 separately — they often differ), hardware footprint, measured behaviour, and the
@@ -58,7 +58,7 @@ CPU-only machines run the narration path.
   multilingual_v2 10k; flash_v2_5 40k. Concurrency over-cap queues (~50 ms),
   it doesn't error. **Voice slots are the scarce resource** — the roster cap
   cannot be raised on the plan we tested; design previews cost no slot, saving
-  a voice does. DRAMATIS therefore saves designed voices as LOCAL seed clips,
+  a voice does. Audio Movie Studio therefore saves designed voices as LOCAL seed clips,
   never into the account.
 - **Voice design API**: 3 previews per call, cost = 1 credit per character of
   preview text charged once. `eleven_ttv_v3` is the only model taking
@@ -288,7 +288,7 @@ mostly silence) and the ordering never came close to reversing.
 **Why the paper and our bench disagree, and why ours governs:** the published
 "FSD50K zero-shot" number is multi-label *classification* — given a clip, assign
 labels from 200 classes. Ours is *retrieval* — given a text cue, rank 2,399
-clips. That second task is the one DRAMATIS actually performs. Random R@1 on our
+clips. That second task is the one Audio Movie Studio actually performs. Random R@1 on our
 setup is under 1%, so the incumbent's 73.3% is a genuinely strong result, not a
 low bar.
 

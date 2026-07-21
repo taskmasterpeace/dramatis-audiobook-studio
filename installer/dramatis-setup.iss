@@ -1,4 +1,4 @@
-; DRAMATIS Studio — Windows installer (Inno Setup).
+; Audio Movie Studio — Windows installer (Inno Setup).
 ; Build with installer\build-installer.ps1 (stages tracked files via git archive,
 ; so a stray .env or out\ render can never end up inside the EXE).
 ;
@@ -7,7 +7,7 @@
 ; voice stack pulls GPL-licensed pieces we can distribute a DOWNLOADER for, but
 ; not redistribute ourselves inside an Apache-2.0 installer.
 
-#define MyAppName "DRAMATIS Studio"
+#define MyAppName "Audio Movie Studio"
 #define MyAppVersion "0.1.0"
 #define MyAppPublisher "Machine King Labs"
 #define MyAppURL "https://github.com/taskmasterpeace/dramatis-audiobook-studio"
@@ -19,11 +19,11 @@ AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}/issues
-DefaultDirName={autopf}\DRAMATIS
+DefaultDirName={autopf}\Audio Movie Studio
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir=Output
-OutputBaseFilename=DRAMATIS-Setup-{#MyAppVersion}
+OutputBaseFilename=Audio-Movie-Studio-Setup-{#MyAppVersion}
 SetupIconFile=dramatis.ico
 UninstallDisplayIcon={app}\installer\dramatis.ico
 Compression=lzma2
@@ -35,15 +35,15 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 
 [Files]
 Source: "staging\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
-Source: "staging\installer\launch.cmd"; DestDir: "{app}"; DestName: "DRAMATIS Studio.cmd"
+Source: "staging\installer\launch.cmd"; DestDir: "{app}"; DestName: "Audio Movie Studio.cmd"
 
 [Icons]
-Name: "{userprograms}\DRAMATIS Studio"; Filename: "{app}\DRAMATIS Studio.cmd"; WorkingDir: "{app}"; IconFilename: "{app}\installer\dramatis.ico"
-Name: "{userdesktop}\DRAMATIS Studio"; Filename: "{app}\DRAMATIS Studio.cmd"; WorkingDir: "{app}"; IconFilename: "{app}\installer\dramatis.ico"; Tasks: desktopicon
+Name: "{userprograms}\Audio Movie Studio"; Filename: "{app}\Audio Movie Studio.cmd"; WorkingDir: "{app}"; IconFilename: "{app}\installer\dramatis.ico"
+Name: "{userdesktop}\Audio Movie Studio"; Filename: "{app}\Audio Movie Studio.cmd"; WorkingDir: "{app}"; IconFilename: "{app}\installer\dramatis.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\installer\bootstrap.ps1"""; Description: "Download engines && voice models now (~700 MB, one time — recommended)"; Flags: postinstall runasoriginaluser
-Filename: "{app}\DRAMATIS Studio.cmd"; Description: "Launch DRAMATIS Studio"; Flags: postinstall shellexec nowait runasoriginaluser unchecked
+Filename: "{app}\Audio Movie Studio.cmd"; Description: "Launch Audio Movie Studio"; Flags: postinstall shellexec nowait runasoriginaluser unchecked
 
 [UninstallDelete]
 ; downloaded pieces the uninstaller wouldn't otherwise know about.

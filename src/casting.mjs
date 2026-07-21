@@ -1,5 +1,5 @@
 // Casting intelligence: turn a character's description into a VOICE RECIPE, and
-// declare what the gate must verify. This is "how DRAMATIS decides who to hire."
+// declare what the gate must verify. This is "how Audio Movie Studio decides who to hire."
 //
 // Determination has two sources, in order:
 //   1. Explicit fields on the character (gender/age/ethnicity/accent) — the LLM

@@ -1,9 +1,9 @@
 @echo off
-rem DRAMATIS Studio launcher — the Start Menu shortcut points here.
+rem Audio Movie Studio launcher — the Start Menu shortcut points here.
 rem Finishes first-run setup if it never completed, then starts the local
 rem Studio server and opens it in your browser. Closing this window stops
 rem the Studio.
-title DRAMATIS Studio
+title Audio Movie Studio
 cd /d "%~dp0"
 set "PATH=%~dp0runtime\node;%~dp0runtime\ffmpeg\bin;%PATH%"
 
@@ -25,7 +25,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo Starting DRAMATIS Studio at http://localhost:4600 ...
+echo Starting Audio Movie Studio at http://localhost:4600 ...
 start "" http://localhost:4600
 node studio\server.mjs
 echo.
