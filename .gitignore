@@ -33,5 +33,8 @@ installer/staging/
 runtime/
 .bootstrap-done
 
+# isolated agent feature work
+.worktrees/
+
 # business/platform strategy - private, never published
 docs/private/
