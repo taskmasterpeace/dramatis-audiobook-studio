@@ -3,13 +3,236 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Audio Movie Studio — Closed Beta</title>
+  <meta name="theme-color" content="#080C10">
+  <meta name="description" content="Audio Movie Studio turns manuscripts into full-cast cinematic audio with persistent characters, sound design, score, and production-ready masters.">
+  <title>Audio Movie Studio — Stories, fully produced</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=League+Gothic&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/shared/logo-mark.svg">
+  <link rel="stylesheet" href="/landing/landing.css">
 </head>
 <body>
-  <main>
-    <p>CLOSED BETA</p>
-    <h1>Audio Movie Studio</h1>
-    <a href="/studio">Open production studio</a>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="site-header" data-header>
+    <a class="header-brand" href="#top" aria-label="Audio Movie Studio home">
+      <img src="/shared/logo-horizontal.svg" alt="Audio Movie Studio">
+    </a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" data-menu>
+      <span></span><span></span><span></span><span class="sr-only">Menu</span>
+    </button>
+    <nav class="site-nav" id="site-nav" aria-label="Primary navigation" data-nav>
+      <a href="#for-creators">Who it's for</a>
+      <a href="#workflow">Workflow</a>
+      <a href="#platform">Platform</a>
+      <a class="nav-studio" href="/studio">Enter studio <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <div class="hero-stage" aria-hidden="true">
+        <div class="hero-rings"></div>
+        <canvas id="hero-canvas"></canvas>
+        <img class="hero-fallback" src="/shared/logo-mark.svg" alt="">
+        <div class="hero-vignette"></div>
+      </div>
+
+      <div class="hero-copy">
+        <div class="eyebrow load-in" style="--delay: .08s">
+          <span class="status-light"></span>
+          <span>CLOSED BETA</span>
+          <span class="eyebrow-rule"></span>
+          <span>LOCAL-FIRST PRODUCTION</span>
+        </div>
+        <h1 id="hero-title" class="load-in" style="--delay: .16s">
+          <span>Write the story.</span>
+          <span>Direct the performance.</span>
+          <span class="hero-accent">Build the world in sound.</span>
+        </h1>
+        <p class="hero-lede load-in" style="--delay: .25s">A complete production room for cinematic storytelling—full casts, persistent character voices, sound design, score, and masters assembled around every word.</p>
+        <div class="hero-actions load-in" style="--delay: .34s">
+          <a class="button button-primary" href="https://github.com/taskmasterpeace/dramatis-audiobook-studio/issues/new?title=Audio%20Movie%20Studio%20beta%20access" target="_blank" rel="noreferrer">
+            <span>Request beta access</span><span class="button-arrow" aria-hidden="true">↗</span>
+          </a>
+          <a class="button button-quiet" href="/studio"><span class="play-dot" aria-hidden="true">▶</span> Explore the studio</a>
+        </div>
+      </div>
+
+      <div class="hero-index load-in" style="--delay: .48s" aria-hidden="true">
+        <div><span>FORMAT</span><strong>M4B / WAV / MP4</strong></div>
+        <div><span>SESSION</span><strong>04 STEMS</strong></div>
+        <div><span>MODE</span><strong>LOCAL + ROUTED</strong></div>
+      </div>
+
+      <a class="scroll-cue" href="#for-creators" aria-label="Discover Audio Movie Studio">
+        <span>ROLL SOUND</span><i></i>
+      </a>
+    </section>
+
+    <div class="signal-strip" aria-hidden="true">
+      <span>MANUSCRIPT</span><i></i><span>CAST</span><i></i><span>PERFORMANCE</span><i></i><span>AMBIENCE</span><i></i><span>SOUND DESIGN</span><i></i><span>SCORE</span><i></i><span>MASTER</span>
+    </div>
+
+    <section class="section audience-section" id="for-creators" aria-labelledby="audience-title">
+      <div class="section-head reveal">
+        <p class="kicker">ONE STORY. THREE WAYS IN.</p>
+        <h2 id="audience-title">The room changes.<br>The standard doesn't.</h2>
+        <p>Whether you're bringing a novel to life, designing a scene, or shipping character audio into an app, every performance starts from the same production truth.</p>
+      </div>
+
+      <div class="audience-grid">
+        <article class="audience-card reveal" data-tilt>
+          <div class="card-number">01</div>
+          <div class="audience-icon" aria-hidden="true">
+            <svg viewBox="0 0 48 48"><path d="M9 8h23a7 7 0 0 1 7 7v25H16a7 7 0 0 1-7-7V8Z"/><path d="M16 16h15M16 23h15M16 30h9"/></svg>
+          </div>
+          <h3>Authors</h3>
+          <p>Turn chapters into directed, full-cast productions without surrendering the text—or the final cut.</p>
+          <ul><li>Speaker-aware manuscripts</li><li>Character-by-character casting</li><li>Chaptered immersive masters</li></ul>
+          <a href="#workflow">From page to production <span>→</span></a>
+        </article>
+
+        <article class="audience-card feature reveal" data-tilt>
+          <div class="card-number">02</div>
+          <div class="audience-icon" aria-hidden="true">
+            <svg viewBox="0 0 48 48"><path d="M7 14h34v25H7zM7 21h34M14 8l-7 6M27 8l-7 6M40 8l-7 6"/><path d="m22 27 8 4.5-8 4.5z"/></svg>
+          </div>
+          <h3>Filmmakers</h3>
+          <p>Previsualize dialogue, build sonic worlds, and carry the same cast from audition through final scene.</p>
+          <ul><li>Directed hero performances</li><li>Word-locked effects and ambience</li><li>Motion-comic ready timelines</li></ul>
+          <a href="#soundboard">Open the soundstage <span>→</span></a>
+        </article>
+
+        <article class="audience-card reveal" data-tilt>
+          <div class="card-number">03</div>
+          <div class="audience-icon" aria-hidden="true">
+            <svg viewBox="0 0 48 48"><path d="m18 13-10 11 10 11M30 13l10 11-10 11M27 8l-6 32"/></svg>
+          </div>
+          <h3>Developers</h3>
+          <p>Give products persistent characters through a local audio hub with repeatable voices and cached speech.</p>
+          <ul><li>Permanent character identities</li><li>Content-addressed generation</li><li>Simple local speech API</li></ul>
+          <a href="#platform">Meet the audio platform <span>→</span></a>
+        </article>
+      </div>
+    </section>
+
+    <section class="section workflow-section" id="workflow" aria-labelledby="workflow-title">
+      <div class="workflow-intro reveal">
+        <p class="kicker">THE PRODUCTION LINE</p>
+        <h2 id="workflow-title">Every beat has<br>a department.</h2>
+        <p>Your story travels through a real production pipeline. Every stage is inspectable, auditionable, and yours to direct.</p>
+      </div>
+
+      <ol class="pipeline" aria-label="Audio production workflow">
+        <li class="reveal"><span class="step-n">01</span><div class="step-mark">C</div><h3>Compile</h3><p>Structure the manuscript into scenes, speakers, and cues while preserving every source citation.</p></li>
+        <li class="reveal"><span class="step-n">02</span><div class="step-mark">C</div><h3>Cast</h3><p>Audition voices against age, register, accent, and the character you actually wrote.</p></li>
+        <li class="reveal"><span class="step-n">03</span><div class="step-mark">P</div><h3>Perform</h3><p>Route each line to the right performer—from fast local narration to directed hero moments.</p></li>
+        <li class="reveal"><span class="step-n">04</span><div class="step-mark">S</div><h3>Sound Design</h3><p>Place approved effects on the word that triggers them and hold ambience under the scene.</p></li>
+        <li class="reveal"><span class="step-n">05</span><div class="step-mark">M</div><h3>Mix</h3><p>Balance four independent stems with dialogue-safe ducking and editable scene control.</p></li>
+        <li class="reveal"><span class="step-n">06</span><div class="step-mark">M</div><h3>Master</h3><p>Deliver immersive and clean masters, bound into a chaptered production ready to publish.</p></li>
+      </ol>
+    </section>
+
+    <section class="section soundboard-section" id="soundboard" aria-labelledby="soundboard-title">
+      <div class="soundboard-copy reveal">
+        <p class="kicker">THE MIX IS A STORY</p>
+        <h2 id="soundboard-title">Direct every layer.<br>Protect every word.</h2>
+        <p>Dialogue is sacred. Everything beneath it moves with the scene—never over it. Audition cues, shape the atmosphere, and approve what reaches the mix.</p>
+        <div class="sound-proof">
+          <div><strong>−18</strong><span>LUFS<br>IMMERSIVE</span></div>
+          <div><strong>−19</strong><span>LUFS<br>CLEAN</span></div>
+          <div><strong>04</strong><span>EDITABLE<br>STEMS</span></div>
+        </div>
+      </div>
+
+      <div class="mix-console reveal" data-mixer>
+        <div class="console-head"><span>SESSION / CHAPTER 04</span><span class="console-live"><i></i> LIVE MIX</span></div>
+        <div class="timecode"><span>01:14:23:08</span><div class="transport-mini"><b></b><b></b><b class="active"></b></div></div>
+        <div class="timeline-ruler"><span>14:18</span><span>14:22</span><span>14:26</span><span>14:30</span></div>
+        <div class="stems">
+          <button class="stem active" type="button" data-stem="dialogue" aria-pressed="true">
+            <span class="stem-label"><b>DIALOGUE</b><small>CAST / 08</small></span>
+            <span class="wave wave-dialogue" aria-hidden="true"></span><span class="db">−3.2 dB</span>
+          </button>
+          <button class="stem" type="button" data-stem="ambience" aria-pressed="false">
+            <span class="stem-label"><b>AMBIENCE</b><small>RAIN ROOM</small></span>
+            <span class="wave wave-ambience" aria-hidden="true"></span><span class="db">−18.4 dB</span>
+          </button>
+          <button class="stem" type="button" data-stem="sfx" aria-pressed="false">
+            <span class="stem-label"><b>SFX</b><small>07 CUES</small></span>
+            <span class="wave wave-sfx" aria-hidden="true"></span><span class="db">−12.1 dB</span>
+          </button>
+          <button class="stem" type="button" data-stem="score" aria-pressed="false">
+            <span class="stem-label"><b>SCORE</b><small>UNDERSCORE 02</small></span>
+            <span class="wave wave-score" aria-hidden="true"></span><span class="db">−21.0 dB</span>
+          </button>
+        </div>
+        <div class="playhead" aria-hidden="true"><span></span></div>
+        <div class="console-foot"><span>48 kHz / 24-bit</span><span>Dialogue priority: <b>ON</b></span></div>
+      </div>
+    </section>
+
+    <section class="section character-section" id="platform" aria-labelledby="character-title">
+      <div class="character-visual reveal" aria-hidden="true">
+        <div class="voice-orbit orbit-one"></div><div class="voice-orbit orbit-two"></div>
+        <img src="/shared/logo-mark.svg" alt="">
+        <div class="voice-card voice-card-one"><i></i><span>CHARACTER 07</span><strong>IDENTITY LOCKED</strong></div>
+        <div class="voice-card voice-card-two"><i></i><span>CACHE STATUS</span><strong>PERFORMANCE READY</strong></div>
+      </div>
+      <div class="character-copy reveal">
+        <p class="kicker">CHARACTERS THAT STAY CAST</p>
+        <h2 id="character-title">A voice isn't a preset.<br>It's a performer.</h2>
+        <p>Hire a character once. Their seed clip becomes a durable identity that can return for every line, every chapter, and every product—with local generation and no per-line bill.</p>
+        <div class="feature-lines">
+          <div><span>01</span><p><strong>Audition before committing</strong>Hear the cast against the actual role before a voice enters production.</p></div>
+          <div><span>02</span><p><strong>Reuse without drift</strong>The immutable seed is the identity, ready for a sequel or another experience.</p></div>
+          <div><span>03</span><p><strong>Build through the hub</strong>Call persistent characters from games, tools, agents, and interactive scenes.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section local-section" aria-labelledby="local-title">
+      <div class="local-panel reveal">
+        <div class="local-topline"><span>PRODUCTION PHILOSOPHY</span><span>LOCAL / CONTROLLED / REPEATABLE</span></div>
+        <div class="local-layout">
+          <div>
+            <p class="kicker">LOCAL-FIRST BY DESIGN</p>
+            <h2 id="local-title">Your story stays<br>in your studio.</h2>
+          </div>
+          <p>Free local engines handle the daily work. Premium performance is routed only where your ear demands it. Every expensive result is content-addressed, so revising one line never means paying for the whole book again.</p>
+        </div>
+        <div class="local-facts">
+          <div><span class="fact-icon">⌂</span><strong>Local by default</strong><p>Manuscripts, actors, and masters remain on your machine.</p></div>
+          <div><span class="fact-icon">◎</span><strong>Premium by direction</strong><p>Paid engines enter only for the performances that need them.</p></div>
+          <div><span class="fact-icon">◇</span><strong>Cached by content</strong><p>Identical lines resolve instantly without repeat generation.</p></div>
+          <div><span class="fact-icon">✓</span><strong>Approved by ear</strong><p>Machine gates catch faults; your listening room makes the final call.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="closing" id="beta" aria-labelledby="closing-title">
+      <div class="closing-rings" aria-hidden="true"></div>
+      <img src="/shared/logo-mark.svg" alt="" class="closing-mark reveal">
+      <p class="kicker reveal">NOW CASTING / CLOSED BETA</p>
+      <h2 id="closing-title" class="reveal">Your next story<br>deserves a soundstage.</h2>
+      <p class="reveal">Audio Movie Studio is opening carefully to authors, filmmakers, and developers who want more than a synthetic read.</p>
+      <div class="closing-actions reveal">
+        <a class="button button-primary" href="https://github.com/taskmasterpeace/dramatis-audiobook-studio/issues/new?title=Audio%20Movie%20Studio%20beta%20access" target="_blank" rel="noreferrer"><span>Request beta access</span><span class="button-arrow">↗</span></a>
+        <span>Limited invitations.<br>Production-minded creators first.</span>
+      </div>
+    </section>
   </main>
+
+  <footer>
+    <a href="#top"><img src="/shared/logo-horizontal.svg" alt="Audio Movie Studio"></a>
+    <p>Full-cast stories. Cinematic sound. Built on your machine.</p>
+    <div><span>© 2026 Machine King Labs</span><a href="/studio">Production console</a><a href="https://github.com/taskmasterpeace/dramatis-audiobook-studio" target="_blank" rel="noreferrer">GitHub ↗</a></div>
+  </footer>
+
+  <noscript><style>.reveal{opacity:1!important;transform:none!important}.hero-fallback{opacity:1!important}</style></noscript>
+  <script type="module" src="/landing/landing.js"></script>
 </body>
 </html>
