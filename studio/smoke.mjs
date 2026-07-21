@@ -26,8 +26,11 @@ const until = async (fn, ms) => { const t0 = Date.now(); while (Date.now() - t0 
 try {
   check('server boots', await until(() => up, 8000));
 
-  const app = await fetch(base + '/');
-  check('GET / serves app', app.ok && (await app.text()).includes('DRAMATIS'));
+  const landing = await fetch(base + '/');
+  check('GET / serves landing page', landing.ok && (await landing.text()).includes('Audio Movie Studio'));
+
+  const app = await fetch(base + '/studio');
+  check('GET /studio serves production console', app.ok && (await app.text()).includes('Audio Movie Studio'));
 
   const books = await (await fetch(base + '/api/books')).json();
   check('GET /api/books lists books', Array.isArray(books.books) && books.books.length >= 3, `${books.books?.length} books`);

@@ -38,6 +38,15 @@ test('public landing and production studio have separate routes', async (t) => {
   const studioHtml = await studio.text();
   assert.equal(studio.status, 200);
   assert.match(studioHtml, /id="main"/);
+  assert.match(studioHtml, /Audio Movie Studio/);
+  assert.doesNotMatch(studioHtml, /\/logo\.png/);
+
+  for (const asset of ['logo-mark.svg', 'logo-horizontal.svg', 'logo-stacked.svg']) {
+    const logo = await fetch(`${base}/shared/${asset}`);
+    assert.equal(logo.status, 200, `${asset} should exist`);
+    assert.equal(logo.headers.get('content-type'), 'image/svg+xml');
+    assert.match(await logo.text(), /Audio Movie Studio/);
+  }
 
   const api = await fetch(`${base}/api/books`);
   assert.equal(api.headers.get('content-type'), 'application/json');

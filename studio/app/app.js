@@ -1,4 +1,4 @@
-/* DRAMATIS Studio — vanilla app. Filesystem truth via the local API. */
+/* Audio Movie Studio — vanilla app. Filesystem truth via the local API. */
 'use strict';
 
 // ── tiny helpers ────────────────────────────────────────────────────────────
@@ -643,7 +643,7 @@ function viewDesigner() {
     <div class="card" style="padding:16px;margin-bottom:14px">
       <div style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:13px">
         <b style="color:var(--text)">Describe the person. We work out the rest.</b>
-        DRAMATIS reads your description, decides gender, age band and accent, then picks the best
+        Audio Movie Studio reads your description, decides gender, age band and accent, then picks the best
         candidate on <b>every engine</b> — a directed Gemini take, the closest voice on your own
         ElevenLabs roster, a free local design, and a free preset. Hear them side by side, hire one.
         The take you approve becomes that actor's <b>seed clip</b>, so they can be re-hired in any

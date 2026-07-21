@@ -1,4 +1,4 @@
-/* DRAMATIS Studio — cool carbon graphite + signal cyan. No purple, no brown. */
+/* Audio Movie Studio — cool carbon graphite + signal cyan. No purple, no brown. */
 :root{
   --ink:#0D1116; --panel:#141A21; --raised:#1C242E; --sunk:#080C10;
   --line:#2A3644; --line-soft:#1F2933;
@@ -21,6 +21,9 @@ audio{height:30px;width:100%;filter:invert(0.9) hue-rotate(160deg) saturate(0.7)
 .app{display:flex;min-height:100vh}
 .rail{width:224px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--line-soft);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
 .brand{padding:18px 16px 12px;border-bottom:1px solid var(--line-soft)}
+.brand-home{display:block;border-radius:8px;transition:background .2s ease,transform .2s ease}
+.brand-home:hover{background:color-mix(in srgb,var(--cy) 4%,transparent);transform:translateY(-1px)}
+.studio-logo{width:100%;max-width:174px;height:auto;display:block;margin:0 auto -4px}
 .wordmark{font-weight:600;font-size:14px;letter-spacing:.32em}
 .wordmark b{color:var(--cy)}
 .brand small{display:block;margin-top:3px;color:var(--dim);font-size:10px;letter-spacing:.18em}

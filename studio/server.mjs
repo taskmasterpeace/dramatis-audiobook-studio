@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// DRAMATIS Studio — local cockpit server. Zero dependencies, localhost only.
+// Audio Movie Studio — local cockpit server. Zero dependencies, localhost only.
 //   node studio/server.mjs [--port 4600]
 // Filesystem is the database: books/ + out/ are read per request; mutations
 // write book.json atomically. Renders spawn bin/dramatis.mjs (one at a time).
@@ -838,5 +838,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`[studio] DRAMATIS Studio at http://localhost:${PORT} (root ${root})`);
+  console.log(`[studio] Audio Movie Studio at http://localhost:${PORT} (root ${root})`);
 });

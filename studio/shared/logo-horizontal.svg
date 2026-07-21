@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 190" role="img" aria-labelledby="title desc">
+  <title id="title">Audio Movie Studio</title>
+  <desc id="desc">Soundstage aperture symbol with the Audio Movie Studio wordmark.</desc>
+  <defs>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#F3F7F8"/><stop offset=".4" stop-color="#94A6AF"/><stop offset=".72" stop-color="#4D5E68"/><stop offset="1" stop-color="#DCE4E8"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#78F4F2"/><stop offset="1" stop-color="#1E9AA6"/></linearGradient>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <g transform="translate(4 -24) scale(.93)">
+    <circle cx="128" cy="128" r="92" fill="#0D1116" stroke="#26333C" stroke-width="2"/>
+    <g fill="none" stroke="url(#metal)" stroke-width="11" stroke-linecap="round"><path d="M128 45A83 83 0 0 1 200 86"/><path d="M211 128a83 83 0 0 1-41 72"/><path d="M128 211a83 83 0 0 1-72-41"/><path d="M45 128a83 83 0 0 1 41-72"/></g>
+    <circle cx="128" cy="128" r="65" fill="#080C10" stroke="#3EC5CF" stroke-opacity=".24"/>
+    <g fill="url(#cyan)"><rect x="82" y="109" width="14" height="38" rx="7" opacity=".72"/><rect x="104" y="82" width="14" height="92" rx="7" opacity=".88"/><rect x="126" y="63" width="14" height="130" rx="7"/><rect x="148" y="91" width="14" height="74" rx="7" opacity=".88"/><rect x="170" y="111" width="14" height="34" rx="7" opacity=".72"/></g>
+    <path d="M121 101v54l40-27z" fill="#0D1116" stroke="#DCE4E8" stroke-width="2.5" stroke-linejoin="round"/>
+    <circle cx="202" cy="62" r="8" fill="#3EC5CF" filter="url(#glow)"/>
+  </g>
+  <g transform="translate(218 47)">
+    <text fill="#DCE4E8" font-family="'Arial Narrow','Roboto Condensed',sans-serif" font-size="62" font-weight="700" letter-spacing="3">AUDIO MOVIE</text>
+    <path d="M4 76H525" stroke="#34424C"/>
+    <text x="5" y="112" fill="#3EC5CF" font-family="Arial,sans-serif" font-size="19" font-weight="600" letter-spacing="14">STUDIO</text>
+  </g>
+</svg>
