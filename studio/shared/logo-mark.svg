@@ -1,43 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
   <title id="title">Audio Movie Studio</title>
-  <desc id="desc">A soundstage aperture formed by a camera iris, waveform blades, and a play symbol.</desc>
+  <desc id="desc">A cinematic frame holding a five-bar waveform, the Sonic Frame mark.</desc>
   <defs>
-    <radialGradient id="halo" cx="50%" cy="45%" r="55%">
-      <stop offset="0" stop-color="#3EC5CF" stop-opacity=".3"/>
-      <stop offset=".62" stop-color="#19606A" stop-opacity=".1"/>
-      <stop offset="1" stop-color="#080C10" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#F3F7F8"/>
-      <stop offset=".38" stop-color="#9BACB5"/>
-      <stop offset=".72" stop-color="#53636D"/>
-      <stop offset="1" stop-color="#DCE4E8"/>
+    <linearGradient id="frame" x1="18" y1="14" x2="108" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F1F6F6"/><stop offset=".45" stop-color="#90A1A8"/><stop offset="1" stop-color="#43535B"/>
     </linearGradient>
-    <linearGradient id="cyan" x1="0" y1="0" x2="0" y2="1">
-      <stop stop-color="#78F4F2"/>
-      <stop offset="1" stop-color="#1E9AA6"/>
+    <linearGradient id="signal" x1="40" y1="33" x2="87" y2="96" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7AF1ED"/><stop offset="1" stop-color="#28AEB9"/>
     </linearGradient>
-    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
-      <feGaussianBlur stdDeviation="6" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   </defs>
-  <circle cx="128" cy="128" r="116" fill="url(#halo)"/>
-  <circle cx="128" cy="128" r="92" fill="#0D1116" stroke="#26333C" stroke-width="2"/>
-  <g fill="none" stroke="url(#metal)" stroke-width="11" stroke-linecap="round">
-    <path d="M128 45A83 83 0 0 1 200 86"/>
-    <path d="M211 128a83 83 0 0 1-41 72"/>
-    <path d="M128 211a83 83 0 0 1-72-41"/>
-    <path d="M45 128a83 83 0 0 1 41-72"/>
+  <path d="M27 13h58l30 30v58l-14 14H27l-14-14V27z" fill="#0D1116" stroke="url(#frame)" stroke-width="4"/>
+  <path d="M85 13v30h30M13 87h28v28" fill="none" stroke="#3EC5CF" stroke-width="4"/>
+  <path d="M29 31h27M72 99h27" stroke="#34464E" stroke-width="2"/>
+  <g stroke="url(#signal)" stroke-width="8" stroke-linecap="round" filter="url(#glow)">
+    <path d="M39 58v13" opacity=".68"/><path d="M51 45v39" opacity=".84"/><path d="M64 35v59"/><path d="M77 47v35" opacity=".84"/><path d="M89 58v13" opacity=".68"/>
   </g>
-  <circle cx="128" cy="128" r="65" fill="#080C10" stroke="#3EC5CF" stroke-opacity=".24"/>
-  <g fill="url(#cyan)">
-    <rect x="82" y="109" width="14" height="38" rx="7" opacity=".72"/>
-    <rect x="104" y="82" width="14" height="92" rx="7" opacity=".88"/>
-    <rect x="126" y="63" width="14" height="130" rx="7"/>
-    <rect x="148" y="91" width="14" height="74" rx="7" opacity=".88"/>
-    <rect x="170" y="111" width="14" height="34" rx="7" opacity=".72"/>
-  </g>
-  <path d="M121 101v54l40-27z" fill="#0D1116" stroke="#DCE4E8" stroke-width="2.5" stroke-linejoin="round"/>
-  <circle cx="202" cy="62" r="8" fill="#3EC5CF" filter="url(#glow)"/>
+  <circle cx="104" cy="101" r="4" fill="#D99A3D"/>
 </svg>

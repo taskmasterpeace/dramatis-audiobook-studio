@@ -16,21 +16,23 @@ Rename DRAMATIS to **Audio Movie Studio** and present it as a closed-beta creati
 
 ### Core message
 
-**Write the story. Direct the performance. Build the world in sound.**
+**Turn a manuscript into a movie for your ears.**
+
+**Cast every character. Direct every line. Score every scene.**
 
 Audio Movie Studio transforms manuscripts into full-cast cinematic productions with character voices, ambience, sound effects, score, and production-ready masters. Its audio platform also lets developers reuse persistent characters and generated assets in other experiences.
 
 ## Visual Identity
 
-### Logo: Soundstage Aperture
+### Logo: Sonic Frame
 
 The primary symbol combines three ideas in one compact geometric mark:
 
-1. An outer circular camera aperture represents filmmaking and direction.
-2. Three vertical waveform blades represent voice, sound design, and score.
-3. Negative space between the blades forms a subtle right-facing play triangle.
+1. A cut-corner cinematic frame represents filmmaking and direction.
+2. Five vertical waveform bars represent voice, sound design, and score.
+3. Cyan corner cuts suggest a production timeline moving through the frame.
 
-A small signal-cyan recording light provides a live-production cue. The icon must remain legible at favicon size and avoid detailed illustration, gradients that disappear at small sizes, microphones, masks, film strips, and literal reels.
+A small amber recording light provides a live-production cue. The icon must remain legible at favicon size and avoid detailed illustration, microphones, masks, film strips, literal reels, and generic play-button symbolism.
 
 The wordmark uses **AUDIO MOVIE** as the dominant line and **STUDIO** below in widely tracked technical lettering. The preferred lockup is horizontal for the landing-page header and stacked for the Studio sidebar.
 
@@ -62,13 +64,13 @@ The landing page is a new public-facing route, separate from the production cons
 
 ### Hero
 
-The hero fills the first viewport. A Three.js scene renders the Soundstage Aperture as metallic, layered geometry suspended in a dark volumetric space. Cyan energy travels through its waveform blades. Pointer movement produces restrained parallax, while scroll gently rotates and separates the layers.
+The hero fills the first viewport. A Three.js scene renders the Sonic Frame as metallic, layered geometry suspended between manuscript pages and four production stems. Cyan energy travels through its waveform bars. Pointer movement produces restrained parallax, while scroll gently rotates the composition.
 
 The content layer includes:
 
 - `CLOSED BETA` status badge
 - Audio Movie Studio wordmark
-- Headline: **Write the story. Direct the performance. Build the world in sound.**
+- Headline: **Turn a manuscript into a movie for your ears.**
 - A concise explanation of the manuscript-to-cinematic-audio system
 - Primary action: **Request beta access**
 - Secondary action: **Explore the studio**
@@ -122,7 +124,7 @@ The first rebrand release must not break existing users or integrations.
 ## Acceptance Criteria
 
 1. The public landing page clearly names Audio Movie Studio, states closed-beta status, and addresses all three audiences.
-2. The hero uses a performant Three.js Soundstage Aperture experience with reduced-motion and no-WebGL fallbacks.
+2. The hero uses a performant Three.js Sonic Frame experience with reduced-motion and no-WebGL fallbacks.
 3. The logo works as horizontal, stacked, icon, and favicon variants.
 4. The production Studio is visibly rebranded without losing its graphite-and-cyan production-console character.
 5. Existing `dramatis` CLI usage continues to work, while `audiomoviestudio` becomes available as the preferred command.
@@ -130,4 +132,3 @@ The first rebrand release must not break existing users or integrations.
 7. No purple appears anywhere in the new UI.
 8. Existing automated tests pass, and new landing-page/identity checks cover the primary routes and fallbacks.
 9. Desktop and mobile screenshots show no overflow, illegible text, missing assets, or layout collisions.
-

@@ -4,7 +4,7 @@
 
 **Goal:** Rebrand the product as Audio Movie Studio and ship an elegant closed-beta Three.js landing page for authors, filmmakers, and developers without breaking existing DRAMATIS integrations.
 
-**Architecture:** Keep the zero-build, zero-runtime-dependency Node server. Serve a new public site from `studio/landing/` at `/`, retain the production console from `studio/app/` at `/studio`, and share a hand-authored SVG logo system between them. Load a pinned Three.js browser module dynamically so the semantic page and static SVG fallback work without WebGL or network access.
+**Architecture:** Keep the zero-build, zero-runtime-dependency Node server. Serve a new public site from `studio/landing/` at `/`, retain the production console from `studio/app/` at `/studio`, and share a hand-authored SVG Sonic Frame logo system between them. Load a pinned Three.js browser module dynamically so the semantic page and static SVG fallback work without WebGL or network access.
 
 **Tech Stack:** Node.js 20+, `node:http`, vanilla HTML/CSS/ES modules, SVG, Three.js browser ESM, `node:test`, existing smoke runner.
 
@@ -81,9 +81,9 @@ Run: `node --test test/brand-routes.test.mjs`
 
 Expected: FAIL with 404 responses for `/shared/logo-*.svg`.
 
-- [ ] **Step 3: Draw the Soundstage Aperture SVG family**
+- [ ] **Step 3: Draw the Sonic Frame SVG family**
 
-Create a simple aperture ring, three waveform blades, negative-space play direction, and cyan recording light using only SVG paths, masks, and gradients. Horizontal and stacked lockups must embed the words `AUDIO MOVIE` and `STUDIO`; the mark must remain readable in a 32×32 viewport.
+Create a cut-corner cinematic frame, five waveform bars, cyan timeline cuts, and a restrained amber recording light using only SVG paths and gradients. Horizontal and stacked lockups must embed the full name `AUDIO MOVIE STUDIO`; the mark must remain readable in a 32×32 viewport.
 
 - [ ] **Step 4: Rebrand the production console**
 
@@ -133,9 +133,9 @@ Implement a sticky glass header, full-height hero, three audience cards, six-sta
 
 Implement IntersectionObserver reveals, mobile navigation, active stem selection, a lightweight pointer glow, and cleanup. Use native controls and real links; `Request beta access` should use a non-fabricated `mailto:` link until a beta backend exists.
 
-- [ ] **Step 5: Build the Three.js Soundstage Aperture**
+- [ ] **Step 5: Build the Three.js Sonic Frame**
 
-Dynamically import pinned Three.js from `https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js`. Construct the aperture from extruded rings, metallic waveform blades, a cyan emissive signal element, sparse dust points, and restrained pointer/scroll parallax. Cap renderer pixel ratio at 1.75, pause when the tab is hidden, resize with ResizeObserver, and return a disposer that releases geometry, materials, renderer, and listeners.
+Dynamically import pinned Three.js from `https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js`. Construct the Sonic Frame from an extruded cut-corner frame, metallic waveform bars, manuscript pages, production stems, sparse dust points, and restrained pointer/scroll parallax. Cap renderer pixel ratio, hide the compositor layer when the hero leaves view, pause when the tab is hidden, resize with ResizeObserver, and return a disposer that releases geometry, materials, renderer, and listeners.
 
 - [ ] **Step 6: Verify semantic and runtime routes**
 
@@ -227,7 +227,7 @@ Start the server and capture `/` at 1440×1000 and 390×844, plus `/studio` at 1
 
 - [ ] **Step 4: Test degraded experience**
 
-Disable JavaScript or block the Three.js CDN and verify the full landing copy, navigation, CTAs, and static Soundstage Aperture remain visible. Emulate reduced motion and confirm transitions and WebGL animation are disabled.
+Disable JavaScript or block the Three.js CDN and verify the full landing copy, navigation, CTAs, and static Sonic Frame remain visible. Emulate reduced motion and confirm transitions and WebGL animation are disabled.
 
 - [ ] **Step 5: Fix visual defects and rerun gates**
 
@@ -236,4 +236,3 @@ Apply focused fixes, then repeat `npm test`, `node studio/smoke.mjs`, and all th
 - [ ] **Step 6: Commit final polish if required**
 
 Run: `git add studio test && git commit -m "Polish Audio Movie Studio release"` only when Task 5 produced changes.
-

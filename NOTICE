@@ -25,7 +25,8 @@ carry their own terms:
                        grant conveys nothing in respect of them. They are
                        provided as-is so the casting pipeline is reproducible.
 
-  studio/app/logo.png  Project logo. Not licensed for use as a mark.
+  studio/shared/logo-*.svg and installer/audio-movie-studio.ico
+                       Project logo. Not licensed for use as a mark.
 
 ================================================================================
 THIRD-PARTY COMPONENTS

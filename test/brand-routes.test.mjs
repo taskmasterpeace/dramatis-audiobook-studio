@@ -34,13 +34,16 @@ test('public landing and production studio have separate routes', async (t) => {
   assert.equal(landing.status, 200);
   assert.match(landingHtml, /Audio Movie Studio/);
   assert.match(landingHtml, /CLOSED BETA/i);
-  assert.match(landingText, /Write the story\. Direct the performance\. Build the world in sound\./);
+  assert.match(landingText, /Turn a manuscript into a movie for your ears\./);
+  assert.match(landingHtml, /class="brand-name">Audio Movie Studio<\/span>/);
+  assert.match(landingText, /Cast every character\. Direct every line\. Score every scene\./);
   for (const audience of ['Authors', 'Filmmakers', 'Developers']) assert.match(landingHtml, new RegExp(audience));
   for (const stage of ['Compile', 'Cast', 'Perform', 'Sound Design', 'Mix', 'Master']) assert.match(landingHtml, new RegExp(stage));
   for (const stem of ['Dialogue', 'Ambience', 'SFX', 'Score']) assert.match(landingHtml, new RegExp(stem, 'i'));
   assert.match(landingHtml, /Request beta access/);
   assert.match(landingHtml, /href="\/studio"/);
   assert.match(landingHtml, /<canvas[^>]+id="hero-canvas"/);
+  assert.match(landingHtml, /data-hero-visual/);
   assert.match(landingHtml, /\/shared\/logo-mark\.svg/);
 
   const landingCss = await fetch(`${base}/landing/landing.css`);
@@ -53,6 +56,7 @@ test('public landing and production studio have separate routes', async (t) => {
     const script = await fetch(`${base}/landing/${asset}`);
     assert.equal(script.status, 200, `${asset} should exist`);
     assert.match(script.headers.get('content-type'), /text\/javascript/);
+    if (asset === 'landing.js') assert.match(await script.text(), /heroVisibilityObserver/);
   }
 
   const studio = await fetch(`${base}/studio`);
@@ -66,7 +70,9 @@ test('public landing and production studio have separate routes', async (t) => {
     const logo = await fetch(`${base}/shared/${asset}`);
     assert.equal(logo.status, 200, `${asset} should exist`);
     assert.equal(logo.headers.get('content-type'), 'image/svg+xml');
-    assert.match(await logo.text(), /Audio Movie Studio/);
+    const logoText = await logo.text();
+    assert.match(logoText, /Audio Movie Studio/);
+    assert.match(logoText, /frame.*waveform/i);
   }
 
   const api = await fetch(`${base}/api/books`);

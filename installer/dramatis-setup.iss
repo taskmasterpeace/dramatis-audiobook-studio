@@ -24,8 +24,8 @@ DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir=Output
 OutputBaseFilename=Audio-Movie-Studio-Setup-{#MyAppVersion}
-SetupIconFile=dramatis.ico
-UninstallDisplayIcon={app}\installer\dramatis.ico
+SetupIconFile=audio-movie-studio.ico
+UninstallDisplayIcon={app}\installer\audio-movie-studio.ico
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -38,8 +38,8 @@ Source: "staging\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
 Source: "staging\installer\launch.cmd"; DestDir: "{app}"; DestName: "Audio Movie Studio.cmd"
 
 [Icons]
-Name: "{userprograms}\Audio Movie Studio"; Filename: "{app}\Audio Movie Studio.cmd"; WorkingDir: "{app}"; IconFilename: "{app}\installer\dramatis.ico"
-Name: "{userdesktop}\Audio Movie Studio"; Filename: "{app}\Audio Movie Studio.cmd"; WorkingDir: "{app}"; IconFilename: "{app}\installer\dramatis.ico"; Tasks: desktopicon
+Name: "{userprograms}\Audio Movie Studio"; Filename: "{app}\Audio Movie Studio.cmd"; WorkingDir: "{app}"; IconFilename: "{app}\installer\audio-movie-studio.ico"
+Name: "{userdesktop}\Audio Movie Studio"; Filename: "{app}\Audio Movie Studio.cmd"; WorkingDir: "{app}"; IconFilename: "{app}\installer\audio-movie-studio.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\installer\bootstrap.ps1"""; Description: "Download engines && voice models now (~700 MB, one time — recommended)"; Flags: postinstall runasoriginaluser

@@ -23,7 +23,10 @@ test('compatibility-sensitive identifiers survive the visual rebrand', () => {
 });
 
 test('installer and launchers use the Audio Movie Studio display name', () => {
-  assert.match(read('installer/dramatis-setup.iss'), /#define MyAppName "Audio Movie Studio"/);
+  const installer = read('installer/dramatis-setup.iss');
+  assert.match(installer, /#define MyAppName "Audio Movie Studio"/);
+  assert.match(installer, /audio-movie-studio\.ico/);
+  assert.doesNotMatch(installer, /dramatis\.ico/);
   assert.match(read('start-studio.cmd'), /title Audio Movie Studio/);
   assert.match(read('installer/launch.cmd'), /Audio Movie Studio/);
 });

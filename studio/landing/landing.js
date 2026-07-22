@@ -60,6 +60,17 @@ if (!reduceMotion && matchMedia('(hover: hover)').matches) {
 
 let heroScene;
 const canvas = document.querySelector('#hero-canvas');
+const heroVisual = document.querySelector('[data-hero-visual]');
+const heroVisibilityObserver = heroVisual && 'IntersectionObserver' in window
+  ? new IntersectionObserver(([entry]) => {
+    // Chromium can retain a scrolled-off WebGL compositor layer over fixed UI.
+    // Removing it from paint outside the hero prevents header corruption and
+    // avoids spending GPU time on an invisible scene.
+    heroVisual.style.visibility = entry.isIntersecting ? 'visible' : 'hidden';
+  }, { threshold: 0.01 })
+  : null;
+
+heroVisibilityObserver?.observe(heroVisual);
 if (canvas && !reduceMotion) {
   import('/landing/hero-scene.js')
     .then(({ mountHeroScene }) => mountHeroScene(canvas))
@@ -73,4 +84,7 @@ if (canvas && !reduceMotion) {
     });
 }
 
-addEventListener('pagehide', () => heroScene?.destroy(), { once: true });
+addEventListener('pagehide', () => {
+  heroVisibilityObserver?.disconnect();
+  heroScene?.destroy();
+}, { once: true });
