@@ -5,6 +5,7 @@
 import path from 'node:path';
 import { existsSync, writeFileSync, readFileSync, mkdirSync, renameSync } from 'node:fs';
 import { chapterParagraphs, listChapters } from './compile.mjs';
+import { isVocal } from './vocal-guard.mjs';
 
 const KOKORO_ROTATION = ['am_michael', 'af_sarah', 'am_eric', 'af_nicole', 'am_puck', 'am_liam', 'am_adam', 'am_echo', 'af_bella', 'bm_lewis'];
 const ELEVEN_ROTATION = [['George', 'Brian'], ['Alice', 'Matilda'], ['Eric', 'Bill'], ['Sarah', 'Rachel'], ['Chris', 'Josh'], ['Archer', 'Daniel']];
@@ -117,11 +118,13 @@ function mergeAnalysis(book, analysis, chapterIdx, samplePath) {
   // Human-vocal "SFX" are categorically wrong: the cast performs the lines —
   // a voice cue double-casts the scene with a stranger from the library
   // (measured: "human voice calling out" retrieved a teacher yelling at a class).
-  const VOCAL = /\b(voice|voices|yell(?:ing)?|shout(?:ing)?|scream(?:s|ing)?|speech|talking|whisper(?:ing)?|murmur|says|saying|calling(?:\s+out)?|cries|crying|moan(?:ing)?|groan(?:ing)?|sob(?:bing)?|laugh(?:ter|ing)?|sing(?:ing)?|chant(?:ing)?|gasp(?:ing)?|wail(?:ing)?)\b/i;
+  // shared with the two RENDER-TIME guards (src/vocal-guard.mjs). This file
+  // used to own the only correct copy; the runtime guards had weaker ones and
+  // leaked, which is exactly why the regex now lives in one place.
   for (const c of analysis.cues || []) {
     const t = lineText[c.at_line];
     if (!t) continue;
-    if (VOCAL.test(c.sfx)) continue;
+    if (isVocal(c.sfx)) continue;
     cues.push({ id: c.id, sfx: c.sfx, anchor: t.slice(0, 44), gain_db: c.gain_db ?? -8, ...(c.dur ? { dur: c.dur } : {}) });
   }
   if (scenes.length) book.chapters[chapterIdx].scenes = scenes;

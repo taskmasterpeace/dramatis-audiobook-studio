@@ -5,6 +5,7 @@
 import path from 'node:path';
 import { existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { contentKey, cached, cachePath, ensureDir, ffmpeg, ffprobeDuration, pythonExe, pexecFile, log } from '../../src/util.mjs';
+import { isVocal } from '../../src/vocal-guard.mjs';
 import { renderBed as procgenBed } from './procgen.mjs';
 
 const ENGINE = 'amb-retrieve@1';
@@ -40,7 +41,15 @@ async function clapLookup(types, cacheRoot) {
     const res = JSON.parse(readFileSync(outFile, 'utf8'));
     for (const m of misses) {
       // prefer the longest clip among strong matches — beds loop better from length
-      const cands = (res[m.t] || []).filter((c) => c.score >= SIM_THRESHOLD);
+      // A BED IS THE WORST PLACE FOR A LEAKED VOICE: unlike a one-shot it is
+      // -stream_loop'd under the ENTIRE scene, so a clip of someone talking
+      // becomes a second, uninvited cast member for minutes at a time. This path
+      // had no vocal guard at all until 2026-07-27 while its own query table
+      // asked for "crowd of people murmuring". If the guard leaves nothing, the
+      // caller falls back to procgen — silence-shaped texture beats a stranger.
+      const cands = (res[m.t] || [])
+        .filter((c) => c.score >= SIM_THRESHOLD)
+        .filter((c) => !isVocal(c.caption || c.file || ''));
       for (const c of cands) c.dur = await ffprobeDuration(c.file).catch(() => 0);
       cands.sort((a, b) => (b.dur >= 6 ? b.score : b.score - 0.1) - (a.dur >= 6 ? a.score : a.score - 0.1) || b.dur - a.dur);
       const top = cands.find((c) => c.dur >= 4) || cands[0] || null;

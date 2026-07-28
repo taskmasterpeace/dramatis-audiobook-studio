@@ -7,6 +7,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { contentKey, cached, ffmpeg, pexecFile, pythonExe, log } from '../../src/util.mjs';
+import { VOCAL_RE } from '../../src/vocal-guard.mjs';
 import { renderSfx as procgen } from './procgen.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -63,8 +64,11 @@ export async function resolveSfx(cues, cacheRoot) {
   // Never place a clip that is actually human speech/vocals under a non-vocal
   // cue — the cast are the only voices in the mix. (A spec that explicitly asks
   // for vocals bypasses the guard.)
-  const VOCAL_CAP = /\b(scream|yell|shout|speech|talk(?:ing)?|voice|whisper|says|sing|choir|vocal|lecture|class(?:room)?|gasp|laugh|cries|crying|moan|groan|sob|chant|wail|crowd of people speaking)\b/i;
-  const VOCAL_SPEC = /\b(voice|yell|shout|scream|speech|talking|whisper|murmur|sing|chant|laugh)\b/i;
+  // Both sides now come from src/vocal-guard.mjs. This file used to carry its
+  // own bare-stem copy, which missed every inflection — "laughing", "voices",
+  // "singing" all sailed through and the re-rank below then PROMOTED them.
+  const VOCAL_CAP = VOCAL_RE;
+  const VOCAL_SPEC = VOCAL_RE;
   // noun-overlap re-rank: CLAP confuses acoustically-similar transients (measured:
   // "heavy door slam" top-1 was a GUNSHOT at 0.66). Among guard-passing candidates,
   // prefer one whose caption shares a content word with the spec.

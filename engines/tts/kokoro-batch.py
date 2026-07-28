@@ -133,8 +133,34 @@ def phoneme_chunks(kokoro, text, lang, budget=PHONEME_BUDGET):
             if n_ph(clause) <= budget:
                 pieces.append(clause)
                 continue
-            words, buf = clause.split(' '), ''
+            # Split on ANY whitespace, not just the ASCII space. The first fix
+            # for this crash used clause.split(' '), which was tested against a
+            # space-separated number list and shipped — newline- and tab-
+            # separated lists still produced a single 937-phoneme chunk and hit
+            # the exact IndexError the function exists to prevent (measured
+            # 2026-07-27). Quick Narrate and the hub pass user text through
+            # without collapsing whitespace, so this is reachable by paste.
+            words, buf = re.split(r'\s+', clause), ''
             for w in words:
+                if not w:
+                    continue
+                # A SINGLE token can exceed the budget on its own (a long URL, a
+                # 200-digit run, agglutinative text with no spaces at all). Break
+                # it on characters or it sails through every whitespace split
+                # above and reaches the model over-cap.
+                while n_ph(w) > budget:
+                    lo, hi = 1, len(w)
+                    while lo < hi:                     # longest prefix that fits
+                        mid = (lo + hi + 1) // 2
+                        if n_ph(w[:mid]) <= budget:
+                            lo = mid
+                        else:
+                            hi = mid - 1
+                    if buf:
+                        pieces.append(buf)
+                        buf = ''
+                    pieces.append(w[:lo])
+                    w = w[lo:]
                 trial = f'{buf} {w}'.strip()
                 if buf and n_ph(trial) > budget:
                     pieces.append(buf)

@@ -225,6 +225,29 @@ async function audition({ book: bookId, entity, engine, lineText }) {
   return { media: `/media/${rel}`, text, engine, entity, ms: Date.now() - t0, chars: text.length };
 }
 
+// Prefix check that cannot be fooled by a SIBLING directory sharing the name:
+// `startsWith(root)` alone lets ".../actors-tenants/x" pass a ".../actors" gate,
+// which would read another tenant's seed once actors-tenants/ exists (the hub
+// creates it). Comparing against root + separator is the only correct form.
+function underRoot(file, dirRoot) {
+  return file === dirRoot || file.startsWith(dirRoot + path.sep);
+}
+
+// One door for every static file the Studio streams. Born 2026-07-27: four
+// routes each did `existsSync` (NOT isFile) then `.pipe(res)` with no 'error'
+// handler, so `GET /actors/` raised an uncaught EISDIR and KILLED THE SERVER —
+// reachable from any web page via <img src="http://localhost:4600/actors/">,
+// orphaning a running render. isFile() is the guard; the 'error' handler and
+// the close-destroy are what keep one bad request from taking the process down.
+function sendFile(req, res, file, type) {
+  if (!existsSync(file) || !statSync(file).isFile()) return json(res, 404, { error: 'not found' });
+  res.writeHead(200, { 'Content-Type': type || 'application/octet-stream', 'Content-Length': statSync(file).size });
+  const s = createReadStream(file);
+  s.on('error', () => res.destroy());          // never an uncaught stream error
+  req.on('close', () => s.destroy());          // client hung up: release the fd
+  return s.pipe(res);
+}
+
 // ── media with Range support ────────────────────────────────────────────────
 function serveMedia(req, res, urlPath) {
   const rel = decodeURIComponent(urlPath.replace(/^\/media\//, ''));
@@ -235,16 +258,34 @@ function serveMedia(req, res, urlPath) {
   const type = types[path.extname(file)] || 'application/octet-stream';
   const range = req.headers.range && req.headers.range.match(/bytes=(\d*)-(\d*)/);
   if (range) {
-    const start = range[1] ? +range[1] : 0;
-    const end = range[2] ? +range[2] : size - 1;
+    // Every bound is CLAMPED and the range is validated BEFORE writeHead.
+    // Unclamped, `Range: bytes=99999999-` gave start > end, and createReadStream
+    // threw after the 206 was already sent — the catch then tried to write a JSON
+    // error, hit ERR_HTTP_HEADERS_SENT, and killed the process. A bad Range must
+    // cost one 416, never the server.
+    const suffix = !range[1] && range[2];              // "bytes=-500" = LAST 500
+    let start = suffix ? Math.max(0, size - +range[2]) : (range[1] ? +range[1] : 0);
+    let end = suffix ? size - 1 : (range[2] ? +range[2] : size - 1);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start >= size || start < 0) {
+      res.writeHead(416, { 'Content-Range': `bytes */${size}` });
+      return res.end();
+    }
+    end = Math.min(end, size - 1);
+    if (end < start) { res.writeHead(416, { 'Content-Range': `bytes */${size}` }); return res.end(); }
     res.writeHead(206, {
       'Content-Type': type, 'Accept-Ranges': 'bytes',
       'Content-Range': `bytes ${start}-${end}/${size}`, 'Content-Length': end - start + 1,
     });
-    createReadStream(file, { start, end }).pipe(res);
+    const s = createReadStream(file, { start, end });
+    s.on('error', () => res.destroy());
+    req.on('close', () => s.destroy());
+    s.pipe(res);
   } else {
     res.writeHead(200, { 'Content-Type': type, 'Content-Length': size, 'Accept-Ranges': 'bytes' });
-    createReadStream(file).pipe(res);
+    const s = createReadStream(file);
+    s.on('error', () => res.destroy());
+    req.on('close', () => s.destroy());
+    s.pipe(res);
   }
 }
 
@@ -273,25 +314,22 @@ const server = http.createServer(async (req, res) => {
       const rel = decodeURIComponent(p.replace(/^\/bookart\//, ''));
       const m2 = /^([a-z0-9-]+)\/([a-z0-9_.-]+)$/.exec(rel);
       const file = m2 ? path.resolve(BOOKS, m2[1], 'art', m2[2]) : '';
-      if (!m2 || !file.startsWith(BOOKS) || !existsSync(file)) return json(res, 404, { error: 'not found' });
+      if (!m2 || !underRoot(file, BOOKS)) return json(res, 404, { error: 'not found' });
       const types = { '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp' };
-      res.writeHead(200, { 'Content-Type': types[path.extname(file)] || 'application/octet-stream', 'Content-Length': statSync(file).size });
-      return createReadStream(file).pipe(res);
+      return sendFile(req, res, file, types[path.extname(file)]);
     }
     if (p.startsWith('/actors/')) { // company seeds + portraits
       const rel = decodeURIComponent(p.replace(/^\/actors\//, ''));
       const file = path.resolve(root, 'actors', rel);
-      if (!file.startsWith(path.join(root, 'actors')) || !existsSync(file)) return json(res, 404, { error: 'not found' });
+      if (!underRoot(file, path.join(root, 'actors'))) return json(res, 404, { error: 'not found' });
       const types = { '.wav': 'audio/wav', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.txt': 'text/plain', '.json': 'application/json' };
-      res.writeHead(200, { 'Content-Type': types[path.extname(file)] || 'application/octet-stream', 'Content-Length': statSync(file).size });
-      return createReadStream(file).pipe(res);
+      return sendFile(req, res, file, types[path.extname(file)]);
     }
     if (p.startsWith('/corpus/')) { // read-only library clips for swap auditions
       const rel = decodeURIComponent(p.replace(/^\/corpus\//, ''));
       const file = path.resolve(root, 'corpus', rel);
-      if (!file.startsWith(path.join(root, 'corpus')) || !existsSync(file)) return json(res, 404, { error: 'not found' });
-      res.writeHead(200, { 'Content-Type': 'audio/wav', 'Content-Length': statSync(file).size, 'Accept-Ranges': 'bytes' });
-      return createReadStream(file).pipe(res);
+      if (!underRoot(file, path.join(root, 'corpus'))) return json(res, 404, { error: 'not found' });
+      return sendFile(req, res, file, 'audio/wav');
     }
     if (req.method === 'GET' && p === '/') return serveStatic(res, LANDING, 'index.html');
     if (req.method === 'GET' && p === '/studio') return serveStatic(res, APP, 'studio.html');

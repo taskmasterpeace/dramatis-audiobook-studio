@@ -82,16 +82,34 @@ def unload(model):
     torch.cuda.empty_cache()
 
 
-def ref_path(cache_root, design, ref_text):
-    h = hashlib.sha1(f"{design}|{ref_text}".encode()).hexdigest()[:24]
+# The sentence a designed voice speaks in its reference clip. FIXED on purpose
+# (see ref_path): phonetically varied, emotionally neutral, no proper nouns, and
+# ~80 chars — the length that used to be selected for.
+REF_TEXT = ("They told me the road would be clear by morning, "
+            "but I have lived long enough to know better.")
+
+
+def ref_path(cache_root, design):
+    """One reference clip per DESIGN, for the life of the project.
+
+    THE INCIDENT (measured 2026-07-27): this used to hash design|ref_text, and
+    ref_text was picked from the lines in the current batch — which is only the
+    CACHE MISSES, and the CLI renders chapter by chapter. So every chapter chose
+    a different reference line, hashed to a different path, and generated a
+    brand-new VoiceDesign clip. VoiceDesign is non-deterministic, so the same
+    character came out as a genuinely different voice each chapter: the shipped
+    liu-xiao book had EIGHT reference clips for `liu` across its 8 chapters. The
+    register gate only checks gender, so male->male drift passed silently and
+    the only way to catch it was to listen across a chapter boundary.
+
+    Hashing the design alone makes a character's voice identity independent of
+    render order, batching, and interruption — which is what "the persona is
+    frozen per character" always claimed to mean.
+    """
+    h = hashlib.sha1(design.encode()).hexdigest()[:24]
     d = pathlib.Path(cache_root) / "voices" / "qwen3"
     d.mkdir(parents=True, exist_ok=True)
     return d / f"{h}.wav"
-
-
-def pick_ref_text(texts):
-    # a mid-length, representative line; deterministic for a fixed line set
-    return min(texts, key=lambda t: abs(len(t) - 80))[:240]
 
 
 def main(manifest_path):
@@ -114,9 +132,7 @@ def main(manifest_path):
     refs = {}
     for e in design_ids:
         ent = entities[e]
-        rt = pick_ref_text([ln["text"] for ln in by_entity[e]])
-        rp = ref_path(cache_root, ent["design"], rt)
-        refs[e] = (rp, rt)
+        refs[e] = (ref_path(cache_root, ent["design"]), REF_TEXT)
     for e in seed_ids:
         ent = entities[e]
         sp = pathlib.Path(ent["seed"])

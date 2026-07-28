@@ -3,7 +3,7 @@
 // line.emotion -> inline [tag] prepended to the text (Gemini interprets bracketed
 // modifiers natively). Content-addressed per line like every other engine.
 import { contentKey, cached, log, ffprobeDuration } from '../../src/util.mjs';
-import { writeFileSync, unlinkSync } from 'node:fs';
+import { writeFileSync, unlinkSync, renameSync } from 'node:fs';
 
 const ENGINE = 'gemini-tts@1';
 const MODEL = 'google/gemini-3.1-flash-tts';
@@ -145,19 +145,34 @@ function lengthBudget(chars) {
 async function synthJobGated(job, key) {
   const chars = job.chunks.reduce((n, c) => n + c.length, 0);
   const budget = lengthBudget(chars);
-  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
-    await synthJob(job, key);
-    // a probe failure must not kill a render — an unmeasurable clip is simply
-    // ungated, the same as before this gate existed
-    let got = null;
-    try { got = await ffprobeDuration(job.out); } catch { return; }
-    if (!(got > budget)) return;
-    log('render:tts', `WARN gemini [${job.lineId} / ${job.entity}]: ${got.toFixed(1)}s for ${chars} chars `
-      + `(budget ${budget.toFixed(1)}s) — the direction may have been read aloud; re-rolling (${attempt}/${ATTEMPTS})`);
+  // Render to a PENDING path and publish to the content-addressed key only once
+  // the gate passes. Writing straight to job.out meant a refused render still
+  // landed at the cache key: the gate threw, but the next run reported "cache
+  // hit" and shipped the exact over-long audio the gate had rejected — law 1
+  // defeated by law 5's own mechanism (measured 2026-07-27). The rename is the
+  // publish step, so an interrupted render can never become a permanent hit.
+  const finalOut = job.out;
+  const pending = finalOut.replace(/\.wav$/, '.pending.wav');
+  const publish = () => { renameSync(pending, finalOut); };
+  const discard = () => { try { unlinkSync(pending); } catch { /* already gone */ } };
+
+  try {
+    for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+      await synthJob({ ...job, out: pending }, key);
+      // a probe failure must not kill a render — an unmeasurable clip is simply
+      // ungated, the same as before this gate existed
+      let got = null;
+      try { got = await ffprobeDuration(pending); } catch { publish(); return; }
+      if (!(got > budget)) { publish(); return; }
+      log('render:tts', `WARN gemini [${job.lineId} / ${job.entity}]: ${got.toFixed(1)}s for ${chars} chars `
+        + `(budget ${budget.toFixed(1)}s) — the direction may have been read aloud; re-rolling (${attempt}/${ATTEMPTS})`);
+    }
+    throw new Error(`gemini [line ${job.lineId}, entity '${job.entity}']: ${ATTEMPTS} renders all ran far longer `
+      + `than the text warrants (${chars} chars, budget ${budget.toFixed(1)}s) — the style prompt is probably being `
+      + `spoken aloud. Shorten or re-word the voice prompt for this character. Prompt was: ${job.prompt.slice(-160)}`);
+  } finally {
+    discard();   // rejected or crashed: nothing rejected is left anywhere
   }
-  throw new Error(`gemini [line ${job.lineId}, entity '${job.entity}']: ${ATTEMPTS} renders all ran far longer `
-    + `than the text warrants (${chars} chars, budget ${budget.toFixed(1)}s) — the style prompt is probably being `
-    + `spoken aloud. Shorten or re-word the voice prompt for this character. Prompt was: ${job.prompt.slice(-160)}`);
 }
 
 export async function renderLines(lines, voices, cacheRoot) {
