@@ -54,7 +54,9 @@ source of truth for engine ids, limits, chunking) →
 **Align** (`src/align.mjs`, word onsets; an enhancement — failures degrade to
 line-start cue placement, never kill a render) →
 **Mix** (`src/mix.mjs` — 4 stems: dialog/ambience/SFX/music, sidechain ducking,
-dialog sacred) → **Master** (immersive −18 LUFS + clean −19) → **Bind** (M4B).
+dialog sacred) → **Master** (`src/master.mjs` — measure with ebur128, then ONE
+linear gain; immersive −18 LUFS + clean −19, verified or the render fails) →
+**Bind** (M4B).
 The Studio (`studio/server.mjs` + `studio/app/` — zero-dependency node:http +
 vanilla JS, no build step) is a cockpit over the same files. The filesystem is
 the database: `books/<id>/book.json` is config, `out/` is renders, `actors/` is
@@ -63,7 +65,7 @@ the saved voice company (seed clip + recipe = a re-hirable actor).
 ## What to run
 
 ```
-npm test                 # 15 tests incl. attribution snapshots + Gemini tag safety
+npm test                 # 39 tests incl. attribution snapshots, Gemini tag safety, master gate
 node studio/smoke.mjs    # 13 integration checks against a live server
 npm start                # Studio → http://localhost:4600
 npm run doctor           # what's installed/missing, per dependency and engine
@@ -99,6 +101,18 @@ dial is also a pitch dial). Seed Audio (fal): researched for trailers/set-pieces
   files with the Bash tool's `sed`, not `node -e` through PowerShell.
 - **`node --test test/` (directory form) is broken on Node 25** — use bare
   `npm test` (the package script globs correctly).
+- **`loudnorm` in one pass is a COMPRESSOR, not a gain stage.** Without
+  `measured_I`/`measured_TP`/`measured_LRA`/`measured_thresh` it runs in dynamic
+  mode and says so (`print_format=json` → `"normalization_type":"dynamic"`).
+  Measured 2026-07-28 on a real 4-stem mix: it missed its target by 1.9 LU and
+  destroyed 4.7 LU of dialogue range. Masters measure with `ebur128`, then apply
+  ONE `volume=<gain>dB`. Related: loudnorm's own `input_i` reads ~0.5 LU off
+  `ebur128` (so even 2-pass lands hot), and it resamples output to 192 kHz.
+- **Loudness measurement has exactly one caller-visible convention.** Our masters
+  are mono, and ffmpeg reads mono 3.01 dB quieter without `dualmono=true`
+  (measured: −16.7 vs −13.7 LUFS on one file). `measureLoudness()` in
+  `src/util.mjs` owns it; the gain stage and the gate that verifies it must both
+  go through that helper or they disagree with themselves by 3 LU.
 - **Line endings are correctness here**: `.gitattributes` forces LF because
   `compile.mjs` cites by raw character offset; CRLF checkouts shifted every
   citation and broke snapshot tests with a baffling "0 lines changed" diff.

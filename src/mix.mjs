@@ -2,7 +2,8 @@
 // sidechain-ducked 4-stem mix -> Immersive + Clean masters.
 import { writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { ffmpeg, ffprobeDuration, measureLoudness, ensureDir, log, speakable } from './util.mjs';
+import { ffmpeg, ffprobeDuration, ensureDir, log, speakable } from './util.mjs';
+import { master, IMMERSIVE, CLEAN } from './master.mjs';
 import { alignLines } from './align.mjs';
 import { renderBeds } from '../engines/ambience/retrieve.mjs';
 import { resolveSfx } from '../engines/sfx/retrieve.mjs';
@@ -166,24 +167,26 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
   const musicStem = path.join(outDir, 'stem-music.wav');
   await overlay(musicShots, total, musicStem);
 
-  // 5) masters (per-chapter .m4a; the book binder assembles chaptered .m4b)
-  const immersive = path.join(outDir, 'immersive.m4a');
+  // 5) masters (per-chapter .m4a; the book binder assembles chaptered .m4b).
+  // The 4-stem bus lands on disk unmastered first, because the master stage
+  // has to MEASURE what it is about to normalize — see src/master.mjs for why
+  // a filter that normalizes in one pass is a compressor, not a gain stage.
+  const premaster = path.join(outDir, 'premaster-immersive.wav');
   await ffmpeg([
     '-i', dialogStem, '-i', ambienceStem, '-i', sfxStem, '-i', musicStem,
     '-filter_complex',
     `[1:a]volume=${AMB_GAIN_DB}dB[ambq];[3:a]volume=${MUS_GAIN_DB}dB[musq];` +
     `[ambq][0:a]${DUCK}[duckedA];[musq][0:a]${DUCK}[duckedM];` +
-    `[0:a][duckedA][2:a][duckedM]amix=inputs=4:duration=first:normalize=0,` +
-    `loudnorm=I=-18:TP=-2:LRA=11[out]`,
-    '-map', '[out]', '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
-    '-metadata', `title=${script.chapter}`, immersive,
+    `[0:a][duckedA][2:a][duckedM]amix=inputs=4:duration=first:normalize=0[out]`,
+    '-map', '[out]', '-ar', '48000', '-ac', '1', premaster,
   ]);
+  const immersive = path.join(outDir, 'immersive.m4a');
+  const immersiveMaster = await master(premaster, immersive, IMMERSIVE,
+    ['-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-metadata', `title=${script.chapter}`]);
+  // the clean master's premaster is the dialog stem itself — already on disk
   const clean = path.join(outDir, 'clean.m4a');
-  await ffmpeg([
-    '-i', dialogStem, '-af', 'loudnorm=I=-19:TP=-3:LRA=9',
-    '-c:a', 'aac', '-b:a', '96k', '-ar', '44100',
-    '-metadata', `title=${script.chapter} (clean)`, clean,
-  ]);
+  const cleanMaster = await master(dialogStem, clean, CLEAN,
+    ['-c:a', 'aac', '-b:a', '96k', '-ar', '44100', '-metadata', `title=${script.chapter} (clean)`]);
 
   // 5) read-along timing + per-line QA (dead air / runaway duration)
   const flags = timeline.filter((l) => {
@@ -201,11 +204,24 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
     beds: bedReport,
     cues: cueReport,
     music: musicReport,
-    immersive: { file: immersive, ...(await measureLoudness(immersive)) },
-    clean: { file: clean, ...(await measureLoudness(clean)) },
+    // master() already measured its own output — re-measuring a full chapter
+    // twice buys nothing, and a second measurement is a second chance to drift
+    immersive: masterQa(immersiveMaster),
+    clean: masterQa(cleanMaster),
   };
   writeFileSync(path.join(outDir, 'qa-report.json'), JSON.stringify(qa, null, 2));
   return { qa, files: { immersive, clean }, durationSec: total };
+}
+
+// Flatten a master result for the QA report. The measured numbers stay at the
+// top level because the CLI summary and the Studio both read
+// `qa.immersive.integratedLufs`; the gain and the premaster it was derived
+// from go underneath, so a loudness complaint can be traced without a re-render.
+function masterQa(m) {
+  return {
+    file: m.file, ...m.measured,
+    master: { gainDb: m.gainDb, peakLimited: m.peakLimited, target: m.target, premaster: m.premaster },
+  };
 }
 
 async function makeSilence(out, dur) {
