@@ -102,7 +102,7 @@
           "id": "sc1",
           "anchor": "\"HALLOA! Below there!\"",
           "ambience": {
-            "type": "room-hum",
+            "type": "silence",
             "intensity": 0.2
           }
         },
@@ -110,7 +110,7 @@
           "id": "sc2",
           "anchor": "He looked up at me without replying, and I looked down at hi",
           "ambience": {
-            "type": "room-hum",
+            "type": "silence",
             "intensity": 0.4
           }
         },
@@ -118,7 +118,7 @@
           "id": "sc3",
           "anchor": "I resumed my downward way, and stepping out upon the level o",
           "ambience": {
-            "type": "room-hum",
+            "type": "silence",
             "intensity": 0.6
           }
         },
@@ -142,7 +142,7 @@
           "id": "sc6",
           "anchor": "He thanked me, and went out at the door with me. \"I'll show ",
           "ambience": {
-            "type": "room-hum",
+            "type": "silence",
             "intensity": 0.4
           }
         },
@@ -198,7 +198,7 @@
           "id": "sc13",
           "anchor": "He bit his under lip as though he were somewhat unwilling, b",
           "ambience": {
-            "type": "room-hum",
+            "type": "silence",
             "intensity": 0.3
           }
         },
@@ -222,7 +222,7 @@
           "id": "sc16",
           "anchor": "Next evening was a lovely evening, and I walked out early to",
           "ambience": {
-            "type": "room-hum",
+            "type": "silence",
             "intensity": 0.5
           }
         },
@@ -230,7 +230,7 @@
           "id": "sc17",
           "anchor": "Before pursuing my stroll, I stepped to the brink, and mecha",
           "ambience": {
-            "type": "room-hum",
+            "type": "silence",
             "intensity": 0.7
           }
         },
@@ -238,7 +238,7 @@
           "id": "sc18",
           "anchor": "With an irresistible sense that something was wrong,—with a ",
           "ambience": {
-            "type": "room-hum",
+            "type": "silence",
             "intensity": 0.8
           }
         },
@@ -246,7 +246,7 @@
           "id": "sc19",
           "anchor": "\"Signal-man killed this morning, sir.\"",
           "ambience": {
-            "type": "room-hum",
+            "type": "silence",
             "intensity": 0.9
           }
         },
@@ -254,7 +254,7 @@
           "id": "sc20",
           "anchor": "\"Coming round the curve in the tunnel, sir,\" he said, \"I saw",
           "ambience": {
-            "type": "room-hum",
+            "type": "silence",
             "intensity": 0.9
           }
         },
@@ -262,7 +262,7 @@
           "id": "sc21",
           "anchor": "Without prolonging the narrative to dwell on any one of its ",
           "ambience": {
-            "type": "room-hum",
+            "type": "silence",
             "intensity": 0.1
           }
         }

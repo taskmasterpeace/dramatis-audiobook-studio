@@ -525,7 +525,11 @@ function viewScript() {
     for (const ch of book.chapters) for (const c of ch.cues || []) bookCues[c.id] = c;
     const entIdx = Object.fromEntries(book.entities.map((e, i) => [e.id, i]));
     body = S.script.scenes.map((sc) => {
-      const head = `<div class="scene-head"><span class="id">${esc(sc.id.toUpperCase())}</span><span class="env">${esc(sc.ambience?.type || '')} ${sc.ambience?.intensity ?? ''}</span></div>`;
+      // No bed is now the DEFAULT, not a missing value, so say "dry" rather
+      // than leaving the label blank — blank reads as unloaded or broken.
+      const amb = sc.ambience?.type && sc.ambience.type !== 'silence'
+        ? `${esc(sc.ambience.type)} ${sc.ambience.intensity ?? ''}` : 'dry';
+      const head = `<div class="scene-head"><span class="id">${esc(sc.id.toUpperCase())}</span><span class="env">${amb}</span></div>`;
       const lines = sc.lines.map((l) => {
         const pins = (cuesByLine[l.id] || []).map((c) => {
           const st = bookCues[c.id]?.approval;

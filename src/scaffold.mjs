@@ -41,10 +41,17 @@ export async function createBook({ title, author = '', text }, { root, analyze =
       const { paragraphs } = chapterParagraphs(samplePath, heading);
       return {
         heading,
+        // NO ambience by default. Every scene used to get a room-hum bed, so a
+        // fresh book played a continuous drone under its entire runtime — the
+        // single most-cited listener complaint about produced audio ("one
+        // constant sound effect playing in the background at all times... makes
+        // the narration harder to hear"), shipped as our out-of-the-box state.
+        // Beds are opt-in now: the analyzer proposes one, or you add it in the
+        // Cast screen, or the scene plays dry.
         scenes: [{
           id: `${slugify(heading)}-1`,
           anchor: paragraphs[0].text.slice(0, 60),
-          ambience: { type: 'room-hum', intensity: 0.3 },
+          ambience: null,
         }],
         cues: [],
       };
@@ -105,10 +112,12 @@ function mergeAnalysis(book, analysis, chapterIdx, samplePath) {
     for (const l of sc.lines || []) lineText[l.id] = l.text;
     const firstPara = sc.lines?.[0]?.para;
     if (firstPara == null || !paras[firstPara]) continue;
-    const KNOWN_AMBIENCE = ['rain', 'roomtone-morning', 'room-hum', 'crowd', 'city-night', 'lab-cold', 'battle'];
-    const amb = sc.ambience && KNOWN_AMBIENCE.includes(sc.ambience.type)
-      ? sc.ambience
-      : { type: 'room-hum', intensity: sc.ambience?.intensity ?? 0.3 };
+    // An ambience type we don't recognise means the analyzer invented one, and
+    // the honest answer is NO BED — not a room-hum consolation prize. Falling
+    // back to a default bed is how a drone ended up under scenes nothing ever
+    // asked to be scored.
+    const KNOWN_AMBIENCE = ['rain', 'roomtone-morning', 'room-hum', 'crowd', 'city-night', 'lab-cold', 'battle', 'silence'];
+    const amb = sc.ambience && KNOWN_AMBIENCE.includes(sc.ambience.type) ? sc.ambience : null;
     scenes.push({
       id: sc.id || `sc-${scenes.length + 1}`,
       anchor: paras[firstPara].text.slice(0, 60),

@@ -17,7 +17,13 @@ work here without re-learning the lessons that are already paid for.
    what the ear correctly identified as *lost age*).
 2. **Nothing under narration may sing or speak except the cast.** Music engines
    pin instrumental (caption law + `[Instrumental]` lyrics + `force_instrumental`
-   where the API offers it); SFX retrieval has a vocal-caption guard.
+   where the API offers it); SFX retrieval has a vocal-caption guard. And
+   **nothing sits under narration by DEFAULT** — ambience is opt-in per scene,
+   `silence` is a real choice rather than a missing one, and every non-dialog
+   stem is gained AND ducked. Across every listener community the complaints are
+   about CONTINUOUS sound ("one constant sound effect playing in the background
+   at all times… makes the narration harder to hear") and the praise is for
+   DISCRETE, event-anchored sound. Nobody has ever complained a scene was dry.
 3. **Verify code and weights licences SEPARATELY.** They differ (MusicGen: MIT
    code, non-commercial weights) and pipelines inherit their worst part
    (DiffRhythm looked Apache but its VAE inherits Stability's licence).
@@ -53,10 +59,14 @@ gender/age/accent, `src/voicedesign.mjs` builds audition slates) →
 source of truth for engine ids, limits, chunking) →
 **Align** (`src/align.mjs`, word onsets; an enhancement — failures degrade to
 line-start cue placement, never kill a render) →
-**Mix** (`src/mix.mjs` — 4 stems: dialog/ambience/SFX/music, sidechain ducking,
-dialog sacred) → **Master** (`src/master.mjs` — measure with ebur128, then ONE
-linear gain; immersive −18 LUFS + clean −19, verified or the render fails) →
-**Bind** (M4B).
+**Mix** (`src/mix.mjs` — 4 stems: dialog/ambience/SFX/music; all three non-dialog
+stems are gained AND sidechain-ducked, dialog sacred; lines are levelled to
+−20 LUFS by static gain before the concat; continuous room tone sits under the
+whole dialog stem instead of digital silence; ambience is opt-in per scene) →
+**Master** (`src/master.mjs` — measure with ebur128, then ONE linear gain;
+immersive −20 LUFS, clean −21 LUFS, retail MP3 192 CBR inside the −23..−18
+dBRMS window, each re-measured and gated on target/true-peak/LRA or the render
+fails) → **Bind** (M4B).
 The Studio (`studio/server.mjs` + `studio/app/` — zero-dependency node:http +
 vanilla JS, no build step) is a cockpit over the same files. The filesystem is
 the database: `books/<id>/book.json` is config, `out/` is renders, `actors/` is
@@ -65,7 +75,8 @@ the saved voice company (seed clip + recipe = a re-hirable actor).
 ## What to run
 
 ```
-npm test                 # 39 tests incl. attribution snapshots, Gemini tag safety, master gate
+npm test                 # 51 tests: attribution snapshots, Gemini tag safety, the
+                         #   master/ACX gates, mix room-tone + levelling, loudness parsing
 node studio/smoke.mjs    # 13 integration checks against a live server
 npm start                # Studio → http://localhost:4600
 npm run doctor           # what's installed/missing, per dependency and engine
@@ -112,7 +123,33 @@ dial is also a pitch dial). Seed Audio (fal): researched for trailers/set-pieces
   are mono, and ffmpeg reads mono 3.01 dB quieter without `dualmono=true`
   (measured: −16.7 vs −13.7 LUFS on one file). `measureLoudness()` in
   `src/util.mjs` owns it; the gain stage and the gate that verifies it must both
-  go through that helper or they disagree with themselves by 3 LU.
+  go through that helper or they disagree with themselves by 3 LU. Don't "fix"
+  the convention on its own: the RMS gate is the ground truth, LUFS is the dial
+  that gets it there, and the targets were derived against this reading.
+- **A linear master can only reach target T under ceiling C if C − T ≥ the
+  material's crest factor.** Measured on a real levelled dialogue stem:
+  programme crest 17.5 dB, RMS-to-peak 19.6 dB. The old −18/−19 LUFS targets
+  against −2/−3 dBTP allow 16.0 dB, so they were unreachable by 1.5 LU — and
+  were only ever "met" because loudnorm compressed the crest away. Removing a
+  compressor exposes every target that was calibrated around it. Derive targets
+  from what the material can do (`ceiling − crest`), not from a round number.
+- **ffmpeg prints progress lines BEFORE its summary.** `measureLoudness` used to
+  take `stderr.slice(-2000)` then the FIRST regex hit — correct on a long file,
+  and on a short one it returned **−70.0 LUFS**, ebur128's absolute gate floor,
+  because the whole stderr fit in the window and integration hadn't started.
+  Latent while only whole chapters were measured; per-line levelling measures
+  line-sized files, so it became load-bearing overnight. Parse from `Summary:`
+  and set `framelog=quiet`.
+- **ffmpeg's `astats` "Noise floor" is not the retail noise floor.** It's a
+  min-local-peak statistic: calibrated here it returns `-inf` on real TTS
+  renders and passes everything. Measure the silence directly — `silencedetect`
+  → trim a guard off each region → `astats` RMS — and measure the MASTER, since
+  makeup gain lifts the floor with everything else.
+- **Silence is not free.** Inter-line gaps were `anullsrc` (true digital zero)
+  while the renders carry their own floor, so the floor pumped at every
+  boundary, the room-tone requirement failed, and any noise-floor gate reading
+  those gaps saw `-inf` and passed trivially. Continuous low-level tone fixes
+  all three.
 - **Line endings are correctness here**: `.gitattributes` forces LF because
   `compile.mjs` cites by raw character offset; CRLF checkouts shifted every
   citation and broke snapshot tests with a baffling "0 lines changed" diff.

@@ -63,7 +63,7 @@
       "heading": "The Open Window",
       "scenes": [
         { "id": "w1-parlor", "anchor": "\"My aunt will be down presently, Mr. Nuttel,\"", "ambience": { "type": "roomtone-morning", "intensity": 0.4 }, "characters": ["vera", "framton"], "visual": "Comfortable Edwardian country sitting room on an October afternoon, large French window open onto a lawn, a poised girl of fifteen entertaining a nervous visitor." },
-        { "id": "w1-tragedy", "anchor": "\"Out through that window, three years ago to a day", "ambience": { "type": "room-hum", "intensity": 0.25 }, "characters": ["vera", "framton"], "visual": "The same room, hushed; the girl gazes at the open window telling a ghost story, the visitor leaning in, chilled." },
+        { "id": "w1-tragedy", "anchor": "\"Out through that window, three years ago to a day", "ambience": { "type": "silence", "intensity": 0.25 }, "characters": ["vera", "framton"], "visual": "The same room, hushed; the girl gazes at the open window telling a ghost story, the visitor leaning in, chilled." },
         { "id": "w1-aunt", "anchor": "\"I hope Vera has been amusing you?\"", "ambience": { "type": "roomtone-morning", "intensity": 0.5 }, "characters": ["vera", "framton", "mrs_sappleton"], "visual": "The aunt bustles in with cheerful apologies, tea things, the visitor pale and uneasy between them." },
         { "id": "w1-return", "anchor": "\"Here we are, my dear,\"", "ambience": { "type": "roomtone-morning", "intensity": 0.4 }, "characters": ["vera", "mrs_sappleton", "mr_sappleton"], "visual": "Three figures with guns coming through the French window out of the twilight, a tired brown spaniel at heel, the visitor's chair empty." }
       ],

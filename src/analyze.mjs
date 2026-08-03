@@ -109,7 +109,13 @@ export async function analyzeChapter({ manuscriptPath, bookId, chapter, cacheRoo
   const { data: scn } = await analyze({
     ...opts, purpose: 'scenes', schema: SCHEMAS.scenes,
     prompt: `Chapter "${chapterTitle}", paragraphs numbered:\n\n${numbered(paragraphs)}\n\n` +
-      `Split it into scenes (location/time changes). For each: start_para (first paragraph index), location/time/weather/mood, an ambience bed type from ${AMBIENCE_TYPES.join('|')}, and intensity 0-1. First scene must start at paragraph 0. Cover the whole chapter with ascending, non-overlapping scenes.`,
+      // "silence" is the DEFAULT, and the prompt has to say so. Given an enum of
+      // seven beds and one silence, a model picks a bed essentially every time —
+      // which is how a drone ends up under a quiet domestic conversation. A bed
+      // has to earn its place: the prose has to put an audible environment in
+      // the room. Listeners complain about continuous ambience more than about
+      // any other production choice, and never that a scene was too dry.
+      `Split it into scenes (location/time changes). For each: start_para (first paragraph index), location/time/weather/mood, an ambience bed type from ${AMBIENCE_TYPES.join('|')}, and intensity 0-1. Use "silence" unless the prose describes a genuinely audible environment (weather, a crowd, machinery, a battle) that a listener would expect to hear running underneath — most scenes are "silence". First scene must start at paragraph 0. Cover the whole chapter with ascending, non-overlapping scenes.`,
   });
   const seen = new Set();
   const scenes = scn.scenes
@@ -118,7 +124,9 @@ export async function analyzeChapter({ manuscriptPath, bookId, chapter, cacheRoo
     .sort((a, b) => a.start_para - b.start_para)
     .filter((s) => !seen.has(s.start_para) && seen.add(s.start_para));
   if (!scenes.length || scenes[0].start_para !== 0) {
-    scenes.unshift({ start_para: 0, location: 'unspecified', ambience_type: 'room-hum', intensity: 0.3 });
+    // A synthetic scene inserted to cover paragraph 0 is a GAP-FILLER — nothing
+    // read the prose and decided it needed a bed, so it gets none.
+    scenes.unshift({ start_para: 0, location: 'unspecified', ambience_type: 'silence', intensity: 0 });
   }
 
   // C: SFX cues

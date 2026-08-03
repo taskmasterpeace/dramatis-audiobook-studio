@@ -60,8 +60,17 @@ export async function ffprobeDuration(file) {
 //  - ebur128, never loudnorm's self-report: loudnorm's `input_i` was 0.54 LU
 //    off this filter on the same file (-16.16 vs -16.7), which is precisely
 //    why a 2-pass loudnorm master lands ~0.5 LU hot.
-//  - framelog=quiet: the per-frame log is ~1.6 kB/s of stderr, i.e. ~3 MB for
-//    a 30-minute chapter, measured against a 64 MB buffer for no benefit.
+//  - framelog=quiet + parse from the Summary block. This one is a correctness
+//    fix, not tidiness: ebur128 prints a progress line PER FRAME and only then
+//    the summary. The old code took stderr.slice(-2000) and the FIRST regex hit
+//    inside it, which is right on a long file and wrong on a short one — the
+//    whole stderr fits in the window, so the first hit is an early progress
+//    line, and those read -70.0 LUFS (the absolute gate floor) because
+//    integration has not started. Measured 2026-07-28: a 0.4 s clip returned
+//    exactly -70.0, a 32 dB fabrication. Latent while only whole chapters were
+//    measured; per-line levelling measures line-sized files, so it became
+//    load-bearing overnight. Quieting the frame log removes the hazard at the
+//    source; anchoring on "Summary:" means even a re-enabled frame log is safe.
 export async function measureLoudness(file) {
   const { stderr } = await pexecFile('ffmpeg', [
     '-hide_banner', '-nostats', '-i', file,
@@ -80,6 +89,55 @@ export async function measureLoudness(file) {
     truePeakDb: num(/Peak:\s*(-?[\d.]+)\s*dBFS/),   // null when ffmpeg prints "-inf" (digital silence)
     lra: num(/LRA:\s*(-?[\d.]+)\s*LU/),
   };
+}
+
+// RMS in dBFS — unweighted and ungated, a different metric from LUFS. The
+// retail master is judged on this one, so it is measured rather than inferred
+// from loudness. `selectExpr` restricts the measurement to chosen time ranges.
+export async function astatsRms(file, selectExpr) {
+  const af = selectExpr ? `aselect='${selectExpr}',asetpts=N/SR/TB,astats` : 'astats';
+  const { stderr } = await pexecFile('ffmpeg',
+    ['-hide_banner', '-nostats', '-i', file, '-af', af, '-f', 'null', '-'],
+    { maxBuffer: 64 * 1024 * 1024 });
+  const all = [...stderr.matchAll(/RMS level dB:\s*(-?[\d.]+|-?inf)/g)];
+  if (!all.length) return null;
+  const v = parseFloat(all.at(-1)[1]);   // last block is astats' Overall section
+  return Number.isFinite(v) ? +v.toFixed(2) : null;
+}
+
+// The noise floor as a retail spec means it: the level IN THE SILENCE.
+// ffmpeg's astats has a "Noise floor" field and it does NOT measure that —
+// calibrated 2026-07-27 on this box, white noise at -44.8 reads -49.0
+// (plausible), a pure sine returns its PEAK, and a real TTS render returns
+// -inf. It is a min-local-peak statistic that silently passes everything handed
+// to it. The honest recipe: find the silent regions, trim a guard off each end
+// so no speech tail leaks in, splice them, and measure THAT.
+//
+// Two traps, both already paid for. Measure the MASTER, because makeup gain
+// lifts the floor along with everything else. And never measure gaps that are
+// anullsrc — true digital zero reads -inf and passes trivially, which is the
+// whole reason the mixer lays continuous room tone instead.
+const FLOOR_GUARD = 0.1;         // s trimmed off each end of a silent region
+const FLOOR_MAX_REGIONS = 200;   // keeps the filter expression sane
+
+export async function noiseFloorDb(file) {
+  const { stderr } = await pexecFile('ffmpeg',
+    ['-hide_banner', '-nostats', '-i', file, '-af', 'silencedetect=noise=-40dB:d=0.3', '-f', 'null', '-'],
+    { maxBuffer: 64 * 1024 * 1024 });
+  const regions = [];
+  for (const m of stderr.matchAll(/silence_start:\s*(-?[\d.]+)[\s\S]*?silence_end:\s*([\d.]+)/g)) {
+    const a = Math.max(0, parseFloat(m[1])) + FLOOR_GUARD;
+    const b = parseFloat(m[2]) - FLOOR_GUARD;
+    if (b > a) regions.push([a, b]);
+  }
+  if (!regions.length) return null;
+  const used = regions.slice(0, FLOOR_MAX_REGIONS);
+  // never truncate coverage silently — a gate that sampled a third of the file
+  // and said PASS is worse than no gate
+  if (used.length < regions.length) {
+    log('measure', `noise floor: sampled ${used.length} of ${regions.length} silent regions`);
+  }
+  return astatsRms(file, used.map(([a, b]) => `between(t,${a.toFixed(3)},${b.toFixed(3)})`).join('+'));
 }
 
 export function log(stage, msg) {

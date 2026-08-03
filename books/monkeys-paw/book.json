@@ -397,7 +397,7 @@
           "id": "p1-parlor",
           "anchor": "Without, the night was cold and wet",
           "ambience": {
-            "type": "room-hum",
+            "type": "silence",
             "intensity": 0.3
           },
           "characters": [
@@ -411,7 +411,7 @@
           "id": "p1-visit",
           "anchor": "The old man rose with hospitable haste",
           "ambience": {
-            "type": "room-hum",
+            "type": "silence",
             "intensity": 0.35
           },
           "characters": [
@@ -426,7 +426,7 @@
           "id": "p1-wish",
           "anchor": "Mr. White took the paw from his pocket and eyed it dubiously",
           "ambience": {
-            "type": "room-hum",
+            "type": "silence",
             "intensity": 0.28
           },
           "characters": [
@@ -490,7 +490,7 @@
           "id": "p2-visitor",
           "anchor": "His wife made no reply",
           "ambience": {
-            "type": "room-hum",
+            "type": "silence",
             "intensity": 0.25
           },
           "characters": [
@@ -518,7 +518,7 @@
           "id": "p3-grief",
           "anchor": "In the huge new cemetery, some two miles distant",
           "ambience": {
-            "type": "room-hum",
+            "type": "silence",
             "intensity": 0.2
           },
           "characters": [

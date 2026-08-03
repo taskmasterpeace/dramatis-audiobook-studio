@@ -5,7 +5,12 @@
 // Called by the CLI before rendering and by the Studio before writing book.json.
 
 const KNOWN_ENGINES = ['kokoro', 'qwen3', 'elevenlabs', 'gemini'];
-const KNOWN_AMBIENCE = ['rain', 'roomtone-morning', 'room-hum', 'crowd', 'city-night', 'lab-cold', 'battle'];
+// 'silence' is the canonical "this scene plays dry" value, and it is a REAL
+// choice, not a missing one. The analyzer could already propose it, but it was
+// absent from this list, so validation called it unknown and the scaffold
+// helpfully substituted a room-hum bed — which is how a drone ended up under
+// scenes that had explicitly asked for none.
+const KNOWN_AMBIENCE = ['rain', 'roomtone-morning', 'room-hum', 'crowd', 'city-night', 'lab-cold', 'battle', 'silence'];
 
 // which engines can actually be reached for this book/route
 function enginesInPlay(book, tts = 'hybrid') {
