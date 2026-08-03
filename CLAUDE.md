@@ -63,7 +63,8 @@ the saved voice company (seed clip + recipe = a re-hirable actor).
 ## What to run
 
 ```
-npm test                 # 15 tests incl. attribution snapshots + Gemini tag safety
+npm test                 # 38 tests incl. attribution snapshots, Gemini tag safety, mix-graph shape
+node scripts/mix-bench.mjs    # dB on any mix change (real speech); --ear renders A/B options
 node studio/smoke.mjs    # 13 integration checks against a live server
 npm start                # Studio → http://localhost:4600
 npm run doctor           # what's installed/missing, per dependency and engine
@@ -104,6 +105,17 @@ dial is also a pitch dial). Seed Audio (fal): researched for trailers/set-pieces
   citation and broke snapshot tests with a baffling "0 lines changed" diff.
 - **A fully-commented-out file passes `node --check`.** After any bulk edit,
   verify the DIFF, not just the syntax.
+- **A stage whose output is audio has no golden file, so give it a SHAPE test.**
+  The SFX stem shipped into `amix` with no trim and no duck while ambience and
+  music had both (found 2026-07-28): a door slam measured 6.9 dB *above* the
+  dialog under it. Nothing failed, because nothing asserted relative level.
+  `test/mix-graph.test.mjs` now asserts the law ("only dialog reaches amix
+  unprocessed") rather than the numbers, which are an ear question and move.
+- **Measure before you write the comment.** Three plausible audio stories were
+  wrong: AAC does NOT overshoot loudnorm's ceiling (within 0.1 dB), a SLOWER
+  sidechain attack lets a transient through LOUDER, and `TP=-3` does not clear
+  ACX's "below -3" (it delivers -3.0; -3.5 is the first ceiling that passes).
+  `scripts/mix-bench.mjs` exists so the next such claim costs one command.
 - **Windows venv layout** is `.venv/Scripts/python.exe` (POSIX: `.venv/bin/python`);
   `src/util.mjs pythonExe()` handles both — use it, don't hardcode.
 - **Don't trust vendor 200s**: ElevenLabs accepts and ignores `style` on v3;

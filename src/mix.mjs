@@ -13,7 +13,102 @@ const GAP_SCENE = 2.2;       // s at scene boundaries
 const BED_LEAD = 1.5;        // ambience starts before first line of scene
 const AMB_GAIN_DB = -16;     // bed level under dialog before ducking
 const MUS_GAIN_DB = -20;     // music sits lower still; same ducking law as beds
+// Robert's ear, 2026-07-28: ruled option 2 ("balanced") out of a four-way A/B
+// rendered by scripts/mix-bench.mjs --ear, against the shipped no-duck mix and
+// against gentler (trim 0 / ratio 1.5) and firmer (trim -3 / ratio 2) options.
+// The trim stays SMALL on purpose: per-cue gain_db in book.json is already set
+// by ear (gunshot -7, slam -4), and those rulings were made when this stem had
+// no duck at all, so the duck now does the work the trim must not duplicate.
+const SFX_GAIN_DB = -2;      // effects trim; see UNDER_DIALOG for the incident
 const DUCK = 'sidechaincompress=threshold=0.02:ratio=6:attack=180:release=1100:makeup=1';
+
+// Gentler duck for one-shots. A door slam is SUPPOSED to startle, so it must not
+// be flattened into the bed the way ambience and music are; it only has to stop
+// short of masking a word. Three parameters differ from DUCK, each measured with
+// scripts/mix-bench.mjs on real narration (2026-07-28, dialog RMS -20.7 dBFS):
+//   ratio 6 -> 1.5    the depth knob. Reduction is roughly
+//                     (1 - 1/ratio) x (dialog dB over threshold), so ratio 1.5
+//                     removes a third of the overshoot where ratio 6 removes
+//                     5/6. Measured: beds duck 12.2 dB, one-shots 6.3 dB.
+//   release 1100 -> 350  measured, and NOT for the reason it looks like. A slam
+//                     landing just after a line ends is held down by whatever
+//                     the duck has not yet released; the GAP LENGTH turns out to
+//                     be irrelevant (a 450 ms line gap and a 2200 ms scene gap
+//                     measured identically, both -5.5 dB at release 350). It is
+//                     the release constant alone that decides whether that cue
+//                     is heard: 1100 -> -7.6 dB, 350 -> -5.5 dB, 150 -> -2.4 dB
+//                     relative to dialog RMS. 350 is the compromise -- 150
+//                     would let the duck track syllables and make a SUSTAINED
+//                     cue (a thunder roll under speech) wobble audibly.
+//   attack 180 -> 60  the smallest knob of the three, and it runs BACKWARDS
+//                     from the obvious guess: a SLOWER attack lets the slam
+//                     through LOUDER (measured, ratio 1.5: 20 ms -> -2.3 dB,
+//                     60 -> -1.5, 180 -> -0.6, 400 -> +0.2), because the duck is
+//                     still chasing the speech envelope when the transient
+//                     arrives. The whole 20-400 ms range spans 2.5 dB, against
+//                     the 12 dB that ratio and trim span, so treat it as fine
+//                     trim; 60 ms biases the last dB toward protecting the word.
+const DUCK_SFX = 'sidechaincompress=threshold=0.02:ratio=1.5:attack=60:release=350:makeup=1';
+
+// Every stem that plays UNDER dialog. Order here is the ffmpeg input order, and
+// membership is the whole point: buildImmersiveGraph trims and ducks each entry,
+// so a stem cannot reach the mix raw by being forgotten in a hand-written graph.
+//
+// INCIDENT (2026-07-28, found by audit): the SFX stem was spliced into amix as a
+// bare [2:a] -- no trim, no duck -- while ambience and music both got the full
+// treatment. Effects are the stem made of loud transients, so it was the one
+// stem most able to bury a line, and it was the only one with nothing in its
+// way. This violated "dialog is sacred" in the exact place the phrase was
+// supposed to be enforced.
+//
+// MEASURED (scripts/mix-bench.mjs, real narration at -20.7 dBFS RMS): beds
+// ducked 12.2 dB and music 11.8 dB under speech, while SFX ducked 0.0 dB. A
+// door slam at the book's own -4 dB cue gain peaked 6.9 dB ABOVE the dialog it
+// was playing over. That is the top listener complaint about this whole format
+// -- "effects drown the dialogue, unusable in a car" -- reproduced on the
+// bench. The gate that makes the bare-stem shape unrepresentable is
+// test/mix-graph.test.mjs; the bench that puts numbers on any change to these
+// profiles is scripts/mix-bench.mjs.
+const UNDER_DIALOG = [
+  { input: 1, tag: 'amb', gainDb: AMB_GAIN_DB, duck: DUCK },
+  { input: 2, tag: 'sfx', gainDb: SFX_GAIN_DB, duck: DUCK_SFX },
+  { input: 3, tag: 'mus', gainDb: MUS_GAIN_DB, duck: DUCK },
+];
+
+// Immersive is the cinematic master, clean is the dialog-only one.
+//
+// TRUE PEAK -3.5, not -3. ACX/Audible retail wants peak levels BELOW -3 dB
+// (help.acx.com, verified 2026-07), and the ceiling asked of loudnorm is
+// honoured almost exactly through the AAC encode -- measured post-decode on
+// 2026-07-28, the delivered peak lands within 0.1 dB of the request. That
+// accuracy is the problem: asking for -3 delivers -2.9 (immersive) and -3.0
+// (clean), which do not clear a strict "less than -3", and asking for the old
+// -2 delivered exactly -2.0, failing by a full dB. -3.5 measured -3.5 on both
+// masters, so it is the first ceiling that actually passes. Do not "tidy" this
+// back to a round -3; the round number is the one that fails.
+//
+// LRA 9, not 11. This is spoken word for listeners who are driving, walking or
+// washing up (~86% multitasking, ~84% on the go, APA 2026), and the bottom of a
+// wide range is gone under road noise. Measured on chapter-like material whose
+// ungraded range was 18.1 LU: asking 11 delivered 11.3 LU, asking 9 delivered
+// 10.4 LU. So this buys a real but modest 0.9 LU of narrowing -- worth having,
+// and worth knowing it is not the dramatic lever it looks like, because
+// loudnorm treats LRA as a soft target and undershoots it on wide material.
+const MASTER_IMMERSIVE = 'loudnorm=I=-18:TP=-3.5:LRA=9';
+const MASTER_CLEAN = 'loudnorm=I=-19:TP=-3.5:LRA=9';
+
+// Input 0 is ALWAYS the dialog stem. It is the only signal that reaches amix
+// untouched, and it is the sidechain key for every duck -- that pair of facts
+// IS the "dialog is sacred" law, expressed as a graph.
+export function buildImmersiveGraph(stems = UNDER_DIALOG, master = MASTER_IMMERSIVE) {
+  const trims = stems.map((s) => `[${s.input}:a]volume=${s.gainDb}dB[${s.tag}q]`);
+  const ducks = stems.map((s) => `[${s.tag}q][0:a]${s.duck}[${s.tag}d]`);
+  const into = '[0:a]' + stems.map((s) => `[${s.tag}d]`).join('');
+  return `${trims.join(';')};${ducks.join(';')};` +
+    `${into}amix=inputs=${stems.length + 1}:duration=first:normalize=0,${master}[out]`;
+}
+
+export const MIX_PROFILE = { UNDER_DIALOG, MASTER_IMMERSIVE, MASTER_CLEAN, DUCK, DUCK_SFX, GAP_LINE };
 
 // words that never anchor a sound cue
 const STOPWORDS = new Set(('instead,before,after,there,their,about,would,could,should,then,than,when,while,' +
@@ -169,18 +264,15 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
   // 5) masters (per-chapter .m4a; the book binder assembles chaptered .m4b)
   const immersive = path.join(outDir, 'immersive.m4a');
   await ffmpeg([
+    // input order must match UNDER_DIALOG[].input: 0 dialog, 1 amb, 2 sfx, 3 mus
     '-i', dialogStem, '-i', ambienceStem, '-i', sfxStem, '-i', musicStem,
-    '-filter_complex',
-    `[1:a]volume=${AMB_GAIN_DB}dB[ambq];[3:a]volume=${MUS_GAIN_DB}dB[musq];` +
-    `[ambq][0:a]${DUCK}[duckedA];[musq][0:a]${DUCK}[duckedM];` +
-    `[0:a][duckedA][2:a][duckedM]amix=inputs=4:duration=first:normalize=0,` +
-    `loudnorm=I=-18:TP=-2:LRA=11[out]`,
+    '-filter_complex', buildImmersiveGraph(),
     '-map', '[out]', '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
     '-metadata', `title=${script.chapter}`, immersive,
   ]);
   const clean = path.join(outDir, 'clean.m4a');
   await ffmpeg([
-    '-i', dialogStem, '-af', 'loudnorm=I=-19:TP=-3:LRA=9',
+    '-i', dialogStem, '-af', MASTER_CLEAN,
     '-c:a', 'aac', '-b:a', '96k', '-ar', '44100',
     '-metadata', `title=${script.chapter} (clean)`, clean,
   ]);

@@ -56,7 +56,14 @@ export async function measureLoudness(file) {
   const tail = stderr.slice(-2000);
   const i = tail.match(/I:\s*(-?[\d.]+)\s*LUFS/);
   const tp = tail.match(/Peak:\s*(-?[\d.]+)\s*dBFS/);
-  return { integratedLufs: i ? parseFloat(i[1]) : null, truePeakDb: tp ? parseFloat(tp[1]) : null };
+  // LRA is reported too: it is the number that decides whether a quiet passage
+  // survives road noise, so the QA report has to carry it, not just loudness.
+  const lra = tail.match(/LRA:\s*(-?[\d.]+)\s*LU/);
+  return {
+    integratedLufs: i ? parseFloat(i[1]) : null,
+    truePeakDb: tp ? parseFloat(tp[1]) : null,
+    lra: lra ? parseFloat(lra[1]) : null,
+  };
 }
 
 export function log(stage, msg) {
