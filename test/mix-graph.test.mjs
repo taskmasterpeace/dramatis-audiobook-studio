@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildImmersiveGraph, MIX_PROFILE } from '../src/mix.mjs';
 
-const { UNDER_DIALOG, MASTER_IMMERSIVE, MASTER_CLEAN } = MIX_PROFILE;
+const { UNDER_DIALOG } = MIX_PROFILE;
 
 // The segment feeding amix, e.g. "[0:a][ambd][sfxd][musd]amix=inputs=4:..."
 function amixInputs(graph) {
@@ -74,6 +74,18 @@ test('adding a stem cannot silently skip the trim/duck treatment', () => {
   assert.match(graph, /amix=inputs=5/);
 });
 
+test('the bus ends at the amix — loudness belongs to the master stage', () => {
+  // The graph is a PREMASTER bus: no loudnorm, no trailing gain. A one-pass
+  // loudnorm here would run in dynamic mode and compress the dialogue (that was
+  // the master-stage incident). src/master.mjs measures the premaster and
+  // applies one linear gain; the true-peak/LRA gate lives in
+  // test/master-loudness.test.mjs, not here.
+  const graph = buildImmersiveGraph();
+  assert.doesNotMatch(graph, /loudnorm/, 'the mix bus must not normalize — master.mjs owns loudness');
+  assert.match(graph, /amix=inputs=\d+:duration=first:normalize=0\[out\]$/,
+    'the bus must end at the amix, feeding the [out] premaster');
+});
+
 test('SFX ducks less than the beds it shares the mix with', () => {
   // The point of a separate profile: a slam is meant to punch through where
   // ambience is meant to disappear. Reduction scales with (1 - 1/ratio), so a
@@ -87,14 +99,3 @@ test('SFX ducks less than the beds it shares the mix with', () => {
   }
 });
 
-test('both masters clear the ACX true-peak requirement with margin', () => {
-  // Measured 2026-07-28: loudnorm delivers the requested ceiling to within
-  // 0.1 dB through the AAC encode, so asking for -3 lands at -2.9/-3.0 and
-  // does NOT clear ACX's "below -3". Anything looser than -3.5 is a regression.
-  for (const [name, master] of [['immersive', MASTER_IMMERSIVE], ['clean', MASTER_CLEAN]]) {
-    const tp = Number(master.match(/TP=(-?[\d.]+)/)[1]);
-    assert.ok(tp <= -3.5, `${name} true-peak ceiling ${tp} is too hot to clear ACX after encode`);
-    const lra = Number(master.match(/LRA=([\d.]+)/)[1]);
-    assert.ok(lra <= 9, `${name} LRA ${lra} is wider than spoken word for multitasking listeners`);
-  }
-});

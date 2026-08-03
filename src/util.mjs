@@ -48,21 +48,37 @@ export async function ffprobeDuration(file) {
   return parseFloat(stdout.trim());
 }
 
+// THE ONE loudness measurement in this project. Both the master stage's gain
+// calculation and the gate that verifies its output must call this, because
+// the numbers are only comparable within a single convention:
+//
+//  - dualmono is deliberately NOT set. Our masters are mono, and ffmpeg reads
+//    a mono file 3.01 dB quieter without it (measured 2026-07-28: -16.7 vs
+//    -13.7 LUFS on the same mono file — ffmpeg's panlaw default). Whichever
+//    convention is chosen has to hold on BOTH sides or the gate disagrees with
+//    itself by exactly 3 LU.
+//  - ebur128, never loudnorm's self-report: loudnorm's `input_i` was 0.54 LU
+//    off this filter on the same file (-16.16 vs -16.7), which is precisely
+//    why a 2-pass loudnorm master lands ~0.5 LU hot.
+//  - framelog=quiet: the per-frame log is ~1.6 kB/s of stderr, i.e. ~3 MB for
+//    a 30-minute chapter, measured against a 64 MB buffer for no benefit.
 export async function measureLoudness(file) {
-  // ebur128 prints to stderr; parse integrated loudness + true peak
   const { stderr } = await pexecFile('ffmpeg', [
-    '-hide_banner', '-nostats', '-i', file, '-filter_complex', 'ebur128=peak=true', '-f', 'null', '-',
+    '-hide_banner', '-nostats', '-i', file,
+    '-filter_complex', 'ebur128=peak=true:framelog=quiet', '-f', 'null', '-',
   ], { maxBuffer: 64 * 1024 * 1024 });
-  const tail = stderr.slice(-2000);
-  const i = tail.match(/I:\s*(-?[\d.]+)\s*LUFS/);
-  const tp = tail.match(/Peak:\s*(-?[\d.]+)\s*dBFS/);
-  // LRA is reported too: it is the number that decides whether a quiet passage
-  // survives road noise, so the QA report has to carry it, not just loudness.
-  const lra = tail.match(/LRA:\s*(-?[\d.]+)\s*LU/);
+  // parse the Summary block only — "LRA low:"/"LRA high:" live there too, and
+  // the per-frame lines (if ever re-enabled) repeat every field. No Summary at
+  // all means ffmpeg told us nothing: return nulls so the caller's gate fails
+  // loudly, rather than slicing from -1 and matching whatever happens to be
+  // in the tail.
+  const at = stderr.lastIndexOf('Summary:');
+  const summary = at === -1 ? '' : stderr.slice(at);
+  const num = (re) => { const m = summary.match(re); return m ? parseFloat(m[1]) : null; };
   return {
-    integratedLufs: i ? parseFloat(i[1]) : null,
-    truePeakDb: tp ? parseFloat(tp[1]) : null,
-    lra: lra ? parseFloat(lra[1]) : null,
+    integratedLufs: num(/I:\s*(-?[\d.]+)\s*LUFS/),
+    truePeakDb: num(/Peak:\s*(-?[\d.]+)\s*dBFS/),   // null when ffmpeg prints "-inf" (digital silence)
+    lra: num(/LRA:\s*(-?[\d.]+)\s*LU/),
   };
 }
 

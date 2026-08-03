@@ -1,8 +1,11 @@
 // Mix stage: dialog concat -> scene timing -> ambience beds -> SFX cues ->
-// sidechain-ducked 4-stem mix -> Immersive + Clean masters.
+// sidechain-ducked 4-stem bus -> premaster on disk -> Immersive + Clean masters.
+// The bus stops at the amix; loudness lives entirely in src/master.mjs, because
+// a filter that normalizes in one pass is a compressor, not a gain stage.
 import { writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { ffmpeg, ffprobeDuration, measureLoudness, ensureDir, log, speakable } from './util.mjs';
+import { ffmpeg, ffprobeDuration, ensureDir, log, speakable } from './util.mjs';
+import { master, IMMERSIVE, CLEAN } from './master.mjs';
 import { alignLines } from './align.mjs';
 import { renderBeds } from '../engines/ambience/retrieve.mjs';
 import { resolveSfx } from '../engines/sfx/retrieve.mjs';
@@ -75,40 +78,21 @@ const UNDER_DIALOG = [
   { input: 3, tag: 'mus', gainDb: MUS_GAIN_DB, duck: DUCK },
 ];
 
-// Immersive is the cinematic master, clean is the dialog-only one.
-//
-// TRUE PEAK -3.5, not -3. ACX/Audible retail wants peak levels BELOW -3 dB
-// (help.acx.com, verified 2026-07), and the ceiling asked of loudnorm is
-// honoured almost exactly through the AAC encode -- measured post-decode on
-// 2026-07-28, the delivered peak lands within 0.1 dB of the request. That
-// accuracy is the problem: asking for -3 delivers -2.9 (immersive) and -3.0
-// (clean), which do not clear a strict "less than -3", and asking for the old
-// -2 delivered exactly -2.0, failing by a full dB. -3.5 measured -3.5 on both
-// masters, so it is the first ceiling that actually passes. Do not "tidy" this
-// back to a round -3; the round number is the one that fails.
-//
-// LRA 9, not 11. This is spoken word for listeners who are driving, walking or
-// washing up (~86% multitasking, ~84% on the go, APA 2026), and the bottom of a
-// wide range is gone under road noise. Measured on chapter-like material whose
-// ungraded range was 18.1 LU: asking 11 delivered 11.3 LU, asking 9 delivered
-// 10.4 LU. So this buys a real but modest 0.9 LU of narrowing -- worth having,
-// and worth knowing it is not the dramatic lever it looks like, because
-// loudnorm treats LRA as a soft target and undershoots it on wide material.
-const MASTER_IMMERSIVE = 'loudnorm=I=-18:TP=-3.5:LRA=9';
-const MASTER_CLEAN = 'loudnorm=I=-19:TP=-3.5:LRA=9';
-
 // Input 0 is ALWAYS the dialog stem. It is the only signal that reaches amix
 // untouched, and it is the sidechain key for every duck -- that pair of facts
-// IS the "dialog is sacred" law, expressed as a graph.
-export function buildImmersiveGraph(stems = UNDER_DIALOG, master = MASTER_IMMERSIVE) {
+// IS the "dialog is sacred" law, expressed as a graph. The graph ENDS at the
+// amix: no loudnorm, no gain. The bus is written to disk as a premaster and
+// src/master.mjs measures it before applying a single linear gain, because a
+// one-pass loudnorm here would silently compress the dialogue (see master.mjs).
+export function buildImmersiveGraph(stems = UNDER_DIALOG) {
   const trims = stems.map((s) => `[${s.input}:a]volume=${s.gainDb}dB[${s.tag}q]`);
   const ducks = stems.map((s) => `[${s.tag}q][0:a]${s.duck}[${s.tag}d]`);
   const into = '[0:a]' + stems.map((s) => `[${s.tag}d]`).join('');
   return `${trims.join(';')};${ducks.join(';')};` +
-    `${into}amix=inputs=${stems.length + 1}:duration=first:normalize=0,${master}[out]`;
+    `${into}amix=inputs=${stems.length + 1}:duration=first:normalize=0[out]`;
 }
 
-export const MIX_PROFILE = { UNDER_DIALOG, MASTER_IMMERSIVE, MASTER_CLEAN, DUCK, DUCK_SFX, GAP_LINE };
+export const MIX_PROFILE = { UNDER_DIALOG, DUCK, DUCK_SFX, GAP_LINE };
 
 // words that never anchor a sound cue
 const STOPWORDS = new Set(('instead,before,after,there,their,about,would,could,should,then,than,when,while,' +
@@ -261,21 +245,24 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
   const musicStem = path.join(outDir, 'stem-music.wav');
   await overlay(musicShots, total, musicStem);
 
-  // 5) masters (per-chapter .m4a; the book binder assembles chaptered .m4b)
-  const immersive = path.join(outDir, 'immersive.m4a');
+  // 5) masters (per-chapter .m4a; the book binder assembles chaptered .m4b).
+  // The 4-stem bus lands on disk UNMASTERED first, because the master stage has
+  // to MEASURE what it is about to normalize — see src/master.mjs for why a
+  // filter that normalizes in one pass is a compressor, not a gain stage.
+  const premaster = path.join(outDir, 'premaster-immersive.wav');
   await ffmpeg([
     // input order must match UNDER_DIALOG[].input: 0 dialog, 1 amb, 2 sfx, 3 mus
     '-i', dialogStem, '-i', ambienceStem, '-i', sfxStem, '-i', musicStem,
     '-filter_complex', buildImmersiveGraph(),
-    '-map', '[out]', '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
-    '-metadata', `title=${script.chapter}`, immersive,
+    '-map', '[out]', '-ar', '48000', '-ac', '1', premaster,
   ]);
+  const immersive = path.join(outDir, 'immersive.m4a');
+  const immersiveMaster = await master(premaster, immersive, IMMERSIVE,
+    ['-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-metadata', `title=${script.chapter}`]);
+  // the clean master's premaster is the dialog stem itself — already on disk
   const clean = path.join(outDir, 'clean.m4a');
-  await ffmpeg([
-    '-i', dialogStem, '-af', MASTER_CLEAN,
-    '-c:a', 'aac', '-b:a', '96k', '-ar', '44100',
-    '-metadata', `title=${script.chapter} (clean)`, clean,
-  ]);
+  const cleanMaster = await master(dialogStem, clean, CLEAN,
+    ['-c:a', 'aac', '-b:a', '96k', '-ar', '44100', '-metadata', `title=${script.chapter} (clean)`]);
 
   // 5) read-along timing + per-line QA (dead air / runaway duration)
   const flags = timeline.filter((l) => {
@@ -293,11 +280,24 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
     beds: bedReport,
     cues: cueReport,
     music: musicReport,
-    immersive: { file: immersive, ...(await measureLoudness(immersive)) },
-    clean: { file: clean, ...(await measureLoudness(clean)) },
+    // master() already measured its own output — re-measuring a full chapter
+    // twice buys nothing, and a second measurement is a second chance to drift
+    immersive: masterQa(immersiveMaster),
+    clean: masterQa(cleanMaster),
   };
   writeFileSync(path.join(outDir, 'qa-report.json'), JSON.stringify(qa, null, 2));
   return { qa, files: { immersive, clean }, durationSec: total };
+}
+
+// Flatten a master result for the QA report. The measured numbers stay at the
+// top level because the CLI summary and the Studio both read
+// `qa.immersive.integratedLufs`; the gain and the premaster it was derived
+// from go underneath, so a loudness complaint can be traced without a re-render.
+function masterQa(m) {
+  return {
+    file: m.file, ...m.measured,
+    master: { gainDb: m.gainDb, peakLimited: m.peakLimited, target: m.target, premaster: m.premaster },
+  };
 }
 
 async function makeSilence(out, dur) {

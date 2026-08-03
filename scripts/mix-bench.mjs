@@ -26,13 +26,18 @@ import { mkdirSync, existsSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { buildImmersiveGraph, MIX_PROFILE } from '../src/mix.mjs';
+import { master, masterGainDb, IMMERSIVE } from '../src/master.mjs';
+import { measureLoudness } from '../src/util.mjs';
 
 const pexec = promisify(execFile);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const { GAP_LINE, DUCK, DUCK_SFX, MASTER_IMMERSIVE } = MIX_PROFILE;
+const { GAP_LINE, DUCK, DUCK_SFX } = MIX_PROFILE;
 
 // The graph exactly as it shipped before 2026-07-28, kept verbatim so the
 // comparison is against what really ran, not against a reconstruction of it.
+// Two defects live in this one string: the SFX stem [2:a] enters amix with no
+// trim and no duck, and the trailing single-pass loudnorm runs in DYNAMIC mode
+// (a compressor). The bench measures both against the current chain.
 const LEGACY_GRAPH =
   '[1:a]volume=-16dB[ambq];[3:a]volume=-20dB[musq];' +
   `[ambq][0:a]${DUCK}[duckedA];[musq][0:a]${DUCK}[duckedM];` +
@@ -199,29 +204,47 @@ const EAR_OPTIONS = [
   { name: '3-firm', trim: -3, ratio: 2, note: 'slam -5.7 dB vs dialog RMS' },
 ];
 
+// Bring a clip to a fixed true peak with ONE linear gain — the audition
+// equivalent of the master stage's ceiling, minus the loudness target. The ear
+// options are compared for RELATIVE slam-vs-dialog level (baked into the
+// premaster before any master), so matching their peaks is all that is needed
+// to make them fair to compare; chasing an absolute LUFS target would only make
+// the audition fail the same peak gate a hot cinematic premaster does.
+async function peakNormalize(inFile, out, targetPeak, encodeArgs) {
+  const { truePeak } = await loudness(inFile);
+  const gain = (typeof truePeak === 'number' ? targetPeak - truePeak : 0);
+  await ff(['-i', inFile, '-af', `volume=${gain.toFixed(2)}dB`, ...encodeArgs, out]);
+  return out;
+}
+
 // Machines rule on level; only the ear rules on whether a slam still startles.
 // This renders the same seconds of narration through each candidate so that
-// judgement is made on audio, not on a table of decibels.
+// judgement is made on audio, not on a table of decibels. Each option is
+// peak-normalized to the same -3.5 dBTP ceiling (see peakNormalize) so the ONLY
+// thing that differs between clips is the SFX trim/duck under test.
 async function renderEarOptions(outDir, dialog, amb, sfx, mus) {
   const p = (n) => path.join(outDir, n);
+  const enc = ['-c:a', 'aac', '-b:a', '128k', '-ar', '44100'];
   const made = [];
   const shipped = p('0-shipped-today.m4a');
   await ff(['-i', dialog, '-i', amb, '-i', sfx, '-i', mus, '-filter_complex', LEGACY_GRAPH,
-    '-map', '[out]', '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', shipped]);
-  made.push([shipped, 'what ships today: SFX with no trim and no duck']);
+    '-map', '[out]', ...enc, shipped]);
+  made.push([shipped, 'what ships today: SFX raw + one-pass loudnorm (compressor)']);
   for (const o of EAR_OPTIONS) {
     const stems = [
       { input: 1, tag: 'amb', gainDb: -16, duck: DUCK },
       { input: 2, tag: 'sfx', gainDb: o.trim, duck: `sidechaincompress=threshold=0.02:ratio=${o.ratio}:attack=60:release=350:makeup=1` },
       { input: 3, tag: 'mus', gainDb: -20, duck: DUCK },
     ];
-    const f = p(`${o.name}.m4a`);
+    const pre = p(`${o.name}-premaster.wav`);
     await ff(['-i', dialog, '-i', amb, '-i', sfx, '-i', mus,
-      '-filter_complex', buildImmersiveGraph(stems, MASTER_IMMERSIVE),
-      '-map', '[out]', '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', f]);
+      '-filter_complex', buildImmersiveGraph(stems), '-map', '[out]', '-ar', '48000', '-ac', '1', pre]);
+    const f = p(`${o.name}.m4a`);
+    await peakNormalize(pre, f, IMMERSIVE.tp, enc);
+    if (!process.argv.includes('--keep')) rmSync(pre, { force: true });
     made.push([f, `trim ${o.trim} dB, duck ratio ${o.ratio} -- ${o.note}`]);
   }
-  console.log('\nEAR OPTIONS');
+  console.log('\nEAR OPTIONS  (peak-normalized to -3.5 dBTP; relative SFX level is the variable)');
   for (const [f, note] of made) console.log(`  ${path.basename(f).padEnd(20)} ${note}`);
   return made;
 }
@@ -279,20 +302,37 @@ async function main() {
       `(${dB(over.peakDb - dRms)} dB vs dialog)   in the gap ${dB(inGap.peakDb)} dBFS`);
   }
 
-  // 3) master conformance, measured on the DECODED AAC
-  console.log('\nMASTER CONFORMANCE  (measured after the AAC encode, not before it)');
-  for (const [label, graph] of [['before', LEGACY_GRAPH], ['after', buildImmersiveGraph()]]) {
-    const m4a = p(`master-${label}.m4a`);
-    await ff(['-i', dialog, '-i', amb, '-i', sfx, '-i', mus, '-filter_complex', graph,
-      '-map', '[out]', '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', m4a]);
-    const l = await loudness(m4a);
-    const asked = graph.match(/loudnorm=I=(-?[\d.]+):TP=(-?[\d.]+):LRA=([\d.]+)/);
-    const ceiling = parseFloat(asked[2]);
-    const over = l.truePeak - ceiling;
-    console.log(`  ${label.padEnd(8)} asked I=${asked[1]} TP=${asked[2]} LRA=${asked[3]}` +
-      `   got I=${dB(l.i)} TP=${dB(l.truePeak)} LRA=${l.lra}` +
-      `   ceiling overshoot ${over >= 0 ? '+' : ''}${over.toFixed(1)} dB` +
-      `${l.truePeak > -3 ? '   ACX FAIL (needs < -3)' : '   ACX ok'}`);
+  // 3) the master stage: the shipped one-pass loudnorm (a compressor) vs
+  //    measure-then-linear-gain. Built on a WIDE premaster so the LRA squash is
+  //    visible -- a flat signal cannot show a compressor doing its damage.
+  console.log('\nMASTER STAGE  (one-pass loudnorm vs measure-then-gain, on wide material)');
+  const widePre = p('premaster-wide.wav');
+  {
+    const wideDialog = await buildWideDialogStem(p('bench-dialog-wide.wav'));
+    await ff(['-i', wideDialog, '-i', amb, '-i', sfx, '-i', mus,
+      '-filter_complex', buildImmersiveGraph(), '-map', '[out]', '-ar', '48000', '-ac', '1', widePre]);
+  }
+  const preL = await loudness(widePre);
+  console.log(`  premaster (ungraded):        I=${dB(preL.i)}  LRA=${preL.lra} LU  TP=${dB(preL.truePeak)}`);
+  // the old chain: one-pass loudnorm, exactly as it shipped
+  const oldM = p('master-oldchain.m4a');
+  await ff(['-i', widePre, '-af', 'loudnorm=I=-18:TP=-2:LRA=11',
+    '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', oldM]);
+  const oldL = await loudness(oldM);
+  console.log(`  old one-pass loudnorm:       I=${dB(oldL.i)}  LRA=${oldL.lra} LU  TP=${dB(oldL.truePeak)}` +
+    `   squashed ${(preL.lra - oldL.lra).toFixed(1)} LU of range`);
+  // the new chain: master() measures then applies one linear gain. On a quiet,
+  // peaky premaster the peak ceiling can block the boost to target — that is a
+  // legitimate gate failure (a too-hot mix), so report it rather than crash.
+  const newM = p('master-newchain.m4a');
+  const r = await master(widePre, newM, IMMERSIVE, ['-c:a', 'aac', '-b:a', '128k', '-ar', '44100'])
+    .catch((e) => ({ err: e.message }));
+  if (r.err) {
+    console.log(`  new measure-then-gain:       GATE FAILED — ${r.err}`);
+  } else {
+    console.log(`  new measure-then-gain:       I=${dB(r.measured.integratedLufs)}  LRA=${r.measured.lra} LU  ` +
+      `TP=${dB(r.measured.truePeakDb)}   preserved range (${(preL.lra - r.measured.lra).toFixed(1)} LU drift)` +
+      `${r.measured.truePeakDb < -3 ? '   ACX ok' : '   ACX FAIL'}`);
   }
 
   // 4) candidate sweep. The number that decides this is the slam's peak
@@ -314,18 +354,29 @@ async function main() {
   rmSync(p('sweep.wav'), { force: true });
   rmSync(p('sweep-dry.wav'), { force: true });
 
-  // 5) does the LRA target do anything? Only measurable on wide material.
-  console.log('\nLRA TARGET on chapter-like material (a 14 dB quiet passage)');
-  const wide = await buildWideDialogStem(p('bench-dialog-wide.wav'));
-  const rawLra = (await loudness(wide)).lra;
-  console.log(`  ungraded stem LRA: ${rawLra} LU`);
-  for (const lra of [11, 9]) {
-    const m4a = p(`master-lra${lra}.m4a`);
-    await ff(['-i', wide, '-i', amb, '-i', sfx, '-i', mus, '-filter_complex',
-      buildImmersiveGraph(undefined, `loudnorm=I=-18:TP=-3:LRA=${lra}`),
-      '-map', '[out]', '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', m4a]);
-    const l = await loudness(m4a);
-    console.log(`  asked LRA=${String(lra).padEnd(2)}  ->  got LRA=${l.lra} LU   I=${dB(l.i)}   TP=${dB(l.truePeak)}`);
+  // 5) does the -3.5 immersive ceiling cost any loudness? Under linear gain a
+  //    tighter true-peak ceiling caps how much gain the master may apply, so a
+  //    peaky mix could land short of -18. This is the measurement behind
+  //    IMMERSIVE.tp: if byPeak < byLoudness at -3.5, immersive is peak-limited.
+  console.log('\nIMMERSIVE CEILING  (does -3.5 dBTP still let the mix reach -18 LUFS?)');
+  // masterGainDb is pure, so this evaluates the trade without rendering. Two
+  // reference premasters: this bench's (quiet + peaky, a worst case for the
+  // ceiling) and the one real render on record (src/master.mjs: -16.7 LUFS,
+  // -1.6 dBTP), which is LOUDER than target and therefore masters DOWN.
+  const immPreL = await loudness(widePre);
+  const refs = [
+    ['bench premaster', { integratedLufs: immPreL.i, truePeakDb: immPreL.truePeak }],
+    ['real render (on record)', { integratedLufs: -16.7, truePeakDb: -1.6 }],
+  ];
+  for (const [name, m] of refs) {
+    console.log(`  ${name}: I=${dB(m.integratedLufs)} LUFS  peak=${dB(m.truePeakDb)} dBTP`);
+    for (const tp of [-2, -3, -3.5]) {
+      const g = masterGainDb(m, { i: -18, tp });
+      const landedI = m.integratedLufs + g.db;
+      console.log(`    ceiling ${String(tp).padStart(4)} dBTP -> gain ${g.db >= 0 ? '+' : ''}${g.db.toFixed(2)} dB` +
+        `  (${g.peakLimited ? 'PEAK-LIMITED' : 'loudness-limited'})  lands I=${landedI.toFixed(1)}` +
+        `${Math.abs(landedI + 18) <= 0.5 ? '  hits -18' : '  MISSES -18'}`);
+    }
   }
 
   // 6) does the release time buy anything? A one-shot landing just after a line
@@ -346,28 +397,19 @@ async function main() {
   }
   for (const f of ['rel-line.wav', 'rel-scene.wav']) rmSync(p(f), { force: true });
 
-  // 7) which true-peak ceiling actually clears ACX? "TP=-3" is a request, not a
-  //    result -- what matters is the dBFS of the decoded file.
-  console.log('\nTRUE-PEAK CEILING vs ACX (retail needs peak < -3 dB)');
-  for (const tp of [-2, -3, -3.5, -4]) {
-    const imm = p(`tp-imm${tp}.m4a`);
-    await ff(['-i', dialog, '-i', amb, '-i', sfx, '-i', mus, '-filter_complex',
-      buildImmersiveGraph(undefined, `loudnorm=I=-18:TP=${tp}:LRA=9`),
-      '-map', '[out]', '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', imm]);
-    const cl = p(`tp-clean${tp}.m4a`);
-    await ff(['-i', dialog, '-af', `loudnorm=I=-19:TP=${tp}:LRA=9`,
-      '-c:a', 'aac', '-b:a', '96k', '-ar', '44100', cl]);
-    const li = await loudness(imm);
-    const lc = await loudness(cl);
-    const verdict = (v) => (v < -3 ? 'pass' : 'FAIL');
-    console.log(`  TP=${String(tp).padStart(4)}   immersive ${dB(li.truePeak)} dBFS ${verdict(li.truePeak)}` +
-      `   clean ${dB(lc.truePeak)} dBFS ${verdict(lc.truePeak)}`);
-    for (const f of [imm, cl]) if (!process.argv.includes('--keep')) rmSync(f, { force: true });
-  }
+  // (a rendered ACX verdict per ceiling would need a premaster at a realistic
+  //  crest; the raw actor-seed bench signal is too peaky to master to target,
+  //  so the ceiling analysis above uses the pure gain function on both the
+  //  bench worst case and the real render on record. The end-to-end proof that
+  //  the encode preserves true peak within 0.1 dB lives in
+  //  test/master-loudness.test.mjs, which masters a controlled fixture.)
 
   if (!process.argv.includes('--keep')) {
     for (const f of ['chain-dry', 'chain-wet', 'chain-shot']) {
       for (const g of rows.map(([l]) => slug(l))) rmSync(p(`${f}-${g}.wav`), { force: true });
+    }
+    for (const f of ['premaster-wide.wav', 'master-oldchain.m4a', 'master-newchain.m4a']) {
+      rmSync(p(f), { force: true });
     }
   }
   console.log(`\nartifacts in ${outDir}`);

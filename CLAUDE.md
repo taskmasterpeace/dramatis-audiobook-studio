@@ -53,8 +53,11 @@ gender/age/accent, `src/voicedesign.mjs` builds audition slates) →
 source of truth for engine ids, limits, chunking) →
 **Align** (`src/align.mjs`, word onsets; an enhancement — failures degrade to
 line-start cue placement, never kill a render) →
-**Mix** (`src/mix.mjs` — 4 stems: dialog/ambience/SFX/music, sidechain ducking,
-dialog sacred) → **Master** (immersive −18 LUFS + clean −19) → **Bind** (M4B).
+**Mix** (`src/mix.mjs` — 4 stems: dialog/ambience/SFX/music, each non-dialog
+stem trimmed AND sidechain-ducked; dialog sacred; the bus ends at the amix as an
+unmastered premaster) → **Master** (`src/master.mjs` — measure the premaster
+with ebur128, then ONE linear gain; immersive −18 LUFS + clean −19, both
+verified or the render fails) → **Bind** (M4B).
 The Studio (`studio/server.mjs` + `studio/app/` — zero-dependency node:http +
 vanilla JS, no build step) is a cockpit over the same files. The filesystem is
 the database: `books/<id>/book.json` is config, `out/` is renders, `actors/` is
@@ -63,7 +66,7 @@ the saved voice company (seed clip + recipe = a re-hirable actor).
 ## What to run
 
 ```
-npm test                 # 38 tests incl. attribution snapshots, Gemini tag safety, mix-graph shape
+npm test                 # 47 tests incl. attribution snapshots, Gemini tag safety, mix-graph shape, master gate
 node scripts/mix-bench.mjs    # dB on any mix change (real speech); --ear renders A/B options
 node studio/smoke.mjs    # 13 integration checks against a live server
 npm start                # Studio → http://localhost:4600
@@ -111,11 +114,28 @@ dial is also a pitch dial). Seed Audio (fal): researched for trailers/set-pieces
   dialog under it. Nothing failed, because nothing asserted relative level.
   `test/mix-graph.test.mjs` now asserts the law ("only dialog reaches amix
   unprocessed") rather than the numbers, which are an ear question and move.
-- **Measure before you write the comment.** Three plausible audio stories were
-  wrong: AAC does NOT overshoot loudnorm's ceiling (within 0.1 dB), a SLOWER
-  sidechain attack lets a transient through LOUDER, and `TP=-3` does not clear
-  ACX's "below -3" (it delivers -3.0; -3.5 is the first ceiling that passes).
-  `scripts/mix-bench.mjs` exists so the next such claim costs one command.
+- **Measure before you write the comment.** Plausible audio stories that were
+  wrong until measured: a SLOWER sidechain attack lets a transient through
+  LOUDER (not quieter), `TP=-3` delivers exactly -3.0 and so does NOT clear
+  ACX's "below -3" (-3.5 is the first ceiling that passes), and the AAC encode
+  moves true peak by <0.1 dB (it does not overshoot). `scripts/mix-bench.mjs`
+  exists so the next such claim costs one command.
+- **`loudnorm` in one pass is a COMPRESSOR, not a gain stage.** Without
+  `measured_I`/`measured_TP`/`measured_LRA`/`measured_thresh` it runs in dynamic
+  mode and says so (`print_format=json` → `"normalization_type":"dynamic"`).
+  Measured 2026-07-28 on a real 4-stem mix: it missed its target by ~2 LU AND
+  squashed several LU of dialogue range, and the miss is program-dependent —
+  that is where chapter-to-chapter loudness drift came from. `src/master.mjs`
+  measures the premaster with `ebur128`, then applies ONE `volume=<gain>dB` and
+  verifies the render (`test/master-loudness.test.mjs`). Never put a `loudnorm`
+  in a master chain. Under linear gain the loudness target and the true-peak
+  ceiling can conflict on a quiet+peaky premaster — the gate then fails LOUDLY
+  ("pull the hot cue gains down"), which is correct, not a bug to loosen away.
+- **Loudness measurement has exactly one caller-visible convention.** Our
+  masters are mono, and ffmpeg reads mono 3.01 dB quieter without `dualmono=true`
+  (measured: −16.7 vs −13.7 LUFS on one file). `measureLoudness()` in
+  `src/util.mjs` owns it; the gain stage and the gate that verifies it must both
+  go through that helper, or they disagree with themselves by 3 LU.
 - **Windows venv layout** is `.venv/Scripts/python.exe` (POSIX: `.venv/bin/python`);
   `src/util.mjs pythonExe()` handles both — use it, don't hardcode.
 - **Don't trust vendor 200s**: ElevenLabs accepts and ignores `style` on v3;
