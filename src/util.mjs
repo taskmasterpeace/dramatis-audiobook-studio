@@ -118,7 +118,12 @@ export async function astatsRms(file, selectExpr) {
 // anullsrc — true digital zero reads -inf and passes trivially, which is the
 // whole reason the mixer lays continuous room tone instead.
 const FLOOR_GUARD = 0.1;         // s trimmed off each end of a silent region
-const FLOOR_MAX_REGIONS = 200;   // keeps the filter expression sane
+// 200 between() clauses in ONE aselect expression is past what some ffmpeg
+// builds will parse (8.1.2 dies with "Cannot allocate memory" at ~190 on a
+// 10-minute chapter — measured 2026-08-06, it killed a finished render at the
+// gate). 60 regions sampled EVENLY across the file keeps the expression well
+// inside every parser we've met while still covering head, middle and tail.
+const FLOOR_MAX_REGIONS = 60;
 
 export async function noiseFloorDb(file) {
   const { stderr } = await pexecFile('ffmpeg',
@@ -131,13 +136,24 @@ export async function noiseFloorDb(file) {
     if (b > a) regions.push([a, b]);
   }
   if (!regions.length) return null;
-  const used = regions.slice(0, FLOOR_MAX_REGIONS);
-  // never truncate coverage silently — a gate that sampled a third of the file
-  // and said PASS is worse than no gate
-  if (used.length < regions.length) {
-    log('measure', `noise floor: sampled ${used.length} of ${regions.length} silent regions`);
+  // Even-stride sample, not first-N: first-N would measure only the chapter's
+  // head and call it the floor. Never truncate coverage silently — a gate that
+  // sampled a third of the file and said PASS is worse than no gate.
+  let used = regions;
+  if (regions.length > FLOOR_MAX_REGIONS) {
+    const stride = regions.length / FLOOR_MAX_REGIONS;
+    used = Array.from({ length: FLOOR_MAX_REGIONS }, (_, i) => regions[Math.floor(i * stride)]);
+    log('measure', `noise floor: sampled ${used.length} of ${regions.length} silent regions (even stride)`);
   }
-  return astatsRms(file, used.map(([a, b]) => `between(t,${a.toFixed(3)},${b.toFixed(3)})`).join('+'));
+  try {
+    return await astatsRms(file, used.map(([a, b]) => `between(t,${a.toFixed(3)},${b.toFixed(3)})`).join('+'));
+  } catch (e) {
+    // A MEASUREMENT must never kill a finished render. Unmeasured is a state
+    // the verdict already understands (null -> check reads "unmeasured", not
+    // PASS) — a crash here threw away a whole rendered chapter once.
+    log('measure', `noise floor: measurement failed (${String(e.message).split('\n')[0].slice(0, 120)}) — reporting unmeasured`);
+    return null;
+  }
 }
 
 export function log(stage, msg) {

@@ -230,7 +230,8 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
     shots.push({ file: r.file, delayMs: Math.round(p.at * 1000), gainDb: cue.gain_db ?? 0 });
     cueReport.push({
       id: cue.id, sfx: cue.sfx, at: +p.at.toFixed(2), method: p.method, confidence: p.confidence,
-      source: r.source, ...(r.score != null && { sim: r.score }), ...(r.caption && { caption: r.caption }),
+      source: r.source, file: r.file, gainDb: cue.gain_db ?? 0,
+      ...(r.score != null && { sim: r.score }), ...(r.caption && { caption: r.caption }),
     });
     log('mix', `cue ${cue.id} (${cue.sfx}) @${fmt(p.at)} [${r.source}/${p.method} conf=${p.confidence}]`);
   }
@@ -246,7 +247,7 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
     try {
       const t = await renderTrack(mc.spec, mc.dur, cacheRoot);
       musicShots.push({ file: t.file, delayMs: Math.round(at * 1000), gainDb: mc.gain_db ?? 0 });
-      musicReport.push({ id: mc.id, spec: mc.spec, at: +at.toFixed(2), engine: t.engine, license: t.license });
+      musicReport.push({ id: mc.id, spec: mc.spec, at: +at.toFixed(2), engine: t.engine, license: t.license, file: t.file, gainDb: mc.gain_db ?? 0 });
       log('mix', `music ${mc.id} @${fmt(at)} (${t.engine})`);
     } catch (e) {
       musicReport.push({ id: mc.id, spec: mc.spec, skipped: String(e.message).slice(0, 140) });
@@ -321,6 +322,51 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
     retail: { ...masterQa(masters.retail), noiseFloorDb: retailFloor, acx },
   };
   writeFileSync(path.join(outDir, 'qa-report.json'), JSON.stringify(qa, null, 2));
+
+  // Directors Desktop export: the same placements that built the stems,
+  // UN-mixed — absolute media paths + times so DD can put every element on its
+  // editor timeline as a separate clip instead of consuming a mixdown. Emitted
+  // by the placing code itself so there is exactly one timing authority (a
+  // second exporter would drift the first time a gap constant changed).
+  const absp = (p) => path.resolve(p);
+  const fileDur = {};
+  for (const c of cueReport) if (c.file && !(c.file in fileDur)) fileDur[c.file] = await ffprobeDuration(c.file);
+  for (const m of musicReport) if (m.file && !(m.file in fileDur)) fileDur[m.file] = await ffprobeDuration(m.file);
+  const ddElements = {
+    version: 1,
+    book: script.book,
+    chapter: script.chapter,
+    durationSec: +total.toFixed(2),
+    // The mix's own stem levels, so an NLE import can start from the same
+    // balance the immersive master uses (ducking is the editor's job there).
+    stemGains: { ambience: AMB_GAIN_DB, sfx: SFX_GAIN_DB, music: MUS_GAIN_DB },
+    entities: (script.entities || []).map((e) => ({
+      id: e.id, kind: e.kind, names: e.names || [], visual: e.visual || null,
+    })),
+    scenes: script.scenes.map((s) => ({
+      id: s.id, start: +s._start.toFixed(2), end: +s._end.toFixed(2),
+      visual: s.visual || null, ambience: s.ambience?.type || 'silence',
+    })),
+    lines: timeline.map((l) => ({
+      id: l.id, entity: l.entity, start: l.start, dur: l.dur, text: l.text, wav: absp(l.norm),
+    })),
+    cues: cueReport.filter((c) => c.file && c.at != null).map((c) => ({
+      id: c.id, sfx: c.sfx, at: c.at, dur: +(fileDur[c.file] || 0).toFixed(2),
+      file: absp(c.file), confidence: c.confidence ?? null, gainDb: c.gainDb ?? 0,
+    })),
+    beds: bedSpecs.map((b, i) => ({
+      sceneId: b.id, type: b.spec.type, start: +b.start.toFixed(2), dur: +b.dur.toFixed(2),
+      file: absp(bedFiles[i].file), source: bedFiles[i].source || 'procgen',
+    })),
+    music: musicReport.filter((m) => m.file).map((m) => ({
+      id: m.id, at: m.at, dur: +(fileDur[m.file] || 0).toFixed(2),
+      file: absp(m.file), spec: m.spec, license: m.license || null, gainDb: m.gainDb ?? 0,
+    })),
+  };
+  writeFileSync(path.join(outDir, 'dd-elements.json'), JSON.stringify(ddElements, null, 2));
+  log('mix', `dd-elements: ${ddElements.lines.length} lines, ${ddElements.cues.length} cues, `
+    + `${ddElements.beds.length} beds, ${ddElements.music.length} music -> dd-elements.json`);
+
   return { qa, files: { immersive, clean, retail }, durationSec: total };
 }
 
