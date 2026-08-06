@@ -188,8 +188,14 @@ export async function renderLines(lines, voices, cacheRoot, meta) {
     // A vague prompt is a documented failure mode: it can trip the synthesis
     // classifier (PROHIBITED_CONTENT) or make the model read the notes aloud.
     const base = v.prompt || 'Synthesize this performance as speech. PERFORMANCE\nStyle: a natural, engaging audiobook narrator. Pace: unhurried and clear.';
-    const prompt = clampBytes(dir ? `${base}\n${dir}` : base, 3900);
-    const key = contentKey([ENGINE, v.voice || 'Kore', prompt, text]);
+    // Free-text director note (takes API) joins the performance direction —
+    // inside the prompt, so it reaches the cache key and the duration gate
+    // still guards against it being read aloud.
+    const note = typeof line.note === 'string' ? line.note.trim() : '';
+    const directed = [dir, note && `Direction: ${note}`].filter(Boolean).join('\n');
+    const prompt = clampBytes(directed ? `${base}\n${directed}` : base, 3900);
+    const keyParts = [ENGINE, v.voice || 'Kore', prompt, text];
+    const key = contentKey(line.take != null ? [...keyParts, `take:${line.take}`] : keyParts);
     const { path: out, hit } = cached(cacheRoot, key);
     results[line.id] = out;
     if (meta) meta[line.id] = { engine: 'gemini', engineTag: ENGINE, voiceKey: v.voice || 'Kore', key, direction: dir || null };

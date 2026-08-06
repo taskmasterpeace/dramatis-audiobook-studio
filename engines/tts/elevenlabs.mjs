@@ -162,7 +162,11 @@ export async function renderLines(lines, voices, cacheRoot, meta) {
     const text = tag + speakable(line.text);
     const stability = isV3 ? snapStability(v.stability ?? 0.5) : (v.stability ?? 0.5);
     const style = v.style ?? 0.3;
-    const key = contentKey([ENGINE, name, model, String(stability), String(style), text]);
+    // take nonce for re-rolls (see qwen3) — v3 synthesis is stochastic, so a
+    // new key is a genuinely new read. Free-text notes are NOT supported here:
+    // v3 wants [tags], and arbitrary prose would be spoken or ignored silently.
+    const keyParts = [ENGINE, name, model, String(stability), String(style), text];
+    const key = contentKey(line.take != null ? [...keyParts, `take:${line.take}`] : keyParts);
     const { path: out, hit } = cached(cacheRoot, key);
     results[line.id] = out;
     if (meta) meta[line.id] = { engine: 'elevenlabs', engineTag: ENGINE, voiceKey: name, key, direction: tag || null };

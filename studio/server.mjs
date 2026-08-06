@@ -14,6 +14,7 @@ import {
 import { compile, chapterConfigHash } from '../src/compile.mjs';
 import { loadKeys } from '../src/keys.mjs';
 import { ENGINE_IDS, loadRenderer, availableEngines } from '../engines/tts/registry.mjs';
+import { handleTakesRoute } from './takes-api.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const APP = path.join(root, 'studio', 'app');
@@ -336,6 +337,15 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && p.startsWith('/landing/')) return serveStatic(res, LANDING, decodeURIComponent(p.slice('/landing/'.length)));
     if (req.method === 'GET' && p.startsWith('/shared/')) return serveStatic(res, SHARED, decodeURIComponent(p.slice('/shared/'.length)));
     if (req.method === 'GET' && !p.startsWith('/api/')) return serveStatic(res, APP, decodeURIComponent(p.slice(1)));
+
+    // ---- takes (surgical line regeneration — Directors Desktop round trip) ----
+    if (p.startsWith('/api/takes')) {
+      const handled = await handleTakesRoute(req, res, p, {
+        root, json, readBody,
+        isBusy: () => !!(job && job.status === 'running'),
+      });
+      if (handled) return;
+    }
 
     // ---- books ----
     if (req.method === 'GET' && p === '/api/books') {

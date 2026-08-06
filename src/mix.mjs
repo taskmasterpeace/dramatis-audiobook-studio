@@ -415,7 +415,7 @@ function endsSentence(text) {
 // Level one line onto the common target with STATIC GAIN. Deliberately not
 // loudnorm: its dynamic mode would compress the performance, and the whole
 // point of casting a line to an actor is the dynamics.
-async function levelLine(src, out) {
+export async function levelLine(src, out) {
   const m = await measureLoudness(src);
   let gain = 0;
   // ebur128 gates on ~400 ms blocks with a -70 LUFS absolute floor, so a very

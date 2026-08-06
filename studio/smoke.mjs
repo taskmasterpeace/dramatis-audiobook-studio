@@ -37,17 +37,27 @@ try {
   const withAudio = books.books.find((b) => b.minutes > 0);
   check('rollup has minutes + spend', !!withAudio && typeof withAudio.spend.llmUsd === 'number', withAudio && `${withAudio.id}: ${withAudio.minutes} min`);
 
-  const id = 'open-window';
+  // Exercise whichever book actually has rendered audio: hardcoding
+  // 'open-window' broke the whole smoke the day its renders were pruned from
+  // out/ — the suite then failed on missing media instead of testing routes.
+  const id = withAudio?.id || 'open-window';
   const detail = await (await fetch(`${base}/api/books/${id}`)).json();
-  check('GET book detail: chapters + preflight', detail.chapters?.length === 1 && detail.preflight?.hero > 0,
-    detail.preflight && `hero=${detail.preflight.hero} (${detail.preflight.heroChars} chars)`);
-  check('chapter has media path', !!detail.chapters[0].media);
+  check('GET book detail: chapters + preflight', detail.chapters?.length >= 1 && typeof detail.preflight?.hero === 'number',
+    detail.preflight && `${id}: hero=${detail.preflight.hero} (${detail.preflight.heroChars} chars)`);
+  const mastered = detail.chapters.find((c) => c.media);
+  check('a mastered chapter has a media path', !!mastered);
 
-  const media = await fetch(base + detail.chapters[0].media, { headers: { Range: 'bytes=0-999' } });
+  const media = await fetch(base + mastered.media, { headers: { Range: 'bytes=0-999' } });
   check('media Range request -> 206', media.status === 206 && media.headers.get('content-range')?.startsWith('bytes 0-999/'));
 
   const script = await fetch(`${base}/media/${id}/ch-01/production-script.json`);
   check('production script served', script.ok && (await script.json()).scenes?.length > 0);
+
+  // takes API (surgical regeneration): index answers, input validation bites
+  const takes = await fetch(`${base}/api/takes/${id}/1`);
+  check('takes index route answers', takes.ok && typeof (await takes.json()).lines === 'object');
+  const badTake = await fetch(base + '/api/takes/render', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ book: id, chapter: 1 }) });
+  check('takes render validates input', badTake.status === 400);
 
   // hint round-trip on a copy-safe book (write + verify + revert)
   const bookFile = path.join(root, 'books', id, 'book.json');

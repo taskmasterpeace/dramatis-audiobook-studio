@@ -15,11 +15,18 @@ const EMOTION_ADJ = {
   anger: 'angry', sadness: 'sad', joy: 'happy', fear: 'fearful',
   surprise: 'surprised', disgust: 'annoyed', tenderness: 'warm', curiosity: 'curious',
 };
-function instruct(emotion) {
-  if (!emotion) return '';
-  const [k, v] = Object.entries(emotion).sort((a, b) => b[1] - a[1])[0];
-  if (v < 0.4) return '';
-  return `Speak with a ${v >= 0.75 ? 'very ' : ''}${EMOTION_ADJ[k] || k} tone.`;
+function instruct(emotion, note) {
+  let base = '';
+  if (emotion) {
+    const [k, v] = Object.entries(emotion).sort((a, b) => b[1] - a[1])[0];
+    if (v >= 0.4) base = `Speak with a ${v >= 0.75 ? 'very ' : ''}${EMOTION_ADJ[k] || k} tone.`;
+  }
+  // Free-text director note (takes API): appended to — never replacing — the
+  // emotion instruct, and it reaches the cache key through `ins`, so a noted
+  // take can never collide with the original render (law 5).
+  const n = typeof note === 'string' ? note.trim() : '';
+  if (!n) return base;
+  return base ? `${base} ${n}` : n;
 }
 
 export async function renderLines(lines, voices, cacheRoot, meta) {
@@ -31,14 +38,18 @@ export async function renderLines(lines, voices, cacheRoot, meta) {
     const v = voices[line.entity] || voices.narrator;
     if (!v) throw new Error(`qwen3: no voice for entity '${line.entity}' and no narrator fallback`);
     entities[line.entity] = v;
-    const ins = instruct(line.emotion);
+    const ins = instruct(line.emotion, line.note);
     if (ins) emotive++;
     // seed voices key on the seed PATH — legal because seed.wav is immutable by
     // law (a company actor's identity IS that file; hire/upload never overwrite)
     const voiceKey = v.design || v.speaker || (v.seed ? `seed:${v.seed}|${v.transcript || ''}` : undefined);
     if (!voiceKey) throw new Error(`qwen3: entity '${line.entity}' has neither design, speaker, nor seed`);
     const text = speakable(line.text);
-    const key = contentKey([ENGINE, voiceKey, ins, text]);
+    // take nonce: appended ONLY when a re-roll asks for it (kokoro-lang
+    // precedent) so the existing cache catalog stays valid. qwen3 generation is
+    // stochastic, so a different key genuinely yields a different performance.
+    const base = [ENGINE, voiceKey, ins, text];
+    const key = contentKey(line.take != null ? [...base, `take:${line.take}`] : base);
     const { path: out, hit } = cached(cacheRoot, key);
     results[line.id] = out;
     if (meta) meta[line.id] = { engine: 'qwen3', engineTag: ENGINE, voiceKey, key, direction: ins || null };

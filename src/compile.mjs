@@ -229,9 +229,27 @@ export function compile(bookCfg, chapterCfg, manuscriptPath) {
     return { ...c, at_line: line.id };
   });
 
+  // Selected takes (chapterCfg.takes, written by the takes API) thread into
+  // the lines here so produce renders the chosen performance: note + nonce
+  // reproduce the take's exact cache key, takeEngine pins routing (hybrid
+  // would otherwise route the line by kind/emotion and silently ignore the
+  // selection — e.g. a directed narration take falling back to kokoro).
+  for (const l of allLines) {
+    const sel = chapterCfg.takes?.[l.id];
+    if (!sel) continue;
+    if (sel.note) l.note = sel.note;
+    if (sel.nonce != null) l.take = sel.nonce;
+    if (sel.engine) l.takeEngine = sel.engine;
+  }
+
   const script = {
     book: bookCfg.id, chapter: chapterTitle, revision: 1,
     configHash: chapterConfigHash(bookCfg, chapterCfg),
+    // The same fingerprint with take selections stripped: takes never move or
+    // re-segment lines, so the takes API validates line ids against THIS hash —
+    // otherwise selecting a take would mark the chapter stale and lock the
+    // takes API out until a full re-produce (a dead-lock we hit in design).
+    configHashSansTakes: chapterConfigHash(bookCfg, { ...chapterCfg, takes: undefined }),
     entities: bookCfg.entities, scenes, cues, music,
   };
   log('compile', `${paragraphs.length} paragraphs -> ${allLines.length} lines, ${scenes.length} scenes, ${cues.length} cues`);

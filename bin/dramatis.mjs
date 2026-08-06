@@ -124,13 +124,8 @@ const { loadRenderer } = await import('../engines/tts/registry.mjs');
 const renderLines = ttsName === 'hybrid'
   ? (await import('../engines/tts/hybrid.mjs')).renderLines
   : await loadRenderer(ttsName);
-let voices = book.voices[ttsName];
-if (!voices) throw new Error(`book.json has no voice map for engine: ${ttsName}`);
-// "@name" entries reference another voice map (e.g. hybrid -> kokoro + elevenlabs)
-voices = Object.fromEntries(Object.entries(voices).map(([k, v]) =>
-  [k, typeof v === 'string' && v.startsWith('@') ? book.voices[v.slice(1)] : v]));
-// per-role engine overrides from book.json casting reach the hybrid router
-if (book.casting) voices.__casting = book.casting;
+const { buildVoices } = await import('../src/voices-map.mjs');
+const voices = buildVoices(book, ttsName);
 
 // fail fast: a miscast character used to render silently in the narrator's voice
 const { validateBook, assertAllRendered } = await import('../src/validate.mjs');

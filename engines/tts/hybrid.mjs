@@ -4,20 +4,15 @@
 //   hero dialogue    -> ElevenLabs (lines carrying an emotion payload — the
 //                       moments worth spending credits on, v3 audio tags)
 import { log } from '../../src/util.mjs';
+import { routeEngine } from '../../src/voices-map.mjs';
 import { ENGINE_IDS, getEngine, loadRenderer } from './registry.mjs';
 
 export async function renderLines(lines, voices, cacheRoot, meta) {
-  // per-ROLE engine overrides (book.json "casting", injected as voices.__casting)
-  // win over kind-based routing — e.g. narrator locked to elevenlabs, liu to qwen3.
+  // Routing lives in voices-map.mjs (one authority): selected-take engine pin
+  // > per-ROLE casting override (voices.__casting) > kind/emotion routing.
   const casting = voices.__casting || {};
-  const route = (l) => {
-    const forced = casting[l.entity]?.engine;
-    if (forced && ENGINE_IDS.includes(forced) && voices[forced]) return forced;
-    if (l.kind !== 'dialogue') return 'kokoro';
-    return l.emotion ? 'elevenlabs' : 'qwen3';
-  };
   const buckets = {};
-  for (const l of lines) (buckets[route(l)] ??= []).push(l);
+  for (const l of lines) (buckets[routeEngine(l, voices, ENGINE_IDS)] ??= []).push(l);
   log('render:tts', 'hybrid: ' + Object.entries(buckets)
     .map(([eng, ls]) => `${ls.length} -> ${eng}`).join(', ') +
     (Object.keys(casting).length ? ` (casting overrides: ${Object.keys(casting).join(',')})` : ''));
