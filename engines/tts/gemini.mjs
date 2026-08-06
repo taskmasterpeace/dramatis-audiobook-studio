@@ -175,7 +175,7 @@ async function synthJobGated(job, key) {
   }
 }
 
-export async function renderLines(lines, voices, cacheRoot) {
+export async function renderLines(lines, voices, cacheRoot, meta) {
   const jobs = [];
   const results = {};
   let tagged = 0;
@@ -192,6 +192,7 @@ export async function renderLines(lines, voices, cacheRoot) {
     const key = contentKey([ENGINE, v.voice || 'Kore', prompt, text]);
     const { path: out, hit } = cached(cacheRoot, key);
     results[line.id] = out;
+    if (meta) meta[line.id] = { engine: 'gemini', engineTag: ENGINE, voiceKey: v.voice || 'Kore', key, direction: dir || null };
     // No combined-cap arithmetic here: text and prompt each cap at 4,000 bytes,
     // so the worst case is exactly 8,000 — the documented combined limit can
     // never actually be violated. The subtraction this used to do could never

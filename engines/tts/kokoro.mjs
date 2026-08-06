@@ -16,7 +16,7 @@ import { KOKORO_LANG } from '../../src/voice-tables.mjs';
 const ENGINE = 'kokoro-onnx@2';
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-export async function renderLines(lines, voices, cacheRoot) {
+export async function renderLines(lines, voices, cacheRoot, meta) {
   const jobs = [];
   const results = {};
   for (const line of lines) {
@@ -34,6 +34,7 @@ export async function renderLines(lines, voices, cacheRoot) {
     const key = contentKey(v.lang ? [...base, v.lang] : base);
     const { path: out, hit } = cached(cacheRoot, key);
     results[line.id] = out;
+    if (meta) meta[line.id] = { engine: 'kokoro', engineTag: ENGINE, voiceKey: v.voice, key };
     if (!hit) jobs.push({ text, voice: v.voice, speed: v.speed ?? 1, lang: v.lang || KOKORO_LANG[v.voice] || 'en-us', out });
   }
   log('render:tts', `kokoro: ${lines.length} lines, ${lines.length - jobs.length} cache hits, ${jobs.length} to synthesize`);

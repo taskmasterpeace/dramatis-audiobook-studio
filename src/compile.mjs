@@ -201,7 +201,10 @@ export function compile(bookCfg, chapterCfg, manuscriptPath) {
   const scenes = sceneDefs.map((s, i) => {
     const end = i + 1 < sceneDefs.length ? sceneDefs[i + 1].startPara : Infinity;
     return {
-      id: s.id, env: s.env, ambience: s.ambience,
+      // visual rides through to the IR: book.json wrote one per scene for the
+      // motion phase, but the emit dropped it, so dd-elements.json shipped
+      // scenes[].visual: null to Directors Desktop for every scene.
+      id: s.id, env: s.env, ambience: s.ambience, visual: s.visual || null,
       lines: allLines.filter((l) => l.para >= s.startPara && l.para < end),
     };
   });

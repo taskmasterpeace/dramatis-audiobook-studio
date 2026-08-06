@@ -101,8 +101,13 @@ function placeCue(cue, line, words, lastCueAt, r) {
   return { at, method, wordMatched, confidence };
 }
 
-export async function mix(script, lineWavs, outDir, cacheRoot) {
+export async function mix(script, lineWavs, outDir, cacheRoot, opts = {}) {
   ensureDir(outDir);
+  // Generation records from the render stage ({lineId: {engine, engineTag,
+  // voiceKey, key, direction}}) — joined into dd-elements so every exported
+  // clip carries its provenance. Optional: callers that never met the render
+  // stage (tests, partial mixes) still get a valid manifest without gen blocks.
+  const renderMeta = opts.renderMeta || {};
 
   // 1) dialog stem: concat lines with gaps, recording each line's start time
   const timeline = [];
@@ -332,10 +337,26 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
   const fileDur = {};
   for (const c of cueReport) if (c.file && !(c.file in fileDur)) fileDur[c.file] = await ffprobeDuration(c.file);
   for (const m of musicReport) if (m.file && !(m.file in fileDur)) fileDur[m.file] = await ffprobeDuration(m.file);
+  // Per-line script facts (kind/cite/emotion + scene membership) for the
+  // manifest — the compile IR has them one hop away; dd-elements v1 dropped
+  // them and DD could not tell narration from dialogue or line from scene.
+  const lineFacts = {};
+  for (const s of script.scenes) {
+    for (const l of s.lines) {
+      lineFacts[l.id] = { kind: l.kind, sceneId: s.id, cite: l.cite || null, emotion: l.emotion || null };
+    }
+  }
   const ddElements = {
-    version: 1,
+    version: 2,
+    sourceApp: 'dramatis',
+    generatedAt: new Date().toISOString(),
     book: script.book,
+    bookTitle: opts.bookTitle || null,
     chapter: script.chapter,
+    // The staleness anchor: a take or regen request against a different
+    // configHash is talking about a chapter that no longer exists (line ids
+    // are positional — see compile.mjs).
+    configHash: script.configHash || null,
     durationSec: +total.toFixed(2),
     // The mix's own stem levels, so an NLE import can start from the same
     // balance the immersive master uses (ducking is the editor's job there).
@@ -347,9 +368,17 @@ export async function mix(script, lineWavs, outDir, cacheRoot) {
       id: s.id, start: +s._start.toFixed(2), end: +s._end.toFixed(2),
       visual: s.visual || null, ambience: s.ambience?.type || 'silence',
     })),
-    lines: timeline.map((l) => ({
-      id: l.id, entity: l.entity, start: l.start, dur: l.dur, text: l.text, wav: absp(l.norm),
-    })),
+    lines: timeline.map((l) => {
+      const f = lineFacts[l.id] || {};
+      const m = renderMeta[l.id];
+      return {
+        id: l.id, entity: l.entity, kind: f.kind || null, sceneId: f.sceneId || null,
+        start: l.start, dur: l.dur, text: l.text, cite: f.cite || null,
+        emotion: f.emotion || null, wav: absp(l.norm),
+        gen: m ? { engine: m.engine, engineTag: m.engineTag, voiceKey: m.voiceKey,
+                   key: m.key, direction: m.direction || null, rawWav: absp(lineWavs[l.id]) } : null,
+      };
+    }),
     cues: cueReport.filter((c) => c.file && c.at != null).map((c) => ({
       id: c.id, sfx: c.sfx, at: c.at, dur: +(fileDur[c.file] || 0).toFixed(2),
       file: absp(c.file), confidence: c.confidence ?? null, gainDb: c.gainDb ?? 0,

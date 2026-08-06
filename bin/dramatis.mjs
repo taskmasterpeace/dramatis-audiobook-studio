@@ -162,9 +162,15 @@ for (let ci = 0; ci < chapters.length; ci++) {
   writeFileSync(path.join(chOut, 'production-script.json'), JSON.stringify(script, null, 2));
 
   const allLines = script.scenes.flatMap((s) => s.lines);
-  const lineWavs = await renderLines(allLines, voices, cacheRoot);
+  // Generation records ride out of the engines beside the audio: each engine
+  // fills renderMeta[lineId] = {engine, engineTag, voiceKey, key} at the same
+  // moment it computes the cache key — one authority, cache hits included —
+  // and mix() joins it into dd-elements.json so Directors Desktop knows what
+  // every clip IS instead of receiving a mystery wav.
+  const renderMeta = {};
+  const lineWavs = await renderLines(allLines, voices, cacheRoot, renderMeta);
   assertAllRendered(allLines, lineWavs, existsSync); // named failure, not a cryptic ffmpeg exit in mix
-  const result = await mix(script, lineWavs, chOut, cacheRoot);
+  const result = await mix(script, lineWavs, chOut, cacheRoot, { renderMeta, bookTitle: book.title || null });
   produced.push({ n, title: script.chapter, ...result });
   log('produce', `${chapterCfg.heading}: ${Math.round(result.durationSec / 60)} min, ` +
     `${result.qa.flaggedLines.length} QA flags, immersive ${result.qa.immersive.integratedLufs} LUFS`);

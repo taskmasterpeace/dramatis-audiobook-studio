@@ -144,7 +144,7 @@ async function synthJob(job, key) {
   try { unlinkSync(list); } catch { /* fine */ }
 }
 
-export async function renderLines(lines, voices, cacheRoot) {
+export async function renderLines(lines, voices, cacheRoot, meta) {
   const jobs = [];
   const results = {};
   let tagged = 0;
@@ -165,6 +165,7 @@ export async function renderLines(lines, voices, cacheRoot) {
     const key = contentKey([ENGINE, name, model, String(stability), String(style), text]);
     const { path: out, hit } = cached(cacheRoot, key);
     results[line.id] = out;
+    if (meta) meta[line.id] = { engine: 'elevenlabs', engineTag: ENGINE, voiceKey: name, key, direction: tag || null };
     // Chunk rather than refuse. A whole story pasted into Quick Narrate used to
     // hit a hard 400 at the model's cap; now it splits, renders each part with
     // the neighbouring text as prosody context, and ffmpeg-concats to one file.

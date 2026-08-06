@@ -22,7 +22,7 @@ function instruct(emotion) {
   return `Speak with a ${v >= 0.75 ? 'very ' : ''}${EMOTION_ADJ[k] || k} tone.`;
 }
 
-export async function renderLines(lines, voices, cacheRoot) {
+export async function renderLines(lines, voices, cacheRoot, meta) {
   const jobs = [];
   const results = {};
   const entities = {};
@@ -41,6 +41,7 @@ export async function renderLines(lines, voices, cacheRoot) {
     const key = contentKey([ENGINE, voiceKey, ins, text]);
     const { path: out, hit } = cached(cacheRoot, key);
     results[line.id] = out;
+    if (meta) meta[line.id] = { engine: 'qwen3', engineTag: ENGINE, voiceKey, key, direction: ins || null };
     if (!hit) jobs.push({ entity: line.entity, text, instruct: ins, out });
   }
   log('render:tts', `qwen3: ${lines.length} lines, ${lines.length - jobs.length} cache hits, ` +

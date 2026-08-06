@@ -38,18 +38,27 @@ const ROOT = path.join(tmpdir(), 'ams-mix-test');
 // Measured on this filter chain: these three land at roughly -13/-25/-19 LUFS,
 // a real 12 dB spread, all needing gains inside the +/-12 dB clamp.
 const LINES = [
-  { id: 'lin_0001', entity: 'mr_white', text: '"Hark at the wind,"', para: 0, db: 8 },
-  { id: 'lin_0002', entity: 'narrator', text: 'said Mr. White.', para: 0, db: -4 },
-  { id: 'lin_0003', entity: 'narrator', text: 'The night was cold.', para: 1, db: 2 },
+  { id: 'lin_0001', entity: 'mr_white', kind: 'dialogue', cite: [10, 30], emotion: { fear: 0.6 }, text: '"Hark at the wind,"', para: 0, db: 8 },
+  { id: 'lin_0002', entity: 'narrator', kind: 'narration', text: 'said Mr. White.', para: 0, db: -4 },
+  { id: 'lin_0003', entity: 'narrator', kind: 'narration', text: 'The night was cold.', para: 1, db: 2 },
 ];
 
 const script = {
   book: 'test-book',
   chapter: 'Chapter 1',
+  configHash: 'cfg-test-hash',
   // no ambience: this is what a freshly scaffolded book now looks like
-  scenes: [{ id: 'sc-1', ambience: null, lines: LINES.map(({ db, ...l }) => l) }],
+  scenes: [{ id: 'sc-1', ambience: null, visual: 'A cold parlour at night.', lines: LINES.map(({ db, ...l }) => l) }],
   cues: [],
   music: [],
+};
+
+// What the render stage hands mix() — one record per line, filled by the
+// engines at key-computation time. lin_0003 is deliberately absent: a manifest
+// must survive partial meta (say/audition callers never provide any).
+const RENDER_META = {
+  lin_0001: { engine: 'qwen3', engineTag: 'qwen3-tts@1', voiceKey: 'design:old-man', key: 'k1', direction: 'Speak with a fearful tone.' },
+  lin_0002: { engine: 'kokoro', engineTag: 'kokoro-onnx@2', voiceKey: 'am_michael', key: 'k2' },
 };
 
 async function rmsOf(file, from, to) {
@@ -86,7 +95,7 @@ test.before(async () => {
       '-af', `volume=${l.db}dB`, '-ar', '24000', '-ac', '1', f]);
     lineWavs[l.id] = f;
   }
-  result = await mix(script, lineWavs, outDir, cacheRoot);
+  result = await mix(script, lineWavs, outDir, cacheRoot, { renderMeta: RENDER_META, bookTitle: 'Test Book' });
 });
 
 test.after(() => rmSync(ROOT, { recursive: true, force: true }));
@@ -171,6 +180,36 @@ test('the retail master is MP3 and clears ACX peak, RMS and noise floor', async 
   assert.ok(retail.noiseFloorDb != null && retail.noiseFloorDb < -60,
     `noise floor ${retail.noiseFloorDb} dB fails ACX's -60 dB ceiling`);
   assert.equal(retail.acx.pass, true, `ACX thresholds not met: ${retail.acx.failed.join(', ')}`);
+});
+
+test('dd-elements is a v2 production manifest: provenance on every line', () => {
+  const dd = JSON.parse(readFileSync(path.join(outDir, 'dd-elements.json'), 'utf8'));
+  assert.equal(dd.version, 2);
+  assert.equal(dd.sourceApp, 'dramatis');
+  assert.equal(dd.bookTitle, 'Test Book');
+  assert.equal(dd.configHash, 'cfg-test-hash', 'the staleness anchor must ride the manifest');
+  assert.ok(dd.generatedAt && !Number.isNaN(Date.parse(dd.generatedAt)));
+
+  // scenes carry the visual the book wrote for the motion phase (v1 shipped null)
+  assert.equal(dd.scenes[0].visual, 'A cold parlour at night.');
+
+  const [a, b, c] = dd.lines;
+  // script facts joined per line: kind, scene membership, citation, emotion
+  assert.equal(a.kind, 'dialogue');
+  assert.equal(a.sceneId, 'sc-1');
+  assert.deepEqual(a.cite, [10, 30]);
+  assert.deepEqual(a.emotion, { fear: 0.6 });
+  assert.equal(b.kind, 'narration');
+
+  // generation records joined from the render stage — engine, voice, cache key
+  assert.deepEqual(
+    { engine: a.gen.engine, voiceKey: a.gen.voiceKey, key: a.gen.key, direction: a.gen.direction },
+    { engine: 'qwen3', voiceKey: 'design:old-man', key: 'k1', direction: 'Speak with a fearful tone.' });
+  assert.ok(path.isAbsolute(a.gen.rawWav), 'rawWav must be absolute like every other manifest path');
+  assert.equal(b.gen.engine, 'kokoro');
+  assert.equal(b.gen.direction, null);
+  // a line the render stage never described still exports — gen is just null
+  assert.equal(c.gen, null, 'partial renderMeta must degrade the field, never the manifest');
 });
 
 test('the SFX stem is ducked and gained like every other non-dialog stem', () => {

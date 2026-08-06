@@ -6,7 +6,7 @@
 import { log } from '../../src/util.mjs';
 import { ENGINE_IDS, getEngine, loadRenderer } from './registry.mjs';
 
-export async function renderLines(lines, voices, cacheRoot) {
+export async function renderLines(lines, voices, cacheRoot, meta) {
   // per-ROLE engine overrides (book.json "casting", injected as voices.__casting)
   // win over kind-based routing — e.g. narrator locked to elevenlabs, liu to qwen3.
   const casting = voices.__casting || {};
@@ -27,7 +27,7 @@ export async function renderLines(lines, voices, cacheRoot) {
   const entries = Object.entries(buckets);
   const net = entries.filter(([e]) => !getEngine(e).gpu);
   const gpu = entries.filter(([e]) => getEngine(e).gpu);
-  const run = async ([eng, ls]) => (await loadRenderer(eng))(ls, voices[eng], cacheRoot);
+  const run = async ([eng, ls]) => (await loadRenderer(eng))(ls, voices[eng], cacheRoot, meta);
   const netParts = await Promise.all(net.map(run));
   const gpuParts = [];
   for (const e of gpu) gpuParts.push(await run(e));
